@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, AlertTriangle, ExternalLink, Search, X, Wifi } from 'lucide-react'
+import { ChevronDown, AlertTriangle, ExternalLink, Search, X, Wifi, Car } from 'lucide-react'
 import { useRankings, useCheckAdsOnline } from '../hooks/queries'
 import { useToast } from '../components/Toast'
 import { Button } from '../components/ui/Button'
@@ -14,26 +14,32 @@ import { LocationPicker } from '../components/LocationPicker'
 import { formatPrice, formatKm, variantColor, cn } from '../lib/utils'
 import {
   getUserLocation, setUserLocation, clearUserLocation,
-  haversineKm, distanceBand, DISTANCE_BAND_CONFIG,
-  type UserLocation,
+  haversineKm, travelTimeBand, DISTANCE_BAND_CONFIG,
+  fetchTravelTimes, formatDuration,
+  type UserLocation, type TravelInfo,
 } from '../lib/geo'
 import type { Ranking } from '../types'
 
-// ─── Distance badge ──────────────────────────────────────────────────────────
+// ─── Travel badge ─────────────────────────────────────────────────────────────
 
-function DistanceBadge({ km }: { km: number }) {
-  const band = distanceBand(km)
+function TravelBadge({ travel, loading }: { travel?: TravelInfo; loading?: boolean }) {
+  const base = 'inline-flex items-center justify-center rounded-lg px-2 py-0.5 min-w-[3.5rem] text-center text-[11px] leading-[16px]'
+  if (loading && !travel) {
+    return <span className={cn(base, 'bg-white/[0.06] animate-pulse')}>&nbsp;</span>
+  }
+  if (!travel) return null
+  const band = travelTimeBand(travel.durationSec)
   const cfg = DISTANCE_BAND_CONFIG[band]
   return (
-    <span className={cn('inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-semibold tabular-nums', cfg.bg, cfg.color)}>
-      {Math.round(km)} km
+    <span className={cn(base, 'font-semibold tabular-nums', cfg.bg, cfg.color)}>
+      {formatDuration(travel.durationSec)}
     </span>
   )
 }
 
 // ─── Ranking detail (expanded row) ───────────────────────────────────────────
 
-function RankingDetail({ r }: { r: Ranking }) {
+function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
   return (
     <motion.div
       initial={{ height: 0, opacity: 0 }}
@@ -104,6 +110,13 @@ function RankingDetail({ r }: { r: Ranking }) {
             </div>
           )}
 
+          {travel && (
+            <p className="text-[11px] text-text-dim mt-2 flex items-center gap-1">
+              <Car className="h-3 w-3" />
+              {formatDuration(travel.durationSec)} · {Math.round(travel.distanceKm)} km par la route
+            </p>
+          )}
+
           <div className="mt-3 pt-2 border-t border-white/[0.04] flex gap-3">
             <Link to={`/ads/${r.id}`} className="text-xs text-amber-400 hover:text-amber-300 transition-colors">
               Voir l'annonce
@@ -120,8 +133,8 @@ function RankingDetail({ r }: { r: Ranking }) {
 
 // ─── Mobile card ─────────────────────────────────────────────────────────────
 
-function RankingCard({ r, rank, isOpen, onToggle, distance }: {
-  r: Ranking; rank: number; isOpen: boolean; onToggle: () => void; distance: number | null
+function RankingCard({ r, rank, isOpen, onToggle, travel, travelLoading }: {
+  r: Ranking; rank: number; isOpen: boolean; onToggle: () => void; travel?: TravelInfo; travelLoading?: boolean
 }) {
   const colorStr = `${r.color || r.variant}${r.wheel_type === 'tubeless' ? ' TL' : ''}`
 
@@ -132,12 +145,10 @@ function RankingCard({ r, rank, isOpen, onToggle, distance }: {
           <div className="flex items-center gap-3">
             <span className="text-lg font-bold text-text-muted" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>#{rank}</span>
             <div>
-              <p className="text-sm font-medium text-text-primary">
+              <p className="text-sm font-medium text-text-primary flex items-center gap-2 flex-wrap">
                 {r.city}
-                {distance != null && (
-                  <span className="ml-2"><DistanceBadge km={distance} /></span>
-                )}
-                {r.sold && <span className="ml-2 text-[10px] text-red-400 uppercase font-semibold">Vendue</span>}
+                <TravelBadge travel={travel} loading={travelLoading} />
+                {r.sold && <span className="text-[10px] text-red-400 uppercase font-semibold">Vendue</span>}
               </p>
               <Badge className={variantColor(r.variant)}>{colorStr}</Badge>
             </div>
@@ -164,7 +175,7 @@ function RankingCard({ r, rank, isOpen, onToggle, distance }: {
       </button>
 
       <AnimatePresence>
-        {isOpen && <RankingDetail r={r} />}
+        {isOpen && <RankingDetail r={r} travel={travel} />}
       </AnimatePresence>
     </Card>
   )
@@ -188,13 +199,15 @@ export function RankingPage() {
   const [filterWheel, setFilterWheel] = useState('')
   const [maxKm, setMaxKm] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
-  const [maxDistance, setMaxDistance] = useState('')
+  const [maxTrajet, setMaxTrajet] = useState('')
 
   // Localisation utilisateur
   const [userLoc, setUserLoc] = useState<UserLocation | null>(() => getUserLocation())
 
   const handleLocationChange = useCallback((loc: UserLocation | null) => {
     setUserLoc(loc)
+    setTravelMap(new Map())
+    setTravelLoading(!!loc)
     if (loc) setUserLocation(loc)
     else clearUserLocation()
   }, [])
@@ -211,12 +224,34 @@ export function RankingPage() {
     return m
   }, [userLoc, rankings])
 
+  // Temps de trajet (OSRM)
+  const [travelMap, setTravelMap] = useState<Map<number, TravelInfo>>(new Map())
+  const [travelLoading, setTravelLoading] = useState(false)
+
+  useEffect(() => {
+    if (!userLoc || !rankings) {
+      setTravelMap(new Map())
+      return
+    }
+    let cancelled = false
+    const dests = rankings
+      .filter((r) => r.lat != null && r.lng != null)
+      .map((r) => ({ id: r.id, lat: r.lat!, lng: r.lng! }))
+
+    setTravelMap(new Map())
+    setTravelLoading(true)
+    fetchTravelTimes(userLoc, dests)
+      .then((m) => { if (!cancelled) setTravelMap(m) })
+      .finally(() => { if (!cancelled) setTravelLoading(false) })
+    return () => { cancelled = true }
+  }, [userLoc, rankings])
+
   const availableColors = useMemo(
     () => rankings ? [...new Set(rankings.map((r) => r.color).filter(Boolean))].sort() : [],
     [rankings],
   )
 
-  const hasFilters = search || filterColors.size > 0 || filterWheel || maxKm || maxPrice || maxDistance
+  const hasFilters = search || filterColors.size > 0 || filterWheel || maxKm || maxPrice || maxTrajet
 
   function toggleColor(color: string) {
     setFilterColors((prev) => {
@@ -245,7 +280,7 @@ export function RankingPage() {
     setFilterWheel('')
     setMaxKm('')
     setMaxPrice('')
-    setMaxDistance('')
+    setMaxTrajet('')
   }
 
   const filtered = rankings.filter((r) => {
@@ -257,9 +292,9 @@ export function RankingPage() {
     if (filterWheel && r.wheel_type !== filterWheel) return false
     if (maxKm && r.km > Number(maxKm)) return false
     if (maxPrice && r.price > Number(maxPrice)) return false
-    if (maxDistance) {
-      const d = distanceMap.get(r.id)
-      if (d == null || d > Number(maxDistance)) return false
+    if (maxTrajet) {
+      const t = travelMap.get(r.id)
+      if (t == null || t.durationSec > Number(maxTrajet) * 60) return false
     }
     return true
   })
@@ -276,8 +311,8 @@ export function RankingPage() {
       case 'decote_pct': cmp = a.decote_pct - b.decote_pct; break
       case 'acc_used_total': cmp = a.acc_used_total - b.acc_used_total; break
       case 'distance': {
-        const da = distanceMap.get(a.id) ?? 99999
-        const db = distanceMap.get(b.id) ?? 99999
+        const da = travelMap.get(a.id)?.durationSec ?? (distanceMap.get(a.id) ?? 99999) * 60
+        const db = travelMap.get(b.id)?.durationSec ?? (distanceMap.get(b.id) ?? 99999) * 60
         cmp = da - db
         break
       }
@@ -387,13 +422,27 @@ export function RankingPage() {
           className="rounded-xl bg-white/[0.04] border border-white/[0.06] px-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all w-full sm:w-[110px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
         {hasLocation && (
-          <input
-            type="number"
-            placeholder="Dist. max"
-            value={maxDistance}
-            onChange={(e) => setMaxDistance(e.target.value)}
-            className="rounded-xl bg-white/[0.04] border border-white/[0.06] px-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all w-full sm:w-[120px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-          />
+          <div className="flex gap-1.5 items-center">
+            {[
+              { label: '< 1h', value: '60' },
+              { label: '< 2h', value: '120' },
+              { label: '< 3h', value: '180' },
+              { label: '< 5h', value: '300' },
+            ].map((p) => (
+              <button
+                key={p.value}
+                onClick={() => setMaxTrajet(maxTrajet === p.value ? '' : p.value)}
+                className={cn(
+                  'rounded-lg px-2.5 py-1.5 text-xs font-medium border transition-all cursor-pointer',
+                  maxTrajet === p.value
+                    ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                    : 'bg-white/[0.03] border-white/[0.06] text-text-dim hover:text-text-secondary hover:bg-white/[0.06]',
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         )}
         {hasFilters && (
           <button
@@ -422,7 +471,8 @@ export function RankingPage() {
               rank={origRank}
               isOpen={expanded === r.id}
               onToggle={() => setExpanded(expanded === r.id ? null : r.id)}
-              distance={distanceMap.get(r.id) ?? null}
+              travel={travelMap.get(r.id)}
+              travelLoading={travelLoading}
             />
           )
         })}
@@ -435,7 +485,7 @@ export function RankingPage() {
             <tr className="text-left text-[11px] text-text-dim uppercase tracking-widest border-b border-white/[0.06]">
               <SortHeader k="rank" className="pl-5 w-12 text-center">#</SortHeader>
               <th className="py-4 pr-4">Ville</th>
-              {hasLocation && <SortHeader k="distance" className="text-right">Dist.</SortHeader>}
+              {hasLocation && <SortHeader k="distance" className="text-right w-20">Trajet</SortHeader>}
               <th className="py-4 pr-4">Couleur</th>
               <SortHeader k="km" className="text-right">Km</SortHeader>
               <SortHeader k="price" className="text-right">Affiche</SortHeader>
@@ -449,7 +499,7 @@ export function RankingPage() {
               const origRank = rankings.indexOf(r) + 1
               const isOpen = expanded === r.id
               const colorStr = `${r.color || r.variant}${r.wheel_type === 'tubeless' ? ' TL' : ''}`
-              const dist = distanceMap.get(r.id)
+
               return (
                 <React.Fragment key={r.id}>
                   <tr
@@ -466,8 +516,8 @@ export function RankingPage() {
                       {r.sold && <span className="ml-2 text-[10px] text-red-400 uppercase font-semibold">Vendue</span>}
                     </td>
                     {hasLocation && (
-                      <td className="py-3 pr-4 text-right">
-                        {dist != null ? <DistanceBadge km={dist} /> : <span className="text-text-dim">—</span>}
+                      <td className="py-3 pr-4 text-right w-20">
+                        <TravelBadge travel={travelMap.get(r.id)} loading={travelLoading} />
                       </td>
                     )}
                     <td className="py-3 pr-4">
@@ -490,7 +540,7 @@ export function RankingPage() {
                     {isOpen && (
                       <tr>
                         <td colSpan={colSpan} className="p-0">
-                          <RankingDetail r={r} />
+                          <RankingDetail r={r} travel={travelMap.get(r.id)} />
                         </td>
                       </tr>
                     )}

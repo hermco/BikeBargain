@@ -93,3 +93,61 @@ export const DISTANCE_BAND_CONFIG: Record<DistanceBand, { label: string; color: 
   far:      { label: 'Loin',         color: 'text-orange-300',  bg: 'bg-orange-500/15' },
   very_far: { label: 'Tres loin',    color: 'text-red-300',     bg: 'bg-red-500/15' },
 }
+
+// ─── Temps de trajet (OSRM) ─────────────────────────────────────────────────
+
+export interface TravelInfo {
+  durationSec: number
+  distanceKm: number
+}
+
+export function formatDuration(sec: number): string {
+  const h = Math.floor(sec / 3600)
+  const m = Math.round((sec % 3600) / 60)
+  if (h === 0) return `${m} mn`
+  return m > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`
+}
+
+export function travelTimeBand(sec: number): DistanceBand {
+  if (sec < 3600) return 'close'       // < 1h
+  if (sec < 9000) return 'medium'      // < 2h30
+  if (sec < 18000) return 'far'        // < 5h
+  return 'very_far'
+}
+
+export async function fetchTravelTimes(
+  origin: { lat: number; lng: number },
+  destinations: { id: number; lat: number; lng: number }[],
+): Promise<Map<number, TravelInfo>> {
+  const result = new Map<number, TravelInfo>()
+  if (destinations.length === 0) return result
+
+  const coords = [
+    `${origin.lng},${origin.lat}`,
+    ...destinations.map((d) => `${d.lng},${d.lat}`),
+  ].join(';')
+
+  try {
+    const res = await fetch(
+      `https://router.project-osrm.org/table/v1/driving/${coords}?sources=0&annotations=duration,distance`,
+    )
+    if (!res.ok) return result
+    const data = await res.json()
+    if (data.code !== 'Ok') return result
+
+    const durations = data.durations[0] as (number | null)[]
+    const distances = data.distances[0] as (number | null)[]
+
+    for (let i = 0; i < destinations.length; i++) {
+      const dur = durations[i + 1]
+      const dist = distances[i + 1]
+      if (dur != null && dist != null) {
+        result.set(destinations[i].id, { durationSec: dur, distanceKm: dist / 1000 })
+      }
+    }
+  } catch {
+    // OSRM indisponible — fallback haversine cote appelant
+  }
+
+  return result
+}
