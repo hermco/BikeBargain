@@ -79,6 +79,9 @@ himalayan-450-analyzer/
 │   │   ├── components/      # Composants UI (cards, sidebar, filtres, etc.)
 │   │   ├── pages/           # Pages (annonces, détail, stats, classement)
 │   │   ├── hooks/           # TanStack Query hooks
+│   │   ├── i18n/            # Internationalisation (react-i18next)
+│   │   │   ├── index.ts     # Configuration i18n
+│   │   │   └── locales/     # Fichiers de traduction (fr.json, en.json)
 │   │   ├── lib/             # Client API et utilitaires
 │   │   └── types.ts         # Types TypeScript
 │   └── ...
@@ -218,3 +221,4 @@ Le système de crawl permet de scanner LeBonCoin et traiter les résultats par l
 - TanStack Query v5
 - React Router v7
 - Recharts, framer-motion, Radix UI, Lucide icons
+- react-i18next (internationalisation FR/EN, fichiers dans `frontend/src/i18n/locales/`)

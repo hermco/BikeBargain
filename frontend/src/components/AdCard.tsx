@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { MapPin, CircleGauge, Calendar } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import type { Ad } from '../types'
 import { Badge } from './ui/Badge'
 import { formatPrice, formatKm, formatDate, variantColor } from '../lib/utils'
@@ -10,18 +11,19 @@ interface AdCardProps {
   index: number
 }
 
-function getDealLevel(ad: Ad): { label: string; className: string } | null {
+function getDealLevel(ad: Ad, t: (key: string) => string): { label: string; className: string } | null {
   if (ad.price == null || ad.estimated_new_price == null) return null
   const decote = ((ad.estimated_new_price - ad.price) / ad.estimated_new_price) * 100
-  if (decote > 20) return { label: 'Bonne affaire', className: 'bg-emerald-500/90 text-white' }
-  if (decote < 5) return { label: 'Prix élevé', className: 'bg-red-500/80 text-white' }
+  if (decote > 20) return { label: t('adCard.goodDeal'), className: 'bg-emerald-500/90 text-white' }
+  if (decote < 5) return { label: t('adCard.highPrice'), className: 'bg-red-500/80 text-white' }
   return null
 }
 
 export function AdCard({ ad, index }: AdCardProps) {
+  const { t } = useTranslation()
   const heroImage = ad.images?.[0]
   const accCount = ad.accessories?.length ?? 0
-  const deal = getDealLevel(ad)
+  const deal = getDealLevel(ad, t)
   const isSold = !!ad.sold
 
   return (
@@ -46,13 +48,13 @@ export function AdCard({ ad, index }: AdCardProps) {
             />
           ) : (
             <div className="flex items-center justify-center h-full text-[#2a3040] text-sm">
-              Pas d'image
+              {t('common.noImage')}
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-bg via-transparent to-transparent opacity-80" />
           {isSold && (
             <div className="absolute top-3 right-3 z-10">
-              <Badge className="bg-red-500/90 text-white text-xs font-semibold px-2.5 py-1">Vendue</Badge>
+              <Badge className="bg-red-500/90 text-white text-xs font-semibold px-2.5 py-1">{t('common.sold')}</Badge>
             </div>
           )}
           <div className="absolute bottom-0 left-0 right-0 px-4 py-3 flex items-end justify-between">
@@ -70,12 +72,12 @@ export function AdCard({ ad, index }: AdCardProps) {
         {/* Content */}
         <div className="p-4 flex flex-col gap-3">
           <h3 className="text-sm font-medium text-text-primary line-clamp-1 group-hover:text-amber-200 transition-colors">
-            {ad.subject ?? 'Sans titre'}
+            {ad.subject ?? t('common.noTitle')}
           </h3>
 
           <div className="flex items-center gap-2 flex-wrap">
             <Badge className={variantColor(ad.variant)}>
-              {ad.variant ?? 'N/A'}
+              {ad.variant ?? t('common.na')}
             </Badge>
             {ad.color && (
               <Badge className="bg-white/[0.06] text-text-secondary">{ad.color}</Badge>
@@ -100,7 +102,7 @@ export function AdCard({ ad, index }: AdCardProps) {
             )}
           </div>
 
-          {/* Kilométrage avec jauge intégrée */}
+          {/* Kilometrage avec jauge integree */}
           {ad.mileage_km != null && (() => {
             const ratio = Math.min(ad.mileage_km / 30000, 1)
             const kmColor = ratio < 0.33
@@ -118,7 +120,7 @@ export function AdCard({ ad, index }: AdCardProps) {
                 <CircleGauge className="h-4 w-4 shrink-0 text-text-muted" style={{ overflow: 'visible' }} />
                 <div className="flex-1 flex flex-col gap-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-text-muted">Kilométrage</span>
+                    <span className="text-[11px] text-text-muted">{t('adCard.mileage')}</span>
                     <span className={`text-[11px] tabular-nums font-medium ${textColor}`}>
                       {formatKm(ad.mileage_km)}
                     </span>

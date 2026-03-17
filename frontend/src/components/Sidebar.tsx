@@ -1,17 +1,69 @@
 import { NavLink } from 'react-router-dom'
-import { BarChart3, Trophy, LayoutGrid, Plus, Search, Wrench } from 'lucide-react'
+import { BarChart3, Trophy, LayoutGrid, Plus, Search, Wrench, Globe } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { cn, formatPrice } from '../lib/utils'
 import { useStats } from '../hooks/queries'
 
-const NAV = [
-  { to: '/', icon: LayoutGrid, label: 'Annonces' },
-  { to: '/stats', icon: BarChart3, label: 'Statistiques' },
-  { to: '/rankings', icon: Trophy, label: 'Classement' },
-  { to: '/crawl', icon: Search, label: 'Recherche' },
-  { to: '/catalog', icon: Wrench, label: 'Accessoires' },
+function MobileLanguageToggle() {
+  const { i18n } = useTranslation()
+  const currentLang = i18n.language?.startsWith('fr') ? 'fr' : 'en'
+  const nextLang = currentLang === 'fr' ? 'en' : 'fr'
+
+  return (
+    <button
+      onClick={() => i18n.changeLanguage(nextLang)}
+      className="flex flex-col items-center gap-1 px-4 py-1.5 text-[10px] font-medium rounded-xl transition-all text-text-muted"
+    >
+      <Globe className="h-5 w-5" />
+      <span>{currentLang.toUpperCase()}</span>
+    </button>
+  )
+}
+
+function LanguageSwitcher() {
+  const { i18n } = useTranslation()
+  const currentLang = i18n.language?.startsWith('fr') ? 'fr' : 'en'
+
+  return (
+    <div className="flex items-center gap-1.5 px-4">
+      <Globe className="h-3.5 w-3.5 text-text-dim shrink-0" />
+      <div className="flex rounded-lg bg-white/[0.04] border border-white/[0.06] p-0.5">
+        <button
+          onClick={() => i18n.changeLanguage('fr')}
+          className={cn(
+            'px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all',
+            currentLang === 'fr'
+              ? 'bg-amber-500/15 text-amber-300 shadow-sm'
+              : 'text-text-dim hover:text-text-secondary',
+          )}
+        >
+          FR
+        </button>
+        <button
+          onClick={() => i18n.changeLanguage('en')}
+          className={cn(
+            'px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all',
+            currentLang === 'en'
+              ? 'bg-amber-500/15 text-amber-300 shadow-sm'
+              : 'text-text-dim hover:text-text-secondary',
+          )}
+        >
+          EN
+        </button>
+      </div>
+    </div>
+  )
+}
+
+const NAV_KEYS = [
+  { to: '/', icon: LayoutGrid, labelKey: 'nav.ads' },
+  { to: '/stats', icon: BarChart3, labelKey: 'nav.stats' },
+  { to: '/rankings', icon: Trophy, labelKey: 'nav.ranking' },
+  { to: '/crawl', icon: Search, labelKey: 'nav.search' },
+  { to: '/catalog', icon: Wrench, labelKey: 'nav.accessories' },
 ] as const
 
-function NavItem({ to, icon: Icon, label }: (typeof NAV)[number]) {
+function NavItem({ to, icon: Icon, label }: { to: string; icon: React.ElementType; label: string }) {
   return (
     <NavLink
       to={to}
@@ -33,22 +85,23 @@ function NavItem({ to, icon: Icon, label }: (typeof NAV)[number]) {
 
 function SidebarStats() {
   const { data: stats } = useStats()
+  const { t } = useTranslation()
   if (!stats) return null
 
   return (
     <div className="px-4 py-3 mx-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-      <p className="text-[10px] text-text-dim uppercase tracking-widest font-semibold mb-2">Résumé</p>
+      <p className="text-[10px] text-text-dim uppercase tracking-widest font-semibold mb-2">{t('sidebar.summary')}</p>
       <div className="space-y-1.5 text-xs">
         <div className="flex justify-between">
-          <span className="text-text-muted">Annonces</span>
+          <span className="text-text-muted">{t('sidebar.ads')}</span>
           <span className="text-text-primary font-medium">{stats.count}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-text-muted">Prix moyen</span>
+          <span className="text-text-muted">{t('sidebar.avgPrice')}</span>
           <span className="text-amber-300 font-medium">{formatPrice(stats.price.mean)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-text-muted">Prix médian</span>
+          <span className="text-text-muted">{t('sidebar.medianPrice')}</span>
           <span className="text-text-primary font-medium">{formatPrice(stats.price.median)}</span>
         </div>
       </div>
@@ -57,6 +110,8 @@ function SidebarStats() {
 }
 
 export function Sidebar() {
+  const { t } = useTranslation()
+
   return (
     <>
       {/* Desktop sidebar */}
@@ -72,8 +127,8 @@ export function Sidebar() {
         </div>
         <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent mx-4" />
         <nav className="flex flex-col gap-1 p-3 mt-3">
-          {NAV.map((n) => (
-            <NavItem key={n.to} {...n} />
+          {NAV_KEYS.map((n) => (
+            <NavItem key={n.to} to={n.to} icon={n.icon} label={t(n.labelKey)} />
           ))}
         </nav>
 
@@ -87,11 +142,13 @@ export function Sidebar() {
             className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 text-amber-300 text-xs font-medium hover:bg-amber-500/15 transition-colors border border-amber-500/15"
           >
             <Plus className="h-3.5 w-3.5" />
-            Ajouter une annonce
+            {t('sidebar.addAd')}
           </NavLink>
           <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
+          <LanguageSwitcher />
+          <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
           <p className="text-[10px] text-text-dim text-center">
-            LeBonCoin Scraper
+            {t('sidebar.footer')}
           </p>
           {__GIT_BRANCH__ !== 'master' && __GIT_BRANCH__ !== 'main' && (
             <div className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/20">
@@ -104,7 +161,7 @@ export function Sidebar() {
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-bg/90 backdrop-blur-xl border-t border-white/[0.06] z-30 flex justify-around py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-4">
-        {NAV.map((n) => (
+        {NAV_KEYS.map((n) => (
           <NavLink
             key={n.to}
             to={n.to}
@@ -117,9 +174,10 @@ export function Sidebar() {
             }
           >
             <n.icon className="h-5 w-5" />
-            <span>{n.label}</span>
+            <span>{t(n.labelKey)}</span>
           </NavLink>
         ))}
+        <MobileLanguageToggle />
       </nav>
     </>
   )

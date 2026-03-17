@@ -3,6 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, ReferenceLine,
 } from 'recharts'
+import { useTranslation } from 'react-i18next'
 import { useStats } from '../hooks/queries'
 import { Card } from '../components/ui/Card'
 import { StatCardSkeleton } from '../components/LoadingSkeleton'
@@ -51,11 +52,12 @@ function buildHistogram(values: number[], bins: number): { label: string; count:
 
 export function StatsPage() {
   const { data: stats, isLoading } = useStats()
+  const { t } = useTranslation()
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>Statistiques</h1>
+        <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>{t('stats.title')}</h1>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)}
         </div>
@@ -75,20 +77,20 @@ export function StatsPage() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-      <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>Statistiques</h1>
+      <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>{t('stats.title')}</h1>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Annonces" value={String(stats.count)} icon={Package} accent="bg-blue-500" />
-        <KpiCard label="Prix moyen" value={formatPrice(stats.price.mean)} icon={TrendingUp} accent="bg-amber-500" />
-        <KpiCard label="Prix médian" value={formatPrice(stats.price.median)} icon={ArrowUpDown} accent="bg-emerald-500" />
-        <KpiCard label="Km moyen" value={formatKm(stats.mileage.mean)} icon={Gauge} accent="bg-violet-500" />
+        <KpiCard label={t('stats.ads')} value={String(stats.count)} icon={Package} accent="bg-blue-500" />
+        <KpiCard label={t('stats.avgPrice')} value={formatPrice(stats.price.mean)} icon={TrendingUp} accent="bg-amber-500" />
+        <KpiCard label={t('stats.medianPrice')} value={formatPrice(stats.price.median)} icon={ArrowUpDown} accent="bg-emerald-500" />
+        <KpiCard label={t('stats.avgKm')} value={formatKm(stats.mileage.mean)} icon={Gauge} accent="bg-violet-500" />
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Card className="p-6">
-          <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-5">Distribution des prix</h2>
+          <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-5">{t('stats.priceDistribution')}</h2>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={priceHist}>
               <XAxis dataKey="label" tick={{ fill: '#5a6478', fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -100,7 +102,7 @@ export function StatsPage() {
                   stroke="#d4a853"
                   strokeDasharray="4 4"
                   strokeWidth={1.5}
-                  label={{ value: `Médian: ${formatPrice(stats.price.median)}`, position: 'top', fill: '#d4a853', fontSize: 10 }}
+                  label={{ value: `${t('stats.median')}: ${formatPrice(stats.price.median)}`, position: 'top', fill: '#d4a853', fontSize: 10 }}
                 />
               )}
               <Bar dataKey="count" fill="#d4a853" radius={[6, 6, 0, 0]} />
@@ -109,7 +111,7 @@ export function StatsPage() {
         </Card>
 
         <Card className="p-6">
-          <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-5">Distribution des km</h2>
+          <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-5">{t('stats.kmDistribution')}</h2>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={kmHist}>
               <XAxis dataKey="label" tick={{ fill: '#5a6478', fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -121,7 +123,7 @@ export function StatsPage() {
         </Card>
 
         <Card className="p-6">
-          <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-5">Répartition par variante</h2>
+          <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-5">{t('stats.variantDistribution')}</h2>
           <ResponsiveContainer width="100%" height={240}>
             <PieChart>
               <Pie
@@ -146,7 +148,7 @@ export function StatsPage() {
         </Card>
 
         <Card className="p-4 sm:p-6">
-          <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-5">Top départements</h2>
+          <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-5">{t('stats.topDepartments')}</h2>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={stats.departments} layout="vertical">
               <XAxis type="number" tick={{ fill: '#5a6478', fontSize: 11 }} allowDecimals={false} axisLine={false} tickLine={false} />
@@ -161,7 +163,7 @@ export function StatsPage() {
       {/* Top accessories */}
       <Card className="p-4 sm:p-6">
         <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-5">
-          Top accessoires (% d'annonces)
+          {t('stats.topAccessories')}
         </h2>
         <div className="overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6">
           <div className="min-w-[480px]">
@@ -171,7 +173,7 @@ export function StatsPage() {
                 <YAxis type="category" dataKey="name" tick={{ fill: '#5a6478', fontSize: 11 }} width={220} axisLine={false} tickLine={false} />
                 <Tooltip
                   contentStyle={TOOLTIP_STYLE}
-                  formatter={(value) => [`${value}%`, 'Fréquence']}
+                  formatter={(value) => [`${value}%`, t('stats.frequency')]}
                   cursor={{ fill: 'rgba(255,255,255,0.03)' }}
                 />
                 <Bar dataKey="pct" fill="#d4a853" radius={[0, 6, 6, 0]} />

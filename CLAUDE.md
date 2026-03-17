@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CLI tool + web UI to scrape, store, and analyze second-hand Royal Enfield Himalayan 450 listings from LeBonCoin (French classifieds). Written in French (comments, UI, variable names).
+CLI tool + web UI to scrape, store, and analyze second-hand Royal Enfield Himalayan 450 listings from LeBonCoin (French classifieds). Written in French (comments, variable names). Frontend UI is internationalized (FR/EN) via react-i18next.
 
 ## Commands
 
@@ -51,6 +51,7 @@ No test suite exists.
 - `devproxy.py` — Reverse proxy multi-worktree (stdlib only). Sert le frontend Vite du worktree actif sur localhost:3000. Dashboard à `/_proxy/`, API de contrôle à `/_proxy/api/`
 - `devproxy_register.py` — Helper CLI : `find-ports` (détecte ports libres), `register`/`unregister` (s'enregistre auprès du proxy)
 - `frontend/` — React 19 + TypeScript + Vite + Tailwind CSS v4 + TanStack Query v5 + Recharts + framer-motion. Proxies `/api` to backend via Vite config
+- `frontend/src/i18n/` — Internationalization via react-i18next. Translation files in `locales/fr.json` and `locales/en.json`. All UI strings use `t()` calls — never hardcode French text in components
 
 ## Key Design Patterns
 

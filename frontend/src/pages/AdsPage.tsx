@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { X, Wifi } from 'lucide-react'
 import { useAds, useCheckAdsOnline } from '../hooks/queries'
 import { AdCard } from '../components/AdCard'
@@ -32,6 +33,7 @@ function sortAds(ads: Ad[], sort: SortOption): Ad[] {
 }
 
 export function AdsPage() {
+  const { t } = useTranslation()
   const [variant, setVariant] = useState('')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortOption>('recent')
@@ -69,13 +71,13 @@ export function AdsPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>Annonces</h1>
+          <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>{t('ads.title')}</h1>
           {data && (
             <p className="text-sm text-text-muted mt-1">
               {hasFilters ? (
-                <span>{filtered.length} / {totalCount} annonce{totalCount > 1 ? 's' : ''}</span>
+                <span>{filtered.length} / {t('ads.ad', { count: totalCount })}</span>
               ) : (
-                <span>{totalCount} annonce{totalCount > 1 ? 's' : ''} enregistrée{totalCount > 1 ? 's' : ''}</span>
+                <span>{t('ads.recorded', { count: totalCount })}</span>
               )}
             </p>
           )}
@@ -86,7 +88,7 @@ export function AdsPage() {
               onClick={clearFilters}
               className="flex items-center gap-1.5 rounded-xl bg-white/[0.04] border border-white/[0.06] px-3 py-2 text-xs text-text-dim hover:text-text-secondary hover:bg-white/[0.06] transition-all"
             >
-              <X className="h-3.5 w-3.5" /> Réinitialiser
+              <X className="h-3.5 w-3.5" /> {t('common.resetFilters')}
             </button>
           )}
           <Button
@@ -99,8 +101,8 @@ export function AdsPage() {
                 onSuccess: (data) => {
                   toast(
                     data.newly_sold > 0
-                      ? `${data.newly_sold} annonce${data.newly_sold > 1 ? 's' : ''} marquée${data.newly_sold > 1 ? 's' : ''} vendue${data.newly_sold > 1 ? 's' : ''}`
-                      : `${data.checked} annonces vérifiées, aucune vendue`,
+                      ? t('ads.newlySold', { count: data.newly_sold })
+                      : t('ads.checkedNone', { count: data.checked }),
                     data.newly_sold > 0 ? 'success' : 'info',
                   )
                 },
@@ -109,7 +111,7 @@ export function AdsPage() {
             }}
           >
             <Wifi className={`h-3.5 w-3.5 ${checkOnlineMut.isPending ? 'animate-pulse' : ''}`} />
-            <span className="hidden sm:inline">{checkOnlineMut.isPending ? 'Vérification...' : 'Vérifier en ligne'}</span>
+            <span className="hidden sm:inline">{checkOnlineMut.isPending ? t('common.checking') : t('common.checkOnline')}</span>
           </Button>
           <AdForm />
         </div>
@@ -132,8 +134,8 @@ export function AdsPage() {
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
-          title="Aucune annonce"
-          description="Ajoutez des annonces LeBonCoin pour commencer l'analyse."
+          title={t('ads.emptyTitle')}
+          description={t('ads.emptyDescription')}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
