@@ -12,6 +12,9 @@ function gitBranch(): string {
   }
 }
 
+const frontendPort = parseInt(process.env.VITE_PORT || '5173', 10)
+const backendPort = parseInt(process.env.VITE_BACKEND_PORT || '8000', 10)
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   define: {
@@ -23,9 +26,11 @@ export default defineConfig({
     },
   },
   server: {
+    port: frontendPort,
+    strictPort: true,
     allowedHosts: ['.trycloudflare.com'],
     proxy: {
-      '/api': 'http://localhost:8000',
+      '/api': `http://localhost:${backendPort}`,
     },
   },
 })
