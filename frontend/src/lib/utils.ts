@@ -1,0 +1,52 @@
+import { clsx, type ClassValue } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+export function formatPrice(price: number | null | undefined): string {
+  if (price == null) return 'N/A'
+  return `${price.toLocaleString('fr-FR')} \u20ac`
+}
+
+export function formatKm(km: number | null | undefined): string {
+  if (km == null) return 'N/A'
+  return `${km.toLocaleString('fr-FR')} km`
+}
+
+export function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+}
+
+export function variantColor(variant: string | null): string {
+  switch (variant) {
+    case 'Base':
+      return 'bg-[#2a3040] text-[#9aa5b8]'
+    case 'Pass':
+      return 'bg-blue-500/15 text-blue-300'
+    case 'Summit':
+      return 'bg-amber-500/15 text-amber-300'
+    case 'Mana Black':
+      return 'bg-violet-500/15 text-violet-300'
+    default:
+      return 'bg-white/[0.06] text-text-muted'
+  }
+}
+
+/** Chart fill color per variant (for pie/bar charts) */
+export function variantChartColor(variant: string): string {
+  switch (variant) {
+    case 'Base':
+      return '#475569'
+    case 'Pass':
+      return '#3b82f6'
+    case 'Summit':
+      return '#d4a853'
+    case 'Mana Black':
+      return '#8b5cf6'
+    default:
+      return '#6b7280'
+  }
+}

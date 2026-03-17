@@ -1,0 +1,424 @@
+import React, { useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ChevronDown, AlertTriangle, ExternalLink, Search, X, Wifi } from 'lucide-react'
+import { useRankings, useCheckAdsOnline } from '../hooks/queries'
+import { useToast } from '../components/Toast'
+import { Button } from '../components/ui/Button'
+import { Card } from '../components/ui/Card'
+import { Badge } from '../components/ui/Badge'
+import { Select } from '../components/ui/Select'
+import { TableSkeleton } from '../components/LoadingSkeleton'
+import { EmptyState } from '../components/EmptyState'
+import { formatPrice, formatKm, variantColor, cn } from '../lib/utils'
+import type { Ranking } from '../types'
+
+function RankingDetail({ r }: { r: Ranking }) {
+  return (
+    <motion.div
+      initial={{ height: 0, opacity: 0 }}
+      animate={{ height: 'auto', opacity: 1 }}
+      exit={{ height: 0, opacity: 0 }}
+      className="overflow-hidden"
+    >
+      <div className="px-5 pb-5 pt-3 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+        {/* Accessories */}
+        <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-4">
+          <h4 className="text-[10px] text-text-muted uppercase tracking-widest font-semibold mb-3">
+            Accessoires ({r.acc_count}) — <span className="text-emerald-400">{formatPrice(r.acc_used_total)}</span>
+          </h4>
+          {r.accessories.length > 0 ? (
+            <ul className="space-y-1.5">
+              {r.accessories.map((a) => (
+                <li key={a.name} className="flex justify-between text-text-secondary">
+                  <span className="truncate">{a.name}</span>
+                  <span className="text-text-dim ml-2 shrink-0">{a.estimated_used_price} &euro;</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-text-dim">Aucun</p>
+          )}
+        </div>
+
+        {/* Consumables */}
+        <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-4">
+          <h4 className="text-[10px] text-text-muted uppercase tracking-widest font-semibold mb-3">
+            Consommables — <span className="text-orange-400">+{formatPrice(r.wear_total)}</span>
+          </h4>
+          <ul className="space-y-1.5">
+            {r.wear_details.map((c) => (
+              <li key={c.name} className={cn('flex justify-between', c.short_term ? 'text-red-400' : 'text-text-secondary')}>
+                <span>{c.name} <span className="text-text-dim">({c.wear_pct}%)</span></span>
+                <span className="ml-2 shrink-0">{c.cost_consumed} &euro;</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-[10px] text-text-dim mt-3 pt-2 border-t border-white/[0.04]">
+            Mécanique : +{formatPrice(r.mechanical_wear)} · Risque état : +{formatPrice(r.condition_risk)} ({r.km} km)
+          </p>
+        </div>
+
+        {/* Warranty & alerts */}
+        <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-4">
+          <h4 className="text-[10px] text-text-muted uppercase tracking-widest font-semibold mb-3">
+            Garantie — {r.warranty.remaining_years} an(s) — <span className="text-blue-400">{formatPrice(r.warranty.value)}</span>
+          </h4>
+          {r.warranty.circulation_date && (
+            <p className="text-text-muted text-xs mb-3">
+              {r.warranty.circulation_date} → {r.warranty.expiry_date}
+            </p>
+          )}
+
+          {r.short_term_items.length > 0 && (
+            <div className="mt-2 p-3 rounded-lg bg-red-500/5 border border-red-500/15">
+              <div className="flex items-center gap-1.5 text-red-400 text-[11px] font-semibold mb-1.5">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Court terme : {formatPrice(r.short_term_total)}
+              </div>
+              {r.short_term_items.map((s) => (
+                <p key={s.name} className="text-[11px] text-red-300/70">
+                  {s.name} : {s.garage_cost} &euro; — {s.reason}
+                </p>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-3 pt-2 border-t border-white/[0.04] flex gap-3">
+            <Link to={`/ads/${r.id}`} className="text-xs text-amber-400 hover:text-amber-300 transition-colors">
+              Voir l'annonce
+            </Link>
+            <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-xs text-text-dim hover:text-text-secondary flex items-center gap-0.5 transition-colors">
+              <ExternalLink className="h-3 w-3" /> LBC
+            </a>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+/* Mobile card for a ranking entry */
+function RankingCard({ r, rank, isOpen, onToggle }: { r: Ranking; rank: number; isOpen: boolean; onToggle: () => void }) {
+  const colorStr = `${r.color || r.variant}${r.wheel_type === 'tubeless' ? ' TL' : ''}`
+
+  return (
+    <Card className={cn('overflow-hidden', r.sold && 'opacity-50')}>
+      <button onClick={onToggle} className="w-full text-left p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-lg font-bold text-text-muted" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>#{rank}</span>
+            <div>
+              <p className="text-sm font-medium text-text-primary">
+                {r.city}
+                {r.sold && <span className="ml-2 text-[10px] text-red-400 uppercase font-semibold">Vendue</span>}
+              </p>
+              <Badge className={variantColor(r.variant)}>{colorStr}</Badge>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-semibold text-text-primary tabular-nums">{formatPrice(r.effective_price)}</p>
+            <span className={cn('text-xs font-semibold', r.decote_pct > 20 ? 'text-emerald-400' : r.decote_pct > 10 ? 'text-amber-400' : 'text-red-400')}>
+              -{r.decote_pct}%
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between text-xs text-text-muted border-t border-white/[0.04] pt-3">
+          <div className="flex gap-4">
+            <span>Affiché : <span className="text-text-primary font-medium">{formatPrice(r.price)}</span></span>
+            <span>{formatKm(r.km)}</span>
+          </div>
+          <div className="flex items-center gap-3 tabular-nums">
+            {r.acc_used_total > 0 && <span className="text-emerald-400">-{r.acc_used_total}</span>}
+            <span className="text-orange-400/80">+{r.wear_total}</span>
+            <ChevronDown className={cn('h-4 w-4 text-text-dim transition-transform duration-200', isOpen && 'rotate-180')} />
+          </div>
+        </div>
+      </button>
+
+      <AnimatePresence>
+        {isOpen && <RankingDetail r={r} />}
+      </AnimatePresence>
+    </Card>
+  )
+}
+
+type SortKey = 'rank' | 'price' | 'km' | 'effective_price' | 'decote_pct' | 'acc_used_total'
+
+const WHEEL_TYPES = ['rayons', 'tubeless']
+
+export function RankingPage() {
+  const { data: rankings, isLoading } = useRankings()
+  const checkOnlineMut = useCheckAdsOnline()
+  const { toast } = useToast()
+  const [expanded, setExpanded] = useState<number | null>(null)
+  const [sortKey, setSortKey] = useState<SortKey>('rank')
+  const [sortAsc, setSortAsc] = useState(true)
+
+  // Filtres
+  const [search, setSearch] = useState('')
+  const [filterColors, setFilterColors] = useState<Set<string>>(new Set())
+  const [filterWheel, setFilterWheel] = useState('')
+  const [maxKm, setMaxKm] = useState('')
+  const [maxPrice, setMaxPrice] = useState('')
+
+  const availableColors = useMemo(
+    () => rankings ? [...new Set(rankings.map((r) => r.color).filter(Boolean))].sort() : [],
+    [rankings],
+  )
+
+  const hasFilters = search || filterColors.size > 0 || filterWheel || maxKm || maxPrice
+
+  function toggleColor(color: string) {
+    setFilterColors((prev) => {
+      const next = new Set(prev)
+      if (next.has(color)) next.delete(color)
+      else next.add(color)
+      return next
+    })
+  }
+
+  if (isLoading) return <TableSkeleton rows={10} />
+  if (!rankings?.length) return <EmptyState title="Aucun classement" description="Ajoutez des annonces pour voir le classement." />
+
+  function handleSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortAsc(!sortAsc)
+    } else {
+      setSortKey(key)
+      setSortAsc(key === 'price' || key === 'km')
+    }
+  }
+
+  function clearFilters() {
+    setSearch('')
+    setFilterColors(new Set())
+    setFilterWheel('')
+    setMaxKm('')
+    setMaxPrice('')
+  }
+
+  const filtered = rankings.filter((r) => {
+    if (search) {
+      const q = search.toLowerCase()
+      if (!r.city.toLowerCase().includes(q) && !r.color?.toLowerCase().includes(q) && !r.variant.toLowerCase().includes(q)) return false
+    }
+    if (filterColors.size > 0 && !filterColors.has(r.color)) return false
+    if (filterWheel && r.wheel_type !== filterWheel) return false
+    if (maxKm && r.km > Number(maxKm)) return false
+    if (maxPrice && r.price > Number(maxPrice)) return false
+    return true
+  })
+
+  const sorted = [...filtered].sort((a, b) => {
+    const aIdx = rankings.indexOf(a)
+    const bIdx = rankings.indexOf(b)
+    let cmp = 0
+    switch (sortKey) {
+      case 'rank': cmp = aIdx - bIdx; break
+      case 'price': cmp = a.price - b.price; break
+      case 'km': cmp = a.km - b.km; break
+      case 'effective_price': cmp = a.effective_price - b.effective_price; break
+      case 'decote_pct': cmp = a.decote_pct - b.decote_pct; break
+      case 'acc_used_total': cmp = a.acc_used_total - b.acc_used_total; break
+    }
+    return sortAsc ? cmp : -cmp
+  })
+
+  const SortHeader = ({ k, children, className: cls }: { k: SortKey; children: React.ReactNode; className?: string }) => (
+    <th
+      className={cn('py-4 pr-4 cursor-pointer hover:text-text-secondary select-none whitespace-nowrap transition-colors', cls)}
+      onClick={() => handleSort(k)}
+    >
+      {children}
+      {sortKey === k && <span className="ml-0.5 text-amber-400">{sortAsc ? '\u25b2' : '\u25bc'}</span>}
+    </th>
+  )
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>Classement</h1>
+          <p className="text-xs text-text-dim mt-1.5 max-w-2xl">
+            Effectif = Affiché - Accessoires(occ.) + Consommables + Mécanique + Risque état - Garantie. Cliquer sur une ligne pour les détails.
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="gap-1.5 shrink-0"
+          disabled={checkOnlineMut.isPending}
+          onClick={() => {
+            checkOnlineMut.mutate(undefined, {
+              onSuccess: (data) => {
+                toast(
+                  data.newly_sold > 0
+                    ? `${data.newly_sold} annonce${data.newly_sold > 1 ? 's' : ''} marquée${data.newly_sold > 1 ? 's' : ''} vendue${data.newly_sold > 1 ? 's' : ''}`
+                    : `${data.checked} annonces vérifiées, aucune vendue`,
+                  data.newly_sold > 0 ? 'success' : 'info',
+                )
+              },
+              onError: (err) => toast((err as Error).message, 'error'),
+            })
+          }}
+        >
+          <Wifi className={`h-3.5 w-3.5 ${checkOnlineMut.isPending ? 'animate-pulse' : ''}`} />
+          <span className="hidden sm:inline">{checkOnlineMut.isPending ? 'Vérification...' : 'Vérifier en ligne'}</span>
+        </Button>
+      </div>
+
+      {/* Filtres */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-dim" />
+          <input
+            type="text"
+            placeholder="Rechercher par ville, couleur, variante..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-xl bg-white/[0.04] border border-white/[0.06] pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/30 transition-all"
+          />
+        </div>
+        <div className="flex flex-wrap gap-1.5 items-center">
+          {availableColors.map((c) => (
+            <button
+              key={c}
+              onClick={() => toggleColor(c)}
+              className={cn(
+                'rounded-lg px-2.5 py-1.5 text-xs font-medium border transition-all cursor-pointer',
+                filterColors.has(c)
+                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                  : 'bg-white/[0.03] border-white/[0.06] text-text-dim hover:text-text-secondary hover:bg-white/[0.06]',
+              )}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+        <Select
+          value={filterWheel}
+          onChange={setFilterWheel}
+          options={[
+            { value: '', label: 'Toutes roues' },
+            { value: 'rayons', label: 'Rayons' },
+            { value: 'tubeless', label: 'Tubeless' },
+          ]}
+          className="w-full sm:w-auto sm:min-w-[140px]"
+        />
+        <input
+          type="number"
+          placeholder="Km max"
+          value={maxKm}
+          onChange={(e) => setMaxKm(e.target.value)}
+          className="rounded-xl bg-white/[0.04] border border-white/[0.06] px-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all w-full sm:w-[110px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        />
+        <input
+          type="number"
+          placeholder="Prix max"
+          value={maxPrice}
+          onChange={(e) => setMaxPrice(e.target.value)}
+          className="rounded-xl bg-white/[0.04] border border-white/[0.06] px-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all w-full sm:w-[110px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        />
+        {hasFilters && (
+          <button
+            onClick={clearFilters}
+            className="rounded-xl bg-white/[0.04] border border-white/[0.06] px-3 py-2.5 text-sm text-text-dim hover:text-text-secondary hover:bg-white/[0.06] transition-all flex items-center gap-1.5"
+          >
+            <X className="h-3.5 w-3.5" /> Effacer
+          </button>
+        )}
+      </div>
+
+      {filtered.length < rankings.length && (
+        <p className="text-xs text-text-dim">
+          {filtered.length} / {rankings.length} annonce{rankings.length > 1 ? 's' : ''}
+        </p>
+      )}
+
+      {/* Mobile: card layout */}
+      <div className="lg:hidden space-y-3">
+        {sorted.map((r) => {
+          const origRank = rankings.indexOf(r) + 1
+          return (
+            <RankingCard
+              key={r.id}
+              r={r}
+              rank={origRank}
+              isOpen={expanded === r.id}
+              onToggle={() => setExpanded(expanded === r.id ? null : r.id)}
+            />
+          )
+        })}
+      </div>
+
+      {/* Desktop: table layout */}
+      <Card className="overflow-x-auto hidden lg:block">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 z-10 bg-surface">
+            <tr className="text-left text-[11px] text-text-dim uppercase tracking-widest border-b border-white/[0.06]">
+              <SortHeader k="rank" className="pl-5 w-12 text-center">#</SortHeader>
+              <th className="py-4 pr-4">Ville</th>
+              <th className="py-4 pr-4">Couleur</th>
+              <SortHeader k="km" className="text-right">Km</SortHeader>
+              <SortHeader k="price" className="text-right">Affiché</SortHeader>
+              <SortHeader k="acc_used_total" className="text-right">Acc.</SortHeader>
+              <SortHeader k="effective_price" className="text-right">Effectif</SortHeader>
+              <SortHeader k="decote_pct" className="pr-5 text-right">Décote</SortHeader>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((r) => {
+              const origRank = rankings.indexOf(r) + 1
+              const isOpen = expanded === r.id
+              const colorStr = `${r.color || r.variant}${r.wheel_type === 'tubeless' ? ' TL' : ''}`
+              return (
+                <React.Fragment key={r.id}>
+                  <tr
+                    className={cn(
+                      'border-b border-white/[0.04] cursor-pointer transition-all duration-200',
+                      isOpen ? 'bg-white/[0.04]' : 'hover:bg-white/[0.02]',
+                      r.sold && 'opacity-50',
+                    )}
+                    onClick={() => setExpanded(isOpen ? null : r.id)}
+                  >
+                    <td className="py-3 pl-5 pr-4 w-12 text-center font-bold text-text-muted" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>{origRank}</td>
+                    <td className="py-3 pr-4 text-text-secondary">
+                      {r.city}
+                      {r.sold && <span className="ml-2 text-[10px] text-red-400 uppercase font-semibold">Vendue</span>}
+                    </td>
+                    <td className="py-3 pr-4">
+                      <Badge className={variantColor(r.variant)}>{colorStr}</Badge>
+                    </td>
+                    <td className="py-3 pr-4 text-right tabular-nums text-text-secondary">{formatKm(r.km)}</td>
+                    <td className="py-3 pr-4 text-right tabular-nums text-text-primary">{formatPrice(r.price)}</td>
+                    <td className="py-3 pr-4 text-right text-emerald-400 tabular-nums">
+                      {r.acc_used_total > 0 ? `-${r.acc_used_total}` : '0'}
+                    </td>
+                    <td className="py-3 pr-4 text-right font-semibold tabular-nums text-text-primary">{formatPrice(r.effective_price)}</td>
+                    <td className="py-3 pr-5 text-right tabular-nums">
+                      <span className={cn('font-semibold', r.decote_pct > 20 ? 'text-emerald-400' : r.decote_pct > 10 ? 'text-amber-400' : 'text-red-400')}>
+                        -{r.decote_pct}%
+                      </span>
+                      <ChevronDown className={cn('inline h-4 w-4 ml-1.5 text-text-dim transition-transform duration-200', isOpen && 'rotate-180')} />
+                    </td>
+                  </tr>
+                  <AnimatePresence>
+                    {isOpen && (
+                      <tr>
+                        <td colSpan={8} className="p-0">
+                          <RankingDetail r={r} />
+                        </td>
+                      </tr>
+                    )}
+                  </AnimatePresence>
+                </React.Fragment>
+              )
+            })}
+          </tbody>
+        </table>
+      </Card>
+    </motion.div>
+  )
+}

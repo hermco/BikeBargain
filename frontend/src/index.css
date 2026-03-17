@@ -1,0 +1,80 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Outfit:wght@300..700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Outfit', system-ui, sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+  --color-surface: #161a22;
+  --color-surface-hover: #1c2130;
+  --color-border: #262d3d;
+  --color-bg: #0c0f14;
+  --color-text-primary: #f0f2f5;
+  --color-text-secondary: #8b95a8;
+  --color-text-muted: #5a6478;
+  --color-text-dim: #3a4258;
+  --color-accent: #d4a853;
+}
+
+body {
+  @apply bg-bg text-text-primary antialiased;
+  font-feature-settings: "ss01", "ss02", "cv01";
+}
+
+/* Subtle noise texture */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-white/10 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-white/20;
+}
+
+/* Selection */
+::selection {
+  background: rgba(212, 168, 83, 0.3);
+  color: #f0f2f5;
+}
+
+/* Recharts tooltip */
+.recharts-default-tooltip {
+  border-radius: 12px !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+/* Accordion animations */
+@keyframes slideDown {
+  from { height: 0; opacity: 0; }
+  to { height: var(--radix-accordion-content-height); opacity: 1; }
+}
+@keyframes slideUp {
+  from { height: var(--radix-accordion-content-height); opacity: 1; }
+  to { height: 0; opacity: 0; }
+}
+
+/* Toast animations */
+@keyframes toastIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes toastOut {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
