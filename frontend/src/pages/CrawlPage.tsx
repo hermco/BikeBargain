@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Search, Loader2, Play, Pause, SkipForward, Check, X, AlertTriangle, ArrowRight, ExternalLink, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Pencil, Trash2, Plus, Maximize2, Filter, Copy } from 'lucide-react'
+import { Search, Loader2, Play, Pause, SkipForward, Check, X, AlertTriangle, ArrowRight, ExternalLink, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Pencil, Trash2, Plus, Maximize2, Copy } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { CategoryBadge } from '../components/AccessoryBadge'
@@ -70,6 +70,9 @@ export function CrawlPage() {
   const { data: catalog } = useAccessoryCatalog()
   const { data: activeSession, isLoading: isLoadingSession } = useActiveCrawlSession()
   const { toast } = useToast()
+
+  // Keep ref in sync for use inside processNext callback
+  useEffect(() => { showInDbRef.current = showInDb }, [showInDb])
 
   // ─── Restore session on mount ─────────────────────────────────────────
 
@@ -150,10 +153,11 @@ export function CrawlPage() {
       return
     }
 
-    // Find next pending ad
+    // Find next pending ad (skip in-DB ads if toggle is off)
     let nextIdx = -1
     for (let i = startIdx; i < states.length; i++) {
       if (states[i].action === 'pending') {
+        if (!showInDbRef.current && states[i].summary.exists_in_db) continue
         nextIdx = i
         break
       }
