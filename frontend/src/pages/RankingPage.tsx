@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, AlertTriangle, ExternalLink, Search, X, Wifi } from 'lucide-react'
@@ -10,8 +10,28 @@ import { Badge } from '../components/ui/Badge'
 import { Select } from '../components/ui/Select'
 import { TableSkeleton } from '../components/LoadingSkeleton'
 import { EmptyState } from '../components/EmptyState'
+import { LocationPicker } from '../components/LocationPicker'
 import { formatPrice, formatKm, variantColor, cn } from '../lib/utils'
+import {
+  getUserLocation, setUserLocation, clearUserLocation,
+  haversineKm, distanceBand, DISTANCE_BAND_CONFIG,
+  type UserLocation,
+} from '../lib/geo'
 import type { Ranking } from '../types'
+
+// ─── Distance badge ──────────────────────────────────────────────────────────
+
+function DistanceBadge({ km }: { km: number }) {
+  const band = distanceBand(km)
+  const cfg = DISTANCE_BAND_CONFIG[band]
+  return (
+    <span className={cn('inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-semibold tabular-nums', cfg.bg, cfg.color)}>
+      {Math.round(km)} km
+    </span>
+  )
+}
+
+// ─── Ranking detail (expanded row) ───────────────────────────────────────────
 
 function RankingDetail({ r }: { r: Ranking }) {
   return (
@@ -55,7 +75,7 @@ function RankingDetail({ r }: { r: Ranking }) {
             ))}
           </ul>
           <p className="text-[10px] text-text-dim mt-3 pt-2 border-t border-white/[0.04]">
-            Mécanique : +{formatPrice(r.mechanical_wear)} · Risque état : +{formatPrice(r.condition_risk)} ({r.km} km)
+            Mecanique : +{formatPrice(r.mechanical_wear)} · Risque etat : +{formatPrice(r.condition_risk)} ({r.km} km)
           </p>
         </div>
 
@@ -98,8 +118,11 @@ function RankingDetail({ r }: { r: Ranking }) {
   )
 }
 
-/* Mobile card for a ranking entry */
-function RankingCard({ r, rank, isOpen, onToggle }: { r: Ranking; rank: number; isOpen: boolean; onToggle: () => void }) {
+// ─── Mobile card ─────────────────────────────────────────────────────────────
+
+function RankingCard({ r, rank, isOpen, onToggle, distance }: {
+  r: Ranking; rank: number; isOpen: boolean; onToggle: () => void; distance: number | null
+}) {
   const colorStr = `${r.color || r.variant}${r.wheel_type === 'tubeless' ? ' TL' : ''}`
 
   return (
@@ -111,6 +134,9 @@ function RankingCard({ r, rank, isOpen, onToggle }: { r: Ranking; rank: number; 
             <div>
               <p className="text-sm font-medium text-text-primary">
                 {r.city}
+                {distance != null && (
+                  <span className="ml-2"><DistanceBadge km={distance} /></span>
+                )}
                 {r.sold && <span className="ml-2 text-[10px] text-red-400 uppercase font-semibold">Vendue</span>}
               </p>
               <Badge className={variantColor(r.variant)}>{colorStr}</Badge>
@@ -126,7 +152,7 @@ function RankingCard({ r, rank, isOpen, onToggle }: { r: Ranking; rank: number; 
 
         <div className="flex items-center justify-between text-xs text-text-muted border-t border-white/[0.04] pt-3">
           <div className="flex gap-4">
-            <span>Affiché : <span className="text-text-primary font-medium">{formatPrice(r.price)}</span></span>
+            <span>Affiche : <span className="text-text-primary font-medium">{formatPrice(r.price)}</span></span>
             <span>{formatKm(r.km)}</span>
           </div>
           <div className="flex items-center gap-3 tabular-nums">
@@ -144,9 +170,9 @@ function RankingCard({ r, rank, isOpen, onToggle }: { r: Ranking; rank: number; 
   )
 }
 
-type SortKey = 'rank' | 'price' | 'km' | 'effective_price' | 'decote_pct' | 'acc_used_total'
+// ─── Main page ───────────────────────────────────────────────────────────────
 
-const WHEEL_TYPES = ['rayons', 'tubeless']
+type SortKey = 'rank' | 'price' | 'km' | 'effective_price' | 'decote_pct' | 'acc_used_total' | 'distance'
 
 export function RankingPage() {
   const { data: rankings, isLoading } = useRankings()
@@ -162,13 +188,35 @@ export function RankingPage() {
   const [filterWheel, setFilterWheel] = useState('')
   const [maxKm, setMaxKm] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
+  const [maxDistance, setMaxDistance] = useState('')
+
+  // Localisation utilisateur
+  const [userLoc, setUserLoc] = useState<UserLocation | null>(() => getUserLocation())
+
+  const handleLocationChange = useCallback((loc: UserLocation | null) => {
+    setUserLoc(loc)
+    if (loc) setUserLocation(loc)
+    else clearUserLocation()
+  }, [])
+
+  // Calcul des distances
+  const distanceMap = useMemo(() => {
+    if (!userLoc || !rankings) return new Map<number, number>()
+    const m = new Map<number, number>()
+    for (const r of rankings) {
+      if (r.lat != null && r.lng != null) {
+        m.set(r.id, haversineKm(userLoc.lat, userLoc.lng, r.lat, r.lng))
+      }
+    }
+    return m
+  }, [userLoc, rankings])
 
   const availableColors = useMemo(
     () => rankings ? [...new Set(rankings.map((r) => r.color).filter(Boolean))].sort() : [],
     [rankings],
   )
 
-  const hasFilters = search || filterColors.size > 0 || filterWheel || maxKm || maxPrice
+  const hasFilters = search || filterColors.size > 0 || filterWheel || maxKm || maxPrice || maxDistance
 
   function toggleColor(color: string) {
     setFilterColors((prev) => {
@@ -187,7 +235,7 @@ export function RankingPage() {
       setSortAsc(!sortAsc)
     } else {
       setSortKey(key)
-      setSortAsc(key === 'price' || key === 'km')
+      setSortAsc(key === 'price' || key === 'km' || key === 'distance')
     }
   }
 
@@ -197,6 +245,7 @@ export function RankingPage() {
     setFilterWheel('')
     setMaxKm('')
     setMaxPrice('')
+    setMaxDistance('')
   }
 
   const filtered = rankings.filter((r) => {
@@ -208,6 +257,10 @@ export function RankingPage() {
     if (filterWheel && r.wheel_type !== filterWheel) return false
     if (maxKm && r.km > Number(maxKm)) return false
     if (maxPrice && r.price > Number(maxPrice)) return false
+    if (maxDistance) {
+      const d = distanceMap.get(r.id)
+      if (d == null || d > Number(maxDistance)) return false
+    }
     return true
   })
 
@@ -222,9 +275,18 @@ export function RankingPage() {
       case 'effective_price': cmp = a.effective_price - b.effective_price; break
       case 'decote_pct': cmp = a.decote_pct - b.decote_pct; break
       case 'acc_used_total': cmp = a.acc_used_total - b.acc_used_total; break
+      case 'distance': {
+        const da = distanceMap.get(a.id) ?? 99999
+        const db = distanceMap.get(b.id) ?? 99999
+        cmp = da - db
+        break
+      }
     }
     return sortAsc ? cmp : -cmp
   })
+
+  const hasLocation = userLoc != null
+  const colSpan = hasLocation ? 9 : 8
 
   const SortHeader = ({ k, children, className: cls }: { k: SortKey; children: React.ReactNode; className?: string }) => (
     <th
@@ -242,7 +304,7 @@ export function RankingPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>Classement</h1>
           <p className="text-xs text-text-dim mt-1.5 max-w-2xl">
-            Effectif = Affiché - Accessoires(occ.) + Consommables + Mécanique + Risque état - Garantie. Cliquer sur une ligne pour les détails.
+            Effectif = Affiche - Accessoires(occ.) + Consommables + Mecanique + Risque etat - Garantie. Cliquer sur une ligne pour les details.
           </p>
         </div>
         <Button
@@ -255,8 +317,8 @@ export function RankingPage() {
               onSuccess: (data) => {
                 toast(
                   data.newly_sold > 0
-                    ? `${data.newly_sold} annonce${data.newly_sold > 1 ? 's' : ''} marquée${data.newly_sold > 1 ? 's' : ''} vendue${data.newly_sold > 1 ? 's' : ''}`
-                    : `${data.checked} annonces vérifiées, aucune vendue`,
+                    ? `${data.newly_sold} annonce${data.newly_sold > 1 ? 's' : ''} marquee${data.newly_sold > 1 ? 's' : ''} vendue${data.newly_sold > 1 ? 's' : ''}`
+                    : `${data.checked} annonces verifiees, aucune vendue`,
                   data.newly_sold > 0 ? 'success' : 'info',
                 )
               },
@@ -265,9 +327,12 @@ export function RankingPage() {
           }}
         >
           <Wifi className={`h-3.5 w-3.5 ${checkOnlineMut.isPending ? 'animate-pulse' : ''}`} />
-          <span className="hidden sm:inline">{checkOnlineMut.isPending ? 'Vérification...' : 'Vérifier en ligne'}</span>
+          <span className="hidden sm:inline">{checkOnlineMut.isPending ? 'Verification...' : 'Verifier en ligne'}</span>
         </Button>
       </div>
+
+      {/* Location picker */}
+      <LocationPicker location={userLoc} onChange={handleLocationChange} />
 
       {/* Filtres */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -321,6 +386,15 @@ export function RankingPage() {
           onChange={(e) => setMaxPrice(e.target.value)}
           className="rounded-xl bg-white/[0.04] border border-white/[0.06] px-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all w-full sm:w-[110px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
+        {hasLocation && (
+          <input
+            type="number"
+            placeholder="Dist. max"
+            value={maxDistance}
+            onChange={(e) => setMaxDistance(e.target.value)}
+            className="rounded-xl bg-white/[0.04] border border-white/[0.06] px-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all w-full sm:w-[120px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
+        )}
         {hasFilters && (
           <button
             onClick={clearFilters}
@@ -348,6 +422,7 @@ export function RankingPage() {
               rank={origRank}
               isOpen={expanded === r.id}
               onToggle={() => setExpanded(expanded === r.id ? null : r.id)}
+              distance={distanceMap.get(r.id) ?? null}
             />
           )
         })}
@@ -360,12 +435,13 @@ export function RankingPage() {
             <tr className="text-left text-[11px] text-text-dim uppercase tracking-widest border-b border-white/[0.06]">
               <SortHeader k="rank" className="pl-5 w-12 text-center">#</SortHeader>
               <th className="py-4 pr-4">Ville</th>
+              {hasLocation && <SortHeader k="distance" className="text-right">Dist.</SortHeader>}
               <th className="py-4 pr-4">Couleur</th>
               <SortHeader k="km" className="text-right">Km</SortHeader>
-              <SortHeader k="price" className="text-right">Affiché</SortHeader>
+              <SortHeader k="price" className="text-right">Affiche</SortHeader>
               <SortHeader k="acc_used_total" className="text-right">Acc.</SortHeader>
               <SortHeader k="effective_price" className="text-right">Effectif</SortHeader>
-              <SortHeader k="decote_pct" className="pr-5 text-right">Décote</SortHeader>
+              <SortHeader k="decote_pct" className="pr-5 text-right">Decote</SortHeader>
             </tr>
           </thead>
           <tbody>
@@ -373,6 +449,7 @@ export function RankingPage() {
               const origRank = rankings.indexOf(r) + 1
               const isOpen = expanded === r.id
               const colorStr = `${r.color || r.variant}${r.wheel_type === 'tubeless' ? ' TL' : ''}`
+              const dist = distanceMap.get(r.id)
               return (
                 <React.Fragment key={r.id}>
                   <tr
@@ -388,6 +465,11 @@ export function RankingPage() {
                       {r.city}
                       {r.sold && <span className="ml-2 text-[10px] text-red-400 uppercase font-semibold">Vendue</span>}
                     </td>
+                    {hasLocation && (
+                      <td className="py-3 pr-4 text-right">
+                        {dist != null ? <DistanceBadge km={dist} /> : <span className="text-text-dim">—</span>}
+                      </td>
+                    )}
                     <td className="py-3 pr-4">
                       <Badge className={variantColor(r.variant)}>{colorStr}</Badge>
                     </td>
@@ -407,7 +489,7 @@ export function RankingPage() {
                   <AnimatePresence>
                     {isOpen && (
                       <tr>
-                        <td colSpan={8} className="p-0">
+                        <td colSpan={colSpan} className="p-0">
                           <RankingDetail r={r} />
                         </td>
                       </tr>

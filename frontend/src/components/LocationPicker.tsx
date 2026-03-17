@@ -1,0 +1,149 @@
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { MapPin, Pencil, X } from 'lucide-react'
+import { geocodeSearch, type UserLocation, type GeoSuggestion } from '../lib/geo'
+
+interface LocationPickerProps {
+  location: UserLocation | null
+  onChange: (loc: UserLocation | null) => void
+}
+
+export function LocationPicker({ location, onChange }: LocationPickerProps) {
+  const [editing, setEditing] = useState(false)
+  const [query, setQuery] = useState('')
+  const [suggestions, setSuggestions] = useState<GeoSuggestion[]>([])
+  const [loading, setLoading] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+
+  // Fermer le dropdown si clic en dehors
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setEditing(false)
+        setSuggestions([])
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  // Focus l'input quand on passe en mode edition
+  useEffect(() => {
+    if (editing) inputRef.current?.focus()
+  }, [editing])
+
+  const doSearch = useCallback((q: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (q.length < 2) {
+      setSuggestions([])
+      return
+    }
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true)
+      const results = await geocodeSearch(q)
+      setSuggestions(results)
+      setLoading(false)
+    }, 300)
+  }, [])
+
+  function handleSelect(s: GeoSuggestion) {
+    const loc: UserLocation = { label: s.label, lat: s.lat, lng: s.lng }
+    onChange(loc)
+    setEditing(false)
+    setQuery('')
+    setSuggestions([])
+  }
+
+  function handleClear() {
+    onChange(null)
+    setQuery('')
+    setSuggestions([])
+  }
+
+  function startEditing() {
+    setEditing(true)
+    setQuery('')
+    setSuggestions([])
+  }
+
+  // Mode affichage : domicile defini
+  if (location && !editing) {
+    return (
+      <div className="flex items-center gap-2 rounded-xl bg-white/[0.03] border border-white/[0.06] px-4 py-2.5">
+        <MapPin className="h-4 w-4 text-amber-400 shrink-0" />
+        <span className="text-sm text-text-secondary">{location.label}</span>
+        <button
+          onClick={startEditing}
+          className="ml-auto p-1 rounded-lg hover:bg-white/[0.06] text-text-dim hover:text-text-secondary transition-colors"
+          title="Modifier"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+        <button
+          onClick={handleClear}
+          className="p-1 rounded-lg hover:bg-white/[0.06] text-text-dim hover:text-red-400 transition-colors"
+          title="Supprimer"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    )
+  }
+
+  // Mode edition / pas encore defini
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="flex items-center gap-2 rounded-xl bg-white/[0.03] border border-white/[0.06] px-4 py-2.5 focus-within:ring-2 focus-within:ring-amber-500/30 focus-within:border-amber-500/30 transition-all">
+        <MapPin className="h-4 w-4 text-text-dim shrink-0" />
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="Entrez votre ville pour calculer les distances..."
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            doSearch(e.target.value)
+          }}
+          onFocus={() => setEditing(true)}
+          className="flex-1 bg-transparent text-sm text-text-primary placeholder-text-dim outline-none"
+        />
+        {loading && (
+          <div className="h-4 w-4 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin shrink-0" />
+        )}
+        {editing && location && (
+          <button
+            onClick={() => { setEditing(false); setQuery('') }}
+            className="p-1 rounded-lg hover:bg-white/[0.06] text-text-dim hover:text-text-secondary transition-colors"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {suggestions.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
+            className="absolute z-50 mt-1.5 w-full rounded-xl bg-[#1a1d24] border border-white/[0.08] shadow-2xl shadow-black/40 overflow-hidden"
+          >
+            {suggestions.map((s, i) => (
+              <button
+                key={`${s.postcode}-${s.city}-${i}`}
+                onClick={() => handleSelect(s)}
+                className="w-full text-left px-4 py-3 text-sm text-text-secondary hover:bg-white/[0.06] hover:text-text-primary transition-colors flex items-center gap-3 border-b border-white/[0.04] last:border-0"
+              >
+                <MapPin className="h-3.5 w-3.5 text-text-dim shrink-0" />
+                <span>{s.label}</span>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
