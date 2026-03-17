@@ -12,8 +12,11 @@ CLI tool + web UI to scrape, store, and analyze second-hand Royal Enfield Himala
 # Setup
 python3 -m venv .venv && source .venv/bin/activate && make install
 
-# Dev (backend :8000 + frontend :5173)
+# Dev (backend + frontend, ports auto-detectes)
 source .venv/bin/activate && make dev
+
+# Dev proxy multi-worktree (une seule fois)
+make proxy
 
 # CLI commands
 python main.py add <url> [<url2> ...]   # Scrape and store listings
@@ -44,7 +47,9 @@ No test suite exists.
 - `src/database.py` — SQLite schema (4 tables: `ads`, `ad_attributes`, `ad_images`, `ad_accessories`) and CRUD. `refresh_accessories()` re-runs detection on all stored ads (useful after pattern updates)
 - `src/accessories.py` — Regex-based accessory detection with deduplication groups. Patterns are ordered specific-before-generic within each group. `EXCLUSION_PATTERNS` strips garage service text before detection. Each accessory has a new price estimate and a 65% depreciation rate for used value
 - `src/analyzer.py` — Ranking algorithm: `effective_price = listed_price - accessories(used) + consumable_wear + mechanical_wear - warranty_value`. Run standalone via `python -m src.analyzer`
-- `src/api.py` — FastAPI REST API exposing all functions (ads CRUD, stats, rankings, CSV export). CORS enabled for localhost:5173. Includes preview/confirm workflow (`POST /api/ads/preview`, `POST /api/ads/confirm`), ad editing (`PATCH /api/ads/{id}`), accessory catalog (`GET /api/accessory-catalog`), and sold status check (`POST /api/ads/check-online`)
+- `src/api.py` — FastAPI REST API exposing all functions (ads CRUD, stats, rankings, CSV export). CORS enabled for any localhost port. Includes preview/confirm workflow (`POST /api/ads/preview`, `POST /api/ads/confirm`), ad editing (`PATCH /api/ads/{id}`), accessory catalog (`GET /api/accessory-catalog`), and sold status check (`POST /api/ads/check-online`)
+- `devproxy.py` — Reverse proxy multi-worktree (stdlib only). Sert le frontend Vite du worktree actif sur localhost:3000. Dashboard à `/_proxy/`, API de contrôle à `/_proxy/api/`
+- `devproxy_register.py` — Helper CLI : `find-ports` (détecte ports libres), `register`/`unregister` (s'enregistre auprès du proxy)
 - `frontend/` — React 19 + TypeScript + Vite + Tailwind CSS v4 + TanStack Query v5 + Recharts + framer-motion. Proxies `/api` to backend via Vite config
 
 ## Key Design Patterns
@@ -65,3 +70,14 @@ No test suite exists.
 - `modeles-prix-neuf.md` — Full catalog of new prices (France, March 2026) with all variants, colors, and wheel types
 - `NEW_PRICES` dict in `extractor.py` — Simplified version used for programmatic price lookup
 - Price reference: Base 5890€ → Mana Black 6590€
+
+## Dev Proxy (multi-worktree)
+
+Un proxy tourne sur localhost:3000. Quand tu lances `make dev` dans un worktree, les ports sont auto-détectés et le worktree s'enregistre au proxy.
+
+Pour switcher le proxy vers ton worktree après `make dev` :
+```bash
+curl -X POST http://localhost:3000/_proxy/api/switch/<branch-name>
+```
+
+Le dashboard est accessible à http://localhost:3000/_proxy/
