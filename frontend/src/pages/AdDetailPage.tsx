@@ -1,6 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ExternalLink, Trash2, MapPin, Calendar, ChevronLeft, ChevronRight, ChevronDown, Camera, Pencil, X, Check, Plus, RefreshCw, Ban, Wifi, TrendingDown, TrendingUp, History } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { useAd, useDeleteAd, useUpdateAd, useAccessoryCatalog, useRefreshAdAccessories, useMarkAdSold, useCheckAdOnline, usePriceHistory } from '../hooks/queries'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
@@ -25,6 +26,7 @@ const WHEEL_TYPES = ['standard', 'tubeless'] as const
 
 export function AdDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const { t } = useTranslation()
   const { data: ad, isLoading, error } = useAd(Number(id))
   const deleteMut = useDeleteAd()
   const updateMut = useUpdateAd()
@@ -62,7 +64,7 @@ export function AdDetailPage() {
 
   if (isLoading) return <TableSkeleton rows={12} />
   if (error || !ad)
-    return <p className="text-red-400">Annonce introuvable.</p>
+    return <p className="text-red-400">{t('adDetail.notFound')}</p>
 
   function startEdit() {
     setEditing(true)
@@ -100,7 +102,7 @@ export function AdDetailPage() {
 
     updateMut.mutate(changes as Parameters<typeof updateMut.mutate>[0], {
       onSuccess: () => {
-        toast('Annonce mise à jour', 'success')
+        toast(t('adDetail.adUpdated'), 'success')
         cancelEdit()
       },
       onError: (err) => {
@@ -127,7 +129,7 @@ export function AdDetailPage() {
   function handleDelete() {
     deleteMut.mutate(ad!.id, {
       onSuccess: () => {
-        toast('Annonce supprimée', 'success')
+        toast(t('adDetail.adDeleted'), 'success')
         navigate('/')
       },
     })
@@ -169,19 +171,19 @@ export function AdDetailPage() {
           </Link>
           <div className="min-w-0">
             <h1 className="text-xl font-semibold tracking-tight line-clamp-1" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
-              {ad.subject ?? 'Sans titre'}
+              {ad.subject ?? t('common.noTitle')}
             </h1>
-            <p className="text-sm text-text-muted mt-0.5">{ad.city ?? '?'} — {ad.variant ?? 'N/A'}</p>
+            <p className="text-sm text-text-muted mt-0.5">{ad.city ?? '?'} — {ad.variant ?? t('common.na')}</p>
           </div>
         </div>
         <div className="flex gap-2 shrink-0">
           {editing ? (
             <>
               <Button variant="ghost" size="sm" onClick={cancelEdit} className="gap-1.5">
-                <X className="h-3.5 w-3.5" /> Annuler
+                <X className="h-3.5 w-3.5" /> {t('common.cancel')}
               </Button>
               <Button size="sm" onClick={saveEdit} disabled={updateMut.isPending} className="gap-1.5">
-                <Check className="h-3.5 w-3.5" /> Enregistrer
+                <Check className="h-3.5 w-3.5" /> {t('common.save')}
               </Button>
             </>
           ) : (
@@ -193,13 +195,13 @@ export function AdDetailPage() {
                 disabled={markSoldMut.isPending}
                 onClick={() => {
                   markSoldMut.mutate({ id: ad.id, sold: !ad.sold }, {
-                    onSuccess: () => toast(ad.sold ? 'Annonce remise en vente' : 'Annonce marquée vendue', 'success'),
+                    onSuccess: () => toast(ad.sold ? t('adDetail.markedAvailable') : t('adDetail.markedSold'), 'success'),
                     onError: (err) => toast((err as Error).message, 'error'),
                   })
                 }}
               >
                 <Ban className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{ad.sold ? 'Remettre en vente' : 'Marquer vendue'}</span>
+                <span className="hidden sm:inline">{ad.sold ? t('adDetail.markAvailable') : t('adDetail.markSold')}</span>
               </Button>
               <Button
                 variant="ghost"
@@ -210,7 +212,7 @@ export function AdDetailPage() {
                   checkOnlineMut.mutate(ad.id, {
                     onSuccess: (data) => {
                       toast(
-                        data.sold ? 'Annonce plus en ligne — marquée vendue' : 'Annonce toujours en ligne',
+                        data.sold ? t('adDetail.offlineMarkedSold') : t('adDetail.stillOnline'),
                         data.sold ? 'success' : 'info',
                       )
                     },
@@ -219,10 +221,10 @@ export function AdDetailPage() {
                 }}
               >
                 <Wifi className={`h-3.5 w-3.5 ${checkOnlineMut.isPending ? 'animate-pulse' : ''}`} />
-                <span className="hidden sm:inline">{checkOnlineMut.isPending ? 'Vérification...' : 'Vérifier en ligne'}</span>
+                <span className="hidden sm:inline">{checkOnlineMut.isPending ? t('common.checking') : t('common.checkOnline')}</span>
               </Button>
               <Button variant="secondary" size="sm" onClick={startEdit} className="gap-1.5">
-                <Pencil className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Editer</span>
+                <Pencil className="h-3.5 w-3.5" /> <span className="hidden sm:inline">{t('common.edit')}</span>
               </Button>
               <a href={ad.url} target="_blank" rel="noopener noreferrer">
                 <Button variant="secondary" size="sm" className="gap-1.5">
@@ -230,7 +232,7 @@ export function AdDetailPage() {
                 </Button>
               </a>
               <Button variant="danger" size="sm" onClick={() => setShowDeleteConfirm(true)} className="gap-1.5">
-                <Trash2 className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Supprimer</span>
+                <Trash2 className="h-3.5 w-3.5" /> <span className="hidden sm:inline">{t('common.delete')}</span>
               </Button>
             </>
           )}
@@ -241,11 +243,11 @@ export function AdDetailPage() {
       {ad.superseded_by && !editing && (
         <div className="rounded-xl bg-purple-500/10 border border-purple-500/20 px-4 py-3 text-sm text-purple-300 flex items-center gap-2">
           <History className="h-4 w-4 shrink-0" />
-          <span>Cette annonce a été remplacée par </span>
+          <span>{t('adDetail.supersededBy')} </span>
           <Link to={`/ads/${ad.superseded_by}`} className="font-medium underline hover:text-purple-200 transition-colors">
-            l'annonce #{ad.superseded_by}
+            {t('adDetail.supersededByLink', { id: ad.superseded_by })}
           </Link>
-          <span className="text-purple-300/60">— elle n'apparaît plus dans les listes et le classement.</span>
+          <span className="text-purple-300/60">{t('adDetail.supersededSuffix')}</span>
         </div>
       )}
 
@@ -253,7 +255,7 @@ export function AdDetailPage() {
       {!!ad.sold && !ad.superseded_by && !editing && (
         <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-300 flex items-center gap-2">
           <Ban className="h-4 w-4 shrink-0" />
-          Cette moto est marquée comme vendue.
+          {t('adDetail.soldBanner')}
         </div>
       )}
 
@@ -261,7 +263,7 @@ export function AdDetailPage() {
       {ad.previous_ad_id && !editing && (
         <div className="rounded-xl bg-purple-500/10 border border-purple-500/20 px-4 py-3 text-sm text-purple-300 flex items-center gap-2">
           <History className="h-4 w-4 shrink-0" />
-          <span>Cette annonce remplace </span>
+          <span>{t('adDetail.repostOf')} </span>
           <Link to={`/ads/${ad.previous_ad_id}`} className="font-medium underline hover:text-purple-200 transition-colors">
             l'annonce #{ad.previous_ad_id}
           </Link>
@@ -272,7 +274,7 @@ export function AdDetailPage() {
             const reposts = priceHistory.history.filter(h => h.source === 'repost').length
             return (
               <span className="text-purple-300/70">
-                — {reposts} repost{reposts > 1 ? 's' : ''}, {delta < 0 ? '' : '+'}{delta}€ depuis le début
+                — {t('adDetail.repostInfo', { count: reposts, delta: `${delta < 0 ? '' : '+'}${delta}€` })}
               </span>
             )
           })()}
@@ -283,7 +285,7 @@ export function AdDetailPage() {
       {editing && (
         <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-300 flex items-center gap-2">
           <Pencil className="h-4 w-4 shrink-0" />
-          Mode édition — Cliquez sur les champs pour les modifier, puis enregistrez.
+          {t('adDetail.editBanner')}
         </div>
       )}
 
@@ -322,7 +324,7 @@ export function AdDetailPage() {
           )}
           <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-bg/70 backdrop-blur-md rounded-full px-3 py-1.5 text-xs text-white/70">
             <Camera className="h-3.5 w-3.5" />
-            {imageCount} photo{imageCount > 1 ? 's' : ''}
+            {t('adDetail.photo', { count: imageCount })}
           </div>
         </div>
       )}
@@ -359,17 +361,17 @@ export function AdDetailPage() {
       {/* Info grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <Card className="p-6 space-y-4">
-          <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold">Caractéristiques</h2>
+          <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold">{t('adDetail.characteristics')}</h2>
           <div className="grid grid-cols-2 gap-y-3 text-sm">
-            <span className="text-text-muted">Prix</span>
+            <span className="text-text-muted">{t('common.price')}</span>
             <span className="font-semibold text-amber-300 text-lg" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>{formatPrice(ad.price)}</span>
-            <span className="text-text-muted">Année</span>
-            <span className="text-text-primary">{ad.year ?? 'N/A'}</span>
-            <span className="text-text-muted">Kilométrage</span>
+            <span className="text-text-muted">{t('common.year')}</span>
+            <span className="text-text-primary">{ad.year ?? t('common.na')}</span>
+            <span className="text-text-muted">{t('common.mileage')}</span>
             <span className="text-text-primary">{formatKm(ad.mileage_km)}</span>
 
             {/* Variante */}
-            <span className="text-text-muted">Variante</span>
+            <span className="text-text-muted">{t('common.variant')}</span>
             {editing ? (
               <div className="flex flex-wrap gap-1.5">
                 {VARIANTS.map((v) => (
@@ -380,11 +382,11 @@ export function AdDetailPage() {
                 ))}
               </div>
             ) : (
-              <Badge className={variantColor(ad.variant)}>{ad.variant ?? 'N/A'}</Badge>
+              <Badge className={variantColor(ad.variant)}>{ad.variant ?? t('common.na')}</Badge>
             )}
 
             {/* Couleur */}
-            <span className="text-text-muted">Couleur</span>
+            <span className="text-text-muted">{t('common.color')}</span>
             {editing ? (
               <div className="flex flex-wrap gap-1.5">
                 {availableColors.map((c) => (
@@ -395,11 +397,11 @@ export function AdDetailPage() {
                 ))}
               </div>
             ) : (
-              <span className="text-text-primary">{ad.color ?? 'N/A'}</span>
+              <span className="text-text-primary">{ad.color ?? t('common.na')}</span>
             )}
 
             {/* Jantes */}
-            <span className="text-text-muted">Jantes</span>
+            <span className="text-text-muted">{t('common.wheels')}</span>
             {editing ? (
               <div className="flex gap-1.5">
                 {WHEEL_TYPES.map((w) => (
@@ -410,30 +412,30 @@ export function AdDetailPage() {
                 ))}
               </div>
             ) : (
-              <span className="text-text-primary">{ad.wheel_type ?? 'N/A'}</span>
+              <span className="text-text-primary">{ad.wheel_type ?? t('common.na')}</span>
             )}
 
-            <span className="text-text-muted">Vendeur</span>
-            <span className="text-text-primary">{ad.seller_type === 'pro' ? 'Professionnel' : 'Particulier'}</span>
+            <span className="text-text-muted">{t('common.seller')}</span>
+            <span className="text-text-primary">{ad.seller_type === 'pro' ? t('common.professional') : t('common.private')}</span>
           </div>
         </Card>
 
         <Card className="p-6 space-y-4">
-          <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold">Localisation & valorisation</h2>
+          <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold">{t('adDetail.locationAndValue')}</h2>
           <div className="grid grid-cols-2 gap-y-3 text-sm">
-            <span className="text-text-muted flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> Ville</span>
+            <span className="text-text-muted flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> {t('adDetail.city')}</span>
             <span className="text-text-primary">{ad.city ?? '?'}</span>
-            <span className="text-text-muted">Code postal</span>
-            <span className="text-text-primary">{ad.zipcode ?? 'N/A'}</span>
-            <span className="text-text-muted">Département</span>
-            <span className="text-text-primary">{ad.department ?? 'N/A'}</span>
-            <span className="text-text-muted flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> Publication</span>
-            <span className="text-text-primary">{ad.first_publication_date ? new Date(ad.first_publication_date).toLocaleDateString('fr-FR') : 'N/A'}</span>
-            <span className="text-text-muted">Prix neuf ref.</span>
+            <span className="text-text-muted">{t('adDetail.zipcode')}</span>
+            <span className="text-text-primary">{ad.zipcode ?? t('common.na')}</span>
+            <span className="text-text-muted">{t('adDetail.department')}</span>
+            <span className="text-text-primary">{ad.department ?? t('common.na')}</span>
+            <span className="text-text-muted flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> {t('adDetail.publication')}</span>
+            <span className="text-text-primary">{ad.first_publication_date ? new Date(ad.first_publication_date).toLocaleDateString('fr-FR') : t('common.na')}</span>
+            <span className="text-text-muted">{t('common.newRefPrice')}</span>
             <span className="text-text-primary">{formatPrice(ad.estimated_new_price)}</span>
             {ad.price != null && ad.estimated_new_price != null && (
               <>
-                <span className="text-text-muted">Écart neuf</span>
+                <span className="text-text-muted">{t('adDetail.newPriceGap')}</span>
                 <span className={ad.price < ad.estimated_new_price ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold'}>
                   {((ad.price - ad.estimated_new_price) / ad.estimated_new_price * 100).toFixed(1)}%
                 </span>
@@ -448,7 +450,7 @@ export function AdDetailPage() {
         <Card className="p-6">
           <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-4 flex items-center gap-2">
             <History className="h-3.5 w-3.5" />
-            Historique des prix ({priceHistory.history.length} entrée{priceHistory.history.length > 1 ? 's' : ''})
+            {t('adDetail.priceHistory')} ({t('adDetail.entry', { count: priceHistory.history.length })})
           </h2>
           <div className="relative">
             {/* Timeline */}
@@ -484,8 +486,8 @@ export function AdDetailPage() {
                           entry.source === 'repost' ? 'bg-purple-500/15 text-purple-300' :
                           'bg-amber-500/15 text-amber-300'
                         }`}>
-                          {entry.source === 'initial' ? 'Publication initiale' :
-                           entry.source === 'repost' ? 'Repost' : 'Manuel'}
+                          {entry.source === 'initial' ? t('adDetail.initialPublication') :
+                           entry.source === 'repost' ? t('adDetail.repost') : t('adDetail.manualEntry')}
                         </Badge>
                       </div>
                       <div className="flex items-center gap-3 mt-1 text-[11px] text-text-dim flex-wrap">
@@ -493,7 +495,7 @@ export function AdDetailPage() {
                         {entry.note && <span className="text-text-dim/70 truncate max-w-xs">{entry.note}</span>}
                         {entry.previous_ad_id && (
                           <Link to={`/ads/${entry.previous_ad_id}`} className="text-purple-300/70 hover:text-purple-300 transition-colors shrink-0">
-                            voir #{entry.previous_ad_id}
+                            {t('adDetail.see', { id: entry.previous_ad_id })}
                           </Link>
                         )}
                       </div>
@@ -511,11 +513,11 @@ export function AdDetailPage() {
             const pct = first > 0 ? ((totalDelta / first) * 100).toFixed(1) : '0'
             return (
               <div className="mt-4 pt-4 border-t border-white/[0.06] flex items-center gap-4 text-sm">
-                <span className="text-text-muted">Evolution totale :</span>
+                <span className="text-text-muted">{t('adDetail.totalEvolution')}</span>
                 <span className={`font-semibold tabular-nums ${totalDelta < 0 ? 'text-emerald-400' : totalDelta > 0 ? 'text-red-400' : 'text-text-muted'}`}>
                   {totalDelta < 0 ? '' : '+'}{totalDelta}€ ({totalDelta <= 0 ? '' : '+'}{pct}%)
                 </span>
-                <span className="text-text-dim text-xs">{priceHistory.history.filter(h => h.source === 'repost').length} repost{priceHistory.history.filter(h => h.source === 'repost').length > 1 ? 's' : ''}</span>
+                <span className="text-text-dim text-xs">{t('adDetail.repostCount', { count: priceHistory.history.filter(h => h.source === 'repost').length })}</span>
               </div>
             )
           })()}
@@ -527,12 +529,12 @@ export function AdDetailPage() {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold">
-              Accessoires ({currentAccessories.length})
+              {t('adDetail.accessories')} ({currentAccessories.length})
             </h2>
             <div className="flex gap-2">
               {editing ? (
                 <Button size="sm" variant="secondary" onClick={() => setShowAddAccessory(!showAddAccessory)} className="gap-1.5">
-                  <Plus className="h-3.5 w-3.5" /> Ajouter
+                  <Plus className="h-3.5 w-3.5" /> {t('common.add')}
                 </Button>
               ) : (
                 <Button
@@ -541,17 +543,17 @@ export function AdDetailPage() {
                   onClick={() => {
                     refreshAccMut.mutate(ad!.id, {
                       onSuccess: (data) => {
-                        toast(`Accessoires recalculés (${data.before} → ${data.after})`, 'success')
+                        toast(t('adDetail.recalculated', { before: data.before, after: data.after }), 'success')
                       },
                       onError: (err) => toast((err as Error).message, 'error'),
                     })
                   }}
                   disabled={refreshAccMut.isPending}
                   className="gap-1.5"
-                  title="Recalculer les accessoires depuis le texte de l'annonce"
+                  title={t('adDetail.recalculateTitle')}
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${refreshAccMut.isPending ? 'animate-spin' : ''}`} />
-                  <span className="hidden sm:inline">Recalculer</span>
+                  <span className="hidden sm:inline">{t('adDetail.recalculate')}</span>
                 </Button>
               )}
             </div>
@@ -562,7 +564,7 @@ export function AdDetailPage() {
             <div className="mb-4 rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 space-y-3">
               <input
                 type="text"
-                placeholder="Rechercher un accessoire..."
+                placeholder={t('common.searchAccessory')}
                 value={accessorySearch}
                 onChange={(e) => setAccessorySearch(e.target.value)}
                 className="w-full rounded-lg bg-white/[0.04] border border-white/[0.08] px-3 py-2 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
@@ -581,7 +583,7 @@ export function AdDetailPage() {
                   </button>
                 ))}
                 {catalogFiltered.length === 0 && (
-                  <p className="text-sm text-text-dim py-2 text-center">Aucun accessoire correspondant.</p>
+                  <p className="text-sm text-text-dim py-2 text-center">{t('common.noAccessoryMatch')}</p>
                 )}
               </div>
             </div>
@@ -592,10 +594,10 @@ export function AdDetailPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-[11px] text-text-dim uppercase tracking-widest border-b border-white/[0.06]">
-                    <th className="pb-3 pr-4 font-semibold">Catégorie</th>
-                    <th className="pb-3 pr-4 font-semibold">Nom</th>
-                    <th className="pb-3 text-right pr-4 font-semibold">Neuf</th>
-                    <th className="pb-3 text-right font-semibold">{editing ? '' : 'Occasion'}</th>
+                    <th className="pb-3 pr-4 font-semibold">{t('adDetail.category')}</th>
+                    <th className="pb-3 pr-4 font-semibold">{t('adDetail.name')}</th>
+                    <th className="pb-3 text-right pr-4 font-semibold">{t('common.new')}</th>
+                    <th className="pb-3 text-right font-semibold">{editing ? '' : t('common.used')}</th>
                     {editing && <th className="pb-3 w-8"></th>}
                   </tr>
                 </thead>
@@ -609,7 +611,7 @@ export function AdDetailPage() {
                         <td className="py-2.5 pr-4 text-text-primary">
                           {a.name}
                           {a.source === 'manual' && (
-                            <span className="ml-2 text-[10px] text-amber-400/60 uppercase">manuel</span>
+                            <span className="ml-2 text-[10px] text-amber-400/60 uppercase">{t('common.manual')}</span>
                           )}
                         </td>
                         <td className="py-2.5 pr-4 text-right text-text-muted">{a.estimated_new_price} &euro;</td>
@@ -623,7 +625,7 @@ export function AdDetailPage() {
                               if (idx >= 0) removeAccessory(idx)
                             }}
                               className="p-1 rounded-md text-text-dim hover:text-red-400 hover:bg-red-500/10 transition-all"
-                              title="Retirer">
+                              title={t('common.removeAccessory')}>
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </td>
@@ -635,7 +637,7 @@ export function AdDetailPage() {
                 {!editing && (
                   <tfoot>
                     <tr className="border-t border-white/[0.08] font-semibold">
-                      <td className="pt-3" colSpan={2}>Total</td>
+                      <td className="pt-3" colSpan={2}>{t('common.total')}</td>
                       <td className="pt-3 text-right pr-4 text-text-muted">{currentAccessories.reduce((s, a) => s + a.estimated_new_price, 0)} &euro;</td>
                       <td className="pt-3 text-right text-amber-300">{currentAccessories.reduce((s, a) => s + a.estimated_used_price, 0)} &euro;</td>
                     </tr>
@@ -653,7 +655,7 @@ export function AdDetailPage() {
           <Accordion.Item value="attrs">
             <Card>
               <Accordion.Trigger className="w-full flex items-center justify-between p-6 text-[11px] font-semibold text-text-muted uppercase tracking-widest group cursor-pointer">
-                Attributs LeBonCoin ({ad.attributes.length})
+                {t('adDetail.lbcAttributes')} ({ad.attributes.length})
                 <ChevronDown className="h-4 w-4 text-text-dim group-data-[state=open]:rotate-180 transition-transform duration-200" />
               </Accordion.Trigger>
               <Accordion.Content className="overflow-hidden data-[state=open]:animate-slideDown data-[state=closed]:animate-slideUp">
@@ -680,15 +682,15 @@ export function AdDetailPage() {
           <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-md z-40" />
           <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-md bg-surface border border-white/[0.08] rounded-2xl p-7 z-50 shadow-2xl shadow-black/50">
             <Dialog.Title className="text-lg font-semibold text-text-primary" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
-              Supprimer cette annonce ?
+              {t('adDetail.deleteConfirmTitle')}
             </Dialog.Title>
             <Dialog.Description className="text-sm text-text-muted mt-2">
-              Cette action est irréversible. L'annonce et tous ses accessoires seront supprimés définitivement.
+              {t('adDetail.deleteConfirmDescription')}
             </Dialog.Description>
             <div className="flex justify-end gap-3 mt-6">
-              <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)}>Annuler</Button>
+              <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)}>{t('common.cancel')}</Button>
               <Button variant="danger" onClick={() => { setShowDeleteConfirm(false); handleDelete() }} disabled={deleteMut.isPending} className="gap-1.5">
-                <Trash2 className="h-3.5 w-3.5" /> Supprimer
+                <Trash2 className="h-3.5 w-3.5" /> {t('common.delete')}
               </Button>
             </div>
           </Dialog.Content>

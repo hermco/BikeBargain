@@ -8,6 +8,7 @@ import { useCrawlSearch, useCrawlExtract, useCrawlConfirm, useMergeAd, useAccess
 import { formatPrice, variantColor } from '../lib/utils'
 import type { CrawlAdSummary, CrawlDiff, Accessory, PotentialDuplicate } from '../types'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 const VARIANTS = ['Base', 'Pass', 'Summit', 'Mana Black'] as const
 const COLORS: Record<string, string[]> = {
@@ -34,6 +35,7 @@ interface AdState {
 }
 
 export function CrawlPage() {
+  const { t } = useTranslation()
   const [status, setStatus] = useState<CrawlStatus>('idle')
   const [adStates, setAdStates] = useState<AdState[]>([])
   const [currentIndex, setCurrentIndex] = useState(-1)
@@ -367,7 +369,7 @@ export function CrawlPage() {
           setIsManualPick(false)
           setStatus('ready')
           setCurrentIndex(-1)
-          toast(`${state.summary.subject} — ajoutée`, 'success')
+          toast(t('crawl.adAddedToast', { subject: state.summary.subject }), 'success')
         } else {
           startTransition('confirmed', state.summary.subject, () => processNext(updated, currentIndex + 1))
         }
@@ -402,7 +404,7 @@ export function CrawlPage() {
       setIsManualPick(false)
       setStatus('ready')
       setCurrentIndex(-1)
-      toast(`${state.summary.subject} — ignorée`, 'info')
+      toast(t('crawl.adSkippedToast', { subject: state.summary.subject }), 'info')
     } else {
       startTransition('skipped', state.summary.subject, () => processNext(updated, currentIndex + 1))
     }
@@ -431,8 +433,8 @@ export function CrawlPage() {
         }
 
         const delta = result.price_delta
-        const deltaStr = delta < 0 ? `${delta}€` : delta > 0 ? `+${delta}€` : 'meme prix'
-        toast(`Fusionnée avec #${oldAdId} (${deltaStr})`, 'success')
+        const deltaStr = delta < 0 ? `${delta}€` : delta > 0 ? `+${delta}€` : t('crawl.samePrice')
+        toast(t('crawl.merged', { id: oldAdId, delta: deltaStr }), 'success')
 
         if (isManualPick) {
           setIsManualPick(false)
@@ -543,10 +545,10 @@ export function CrawlPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
-            Recherche LeBonCoin
+            {t('crawl.title')}
           </h1>
           <p className="text-sm text-text-muted mt-1">
-            Recherche et traitement des annonces Himalayan 450
+            {t('crawl.subtitle')}
           </p>
         </div>
       </div>
@@ -556,11 +558,11 @@ export function CrawlPage() {
         <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 mb-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-4 text-sm">
-              <span className="text-text-muted">Total : <span className="text-text-primary font-medium">{adStates.length}</span></span>
-              <span className="text-text-muted">Traitées : <span className="text-text-primary font-medium">{processedCount}</span></span>
-              <span className="text-text-muted">Confirmées : <span className="text-green-400 font-medium">{confirmedCount}</span></span>
-              <span className="text-text-muted">Ignorées : <span className="text-text-dim font-medium">{skippedCount}</span></span>
-              <span className="text-text-muted">Restantes : <span className="text-amber-300 font-medium">{pendingCount}</span></span>
+              <span className="text-text-muted">{t('crawl.total')} <span className="text-text-primary font-medium">{adStates.length}</span></span>
+              <span className="text-text-muted">{t('crawl.processed')} <span className="text-text-primary font-medium">{processedCount}</span></span>
+              <span className="text-text-muted">{t('crawl.confirmed')} <span className="text-green-400 font-medium">{confirmedCount}</span></span>
+              <span className="text-text-muted">{t('crawl.skipped')} <span className="text-text-dim font-medium">{skippedCount}</span></span>
+              <span className="text-text-muted">{t('crawl.remaining')} <span className="text-amber-300 font-medium">{pendingCount}</span></span>
             </div>
             <div className="flex items-center gap-2">
               {status === 'ready' && (
@@ -579,24 +581,24 @@ export function CrawlPage() {
                     if (transitionTimerRef.current) { clearInterval(transitionTimerRef.current); transitionTimerRef.current = null }
                   }} className="gap-1.5">
                     <Search className="h-3.5 w-3.5" />
-                    Nouvelle recherche
+                    {t('crawl.newSearch')}
                   </Button>
                   <Button size="sm" onClick={handleStartCrawl} className="gap-1.5">
                     <Play className="h-3.5 w-3.5" />
-                    Commencer le traitement
+                    {t('crawl.startProcessing')}
                   </Button>
                 </>
               )}
               {(status === 'crawling' || status === 'waiting_validation') && !isManualPick && (
                 <Button size="sm" variant="secondary" onClick={handlePause} className="gap-1.5">
                   <Pause className="h-3.5 w-3.5" />
-                  Pause
+                  {t('crawl.pause')}
                 </Button>
               )}
               {status === 'paused' && (
                 <Button size="sm" onClick={handleResume} className="gap-1.5">
                   <Play className="h-3.5 w-3.5" />
-                  Reprendre
+                  {t('crawl.resume')}
                 </Button>
               )}
             </div>
@@ -615,7 +617,7 @@ export function CrawlPage() {
       {isLoadingSession && status === 'idle' && (
         <div className="flex flex-col items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-amber-400 mb-3" />
-          <p className="text-sm text-text-muted">Chargement...</p>
+          <p className="text-sm text-text-muted">{t('common.loading')}</p>
         </div>
       )}
 
@@ -626,22 +628,21 @@ export function CrawlPage() {
             <Search className="h-7 w-7 text-amber-400" />
           </div>
           <h2 className="text-lg font-semibold text-text-primary mb-2" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
-            Rechercher les annonces
+            {t('crawl.searchTitle')}
           </h2>
           <p className="text-sm text-text-muted mb-6 text-center max-w-md">
-            Scanne LeBonCoin pour trouver toutes les Himalayan 450 en vente.
-            Vous pourrez ensuite traiter chaque annonce individuellement ou lancer le traitement automatique.
+            {t('crawl.searchDescription')}
           </p>
           <Button onClick={handleSearch} disabled={status === 'searching'} className="gap-2">
             {status === 'searching' ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Recherche en cours...
+                {t('crawl.searching')}
               </>
             ) : (
               <>
                 <Search className="h-4 w-4" />
-                Lancer la recherche
+                {t('crawl.startSearch')}
               </>
             )}
           </Button>
@@ -658,10 +659,10 @@ export function CrawlPage() {
         <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-6 mb-6 text-center">
           <Check className="h-8 w-8 text-green-400 mx-auto mb-3" />
           <h3 className="text-lg font-semibold text-text-primary mb-1" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
-            Traitement terminé
+            {t('crawl.doneTitle')}
           </h3>
           <p className="text-sm text-text-muted">
-            {confirmedCount} annonce{confirmedCount > 1 ? 's' : ''} ajoutée{confirmedCount > 1 ? 's' : ''}, {skippedCount} ignorée{skippedCount > 1 ? 's' : ''}.
+            {confirmedCount} {t(confirmedCount > 1 ? 'crawl.doneSummary_other' : 'crawl.doneSummary_one', { confirmed: confirmedCount, skipped: skippedCount })}
           </p>
           <Button onClick={() => {
             if (sessionId) closeSessionMut.mutate(sessionId)
@@ -677,7 +678,7 @@ export function CrawlPage() {
     if (transitionTimerRef.current) { clearInterval(transitionTimerRef.current); transitionTimerRef.current = null }
           }} variant="secondary" className="mt-4 gap-2">
             <Search className="h-4 w-4" />
-            Nouvelle recherche
+            {t('crawl.newSearch')}
           </Button>
         </div>
       )}
@@ -692,25 +693,25 @@ export function CrawlPage() {
               className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary transition-colors mb-3"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
-              Retour aux résultats
+              {t('crawl.backToResults')}
             </button>
           )}
           <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
             <div className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
             <span className="text-xs font-medium text-amber-300">
               {isManualPick
-                ? 'Traitement — confirmez ou ignorez cette annonce'
-                : 'En attente de votre validation — confirmez ou ignorez cette annonce pour continuer'}
+                ? t('crawl.manualBanner')
+                : t('crawl.autoBanner')}
             </span>
           </div>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-text-primary">
-              Annonce {currentIndex + 1} / {adStates.length}
+              {t('crawl.adCounter', { current: currentIndex + 1, total: adStates.length })}
             </h3>
             {currentAd.existsInDb && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
-                <span className="text-xs font-medium text-amber-300">Existe déjà en base</span>
+                <span className="text-xs font-medium text-amber-300">{t('crawl.existsInDb')}</span>
               </div>
             )}
           </div>
@@ -721,7 +722,7 @@ export function CrawlPage() {
               <div className="flex items-center gap-2 mb-3">
                 <Copy className="h-4 w-4 text-purple-400" />
                 <h4 className="text-xs uppercase tracking-widest font-semibold text-purple-300">
-                  Repost probable
+                  {t('crawl.repostProbable')}
                 </h4>
               </div>
               <div className="space-y-3">
@@ -763,7 +764,7 @@ export function CrawlPage() {
                               dup.price_delta > 0 ? 'text-red-400/70' :
                               'text-text-dim'
                             }`}>
-                              {dup.price_delta < 0 ? 'baisse' : dup.price_delta > 0 ? 'hausse' : 'identique'}
+                              {dup.price_delta < 0 ? t('crawl.priceDown') : dup.price_delta > 0 ? t('crawl.priceUp') : t('crawl.priceSame')}
                             </p>
                           </div>
                         )}
@@ -778,14 +779,14 @@ export function CrawlPage() {
                         className="gap-1.5"
                       >
                         {mergeMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
-                        Fusionner avec cette annonce
+                        {t('crawl.mergeWith')}
                       </Button>
                       <Link
                         to={`/ads/${dup.id}`}
                         target="_blank"
                         className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] text-text-muted text-xs font-medium hover:bg-white/[0.08] hover:text-text-secondary transition-all"
                       >
-                        Voir l'annonce
+                        {t('crawl.viewAd')}
                       </Link>
                     </div>
                   </div>
@@ -810,7 +811,7 @@ export function CrawlPage() {
                   <button
                     onClick={() => setLightboxOpen(true)}
                     className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 text-white/80 hover:text-white hover:bg-black/70 transition-colors backdrop-blur-sm"
-                    title="Agrandir"
+                    title={t('common.enlargeImage')}
                   >
                     <Maximize2 className="h-4 w-4" />
                   </button>
@@ -903,20 +904,20 @@ export function CrawlPage() {
                   {currentExtract.subject as string}
                 </h4>
                 <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm">
-                  <span className="text-text-muted">Prix</span>
+                  <span className="text-text-muted">{t('common.price')}</span>
                   <span className="font-semibold text-amber-300">{formatPrice(currentExtract.price as number)}</span>
 
-                  <span className="text-text-muted">Année</span>
-                  <span className="text-text-primary">{(currentExtract.year as number) ?? 'N/A'}</span>
+                  <span className="text-text-muted">{t('common.year')}</span>
+                  <span className="text-text-primary">{(currentExtract.year as number) ?? t('common.na')}</span>
 
-                  <span className="text-text-muted">Kilométrage</span>
-                  <span className="text-text-primary">{(currentExtract.mileage_km as number)?.toLocaleString('fr-FR') ?? 'N/A'} km</span>
+                  <span className="text-text-muted">{t('common.mileage')}</span>
+                  <span className="text-text-primary">{(currentExtract.mileage_km as number)?.toLocaleString('fr-FR') ?? t('common.na')} km</span>
 
-                  <span className="text-text-muted">Localisation</span>
+                  <span className="text-text-muted">{t('common.location')}</span>
                   <span className="text-text-primary">{currentExtract.city as string ?? '?'}, {currentExtract.department as string ?? '?'}</span>
 
                   {/* Variante - editable */}
-                  <span className="text-text-muted">Variante</span>
+                  <span className="text-text-muted">{t('common.variant')}</span>
                   {editingField === 'variant' ? (
                     <div className="flex flex-wrap gap-1.5">
                       {VARIANTS.map((v) => (
@@ -928,13 +929,13 @@ export function CrawlPage() {
                     </div>
                   ) : (
                     <button onClick={() => setEditingField('variant')} className="flex items-center gap-1.5 group text-left">
-                      <Badge className={variantColor(variant)}>{variant ?? 'N/A'}</Badge>
+                      <Badge className={variantColor(variant)}>{variant ?? t('common.na')}</Badge>
                       <Pencil className="h-3 w-3 text-text-dim opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
                   )}
 
                   {/* Couleur - editable */}
-                  <span className="text-text-muted">Couleur</span>
+                  <span className="text-text-muted">{t('common.color')}</span>
                   {editingField === 'color' ? (
                     <div className="flex flex-wrap gap-1.5">
                       {availableColors.map((c) => (
@@ -946,13 +947,13 @@ export function CrawlPage() {
                     </div>
                   ) : (
                     <button onClick={() => setEditingField('color')} className="flex items-center gap-1.5 group text-left">
-                      <span className="text-text-primary">{currentExtract.color as string ?? 'N/A'}</span>
+                      <span className="text-text-primary">{currentExtract.color as string ?? t('common.na')}</span>
                       <Pencil className="h-3 w-3 text-text-dim opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
                   )}
 
                   {/* Jantes - editable */}
-                  <span className="text-text-muted">Jantes</span>
+                  <span className="text-text-muted">{t('common.wheels')}</span>
                   {editingField === 'wheel_type' ? (
                     <div className="flex gap-1.5">
                       {WHEEL_TYPES.map((w) => (
@@ -964,14 +965,14 @@ export function CrawlPage() {
                     </div>
                   ) : (
                     <button onClick={() => setEditingField('wheel_type')} className="flex items-center gap-1.5 group text-left">
-                      <span className="text-text-primary">{currentExtract.wheel_type as string ?? 'N/A'}</span>
+                      <span className="text-text-primary">{currentExtract.wheel_type as string ?? t('common.na')}</span>
                       <Pencil className="h-3 w-3 text-text-dim opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
                   )}
 
                   {currentExtract.estimated_new_price && (
                     <>
-                      <span className="text-text-muted">Prix neuf ref.</span>
+                      <span className="text-text-muted">{t('common.newRefPrice')}</span>
                       <span className="text-text-primary">{formatPrice(currentExtract.estimated_new_price as number)}</span>
                     </>
                   )}
@@ -988,7 +989,7 @@ export function CrawlPage() {
                 className="w-full flex items-center justify-between p-4 text-left"
               >
                 <h4 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold">
-                  Description du vendeur
+                  {t('crawl.sellerDescription')}
                 </h4>
                 {showDescription ? <ChevronUp className="h-4 w-4 text-text-dim" /> : <ChevronDown className="h-4 w-4 text-text-dim" />}
               </button>
@@ -1006,16 +1007,16 @@ export function CrawlPage() {
           {currentAd.existsInDb && currentAd.diffs && currentAd.diffs.length > 0 && (
             <div className="rounded-xl bg-amber-500/5 border border-amber-500/15 p-4 mb-4">
               <h4 className="text-xs uppercase tracking-widest font-semibold text-amber-300 mb-3">
-                Differences avec la version en base
+                {t('crawl.dbDifferences')}
               </h4>
               <div className="space-y-2">
                 {currentAd.diffs.map((diff) => (
                   <div key={diff.field} className="flex items-start gap-3 text-sm">
                     <span className="text-text-muted w-28 shrink-0">{diff.label}</span>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-red-400 line-through">{String(diff.old ?? 'N/A')}</span>
+                      <span className="text-red-400 line-through">{String(diff.old ?? t('common.na'))}</span>
                       <ArrowRight className="h-3 w-3 text-text-dim shrink-0" />
-                      <span className="text-green-400">{String(diff.new ?? 'N/A')}</span>
+                      <span className="text-green-400">{String(diff.new ?? t('common.na'))}</span>
                     </div>
                     {diff.field === 'accessories' && (
                       <div className="text-xs text-text-dim ml-2">
@@ -1036,7 +1037,7 @@ export function CrawlPage() {
 
           {currentAd.existsInDb && currentAd.diffs && currentAd.diffs.length === 0 && (
             <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 mb-4 text-center">
-              <p className="text-sm text-text-muted">Aucune différence détectée avec la version en base.</p>
+              <p className="text-sm text-text-muted">{t('crawl.noDifferences')}</p>
             </div>
           )}
 
@@ -1044,14 +1045,14 @@ export function CrawlPage() {
           <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 mb-4">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold">
-                Accessoires ({accessories.length})
+                {t('adForm.accessories')} ({accessories.length})
               </h4>
               <button
                 onClick={() => setShowAddAccessory(!showAddAccessory)}
                 className="flex items-center gap-1 text-xs text-amber-300 hover:text-amber-200 transition-colors"
               >
                 <Plus className="h-3.5 w-3.5" />
-                Ajouter
+                {t('common.add')}
               </button>
             </div>
 
@@ -1060,7 +1061,7 @@ export function CrawlPage() {
               <div className="mb-3 rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 space-y-2">
                 <input
                   type="text"
-                  placeholder="Rechercher un accessoire..."
+                  placeholder={t('common.searchAccessory')}
                   value={accessorySearch}
                   onChange={(e) => setAccessorySearch(e.target.value)}
                   className="w-full rounded-lg bg-white/[0.04] border border-white/[0.08] px-3 py-2 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
@@ -1079,7 +1080,7 @@ export function CrawlPage() {
                     </button>
                   ))}
                   {catalogFiltered.length === 0 && (
-                    <p className="text-sm text-text-dim py-2 text-center">Aucun accessoire correspondant.</p>
+                    <p className="text-sm text-text-dim py-2 text-center">{t('common.noAccessoryMatch')}</p>
                   )}
                 </div>
               </div>
@@ -1092,19 +1093,19 @@ export function CrawlPage() {
                     <CategoryBadge category={acc.category} />
                     <span className="text-sm text-text-primary flex-1">{acc.name}</span>
                     {acc.source === 'manual' && (
-                      <span className="text-[10px] text-amber-300/60 uppercase tracking-wide">manuel</span>
+                      <span className="text-[10px] text-amber-300/60 uppercase tracking-wide">{t('common.manual')}</span>
                     )}
-                    <span className="text-xs text-text-dim">{acc.estimated_new_price} &euro; neuf</span>
+                    <span className="text-xs text-text-dim">{acc.estimated_new_price} &euro; {t('common.new')}</span>
                     <button onClick={() => removeAccessory(i)}
                       className="p-1 rounded-md text-text-dim opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                      title="Retirer cet accessoire">
+                      title={t('common.removeAccessory')}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-text-dim">Aucun accessoire détecté.</p>
+              <p className="text-sm text-text-dim">{t('common.noAccessoryDetected')}</p>
             )}
           </div>
 
@@ -1117,7 +1118,7 @@ export function CrawlPage() {
               className="inline-flex items-center gap-1.5 text-xs text-text-dim hover:text-amber-300 transition-colors"
             >
               <ExternalLink className="h-3 w-3" />
-              Voir sur LeBonCoin
+              {t('crawl.viewOnLbc')}
             </a>
           </div>
 
@@ -1125,7 +1126,7 @@ export function CrawlPage() {
           <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
             <Button variant="ghost" onClick={handleSkip} disabled={!!transition || confirmMut.isPending} className="gap-1.5">
               <SkipForward className="h-4 w-4" />
-              Ignorer
+              {t('crawl.skip')}
             </Button>
             <div className="flex gap-3">
               <Button
@@ -1136,12 +1137,12 @@ export function CrawlPage() {
                 {confirmMut.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Enregistrement...
+                    {t('common.saving')}
                   </>
                 ) : (
                   <>
                     <Check className="h-4 w-4" />
-                    {currentAd.existsInDb ? 'Mettre à jour' : 'Confirmer'}
+                    {currentAd.existsInDb ? t('crawl.update') : t('common.confirm')}
                   </>
                 )}
               </Button>
@@ -1164,7 +1165,7 @@ export function CrawlPage() {
               <SkipForward className="h-4 w-4 text-text-dim" />
             )}
             <span className={`text-sm font-medium ${transition.type === 'confirmed' ? 'text-green-300' : 'text-text-dim'}`}>
-              {transition.type === 'confirmed' ? 'Annonce enregistrée' : 'Annonce ignorée'}
+              {transition.type === 'confirmed' ? t('crawl.adRegistered') : t('crawl.adSkipped')}
             </span>
           </div>
           <p className="text-xs text-text-dim mb-4 truncate max-w-md mx-auto">
@@ -1172,7 +1173,7 @@ export function CrawlPage() {
           </p>
           <div className="flex items-center justify-center gap-2 text-sm text-text-muted">
             <Loader2 className="h-4 w-4 animate-spin text-amber-400" />
-            <span>Prochaine annonce dans <span className="tabular-nums font-medium text-text-primary">{transition.countdown}s</span></span>
+            <span>{t('crawl.nextAdIn')} <span className="tabular-nums font-medium text-text-primary">{transition.countdown}s</span></span>
           </div>
           <div className="mt-3 mx-auto max-w-xs h-1 bg-white/[0.06] rounded-full overflow-hidden">
             <div
@@ -1189,10 +1190,10 @@ export function CrawlPage() {
           <div className="flex flex-col items-center text-center">
             <Loader2 className="h-8 w-8 animate-spin text-amber-400 mb-3" />
             <p className="text-sm font-medium text-text-primary mb-1">
-              Extraction en cours...
+              {t('crawl.extracting')}
             </p>
             <p className="text-xs text-text-muted mb-3">
-              Annonce {currentIndex + 1} / {adStates.length}
+              {t('crawl.adCounter', { current: currentIndex + 1, total: adStates.length })}
             </p>
           </div>
           <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 flex items-center gap-3 max-w-md mx-auto">
@@ -1207,7 +1208,7 @@ export function CrawlPage() {
             </div>
           </div>
           <p className="text-[11px] text-text-dim text-center mt-3">
-            L'annonce sera soumise à votre validation une fois extraite
+            {t('crawl.willBeSubmitted')}
           </p>
         </div>
       )}
@@ -1220,7 +1221,7 @@ export function CrawlPage() {
             className="flex items-center gap-2 text-sm text-text-muted hover:text-text-secondary transition-colors mb-3"
           >
             {showProcessed ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            Annonces traitées ({processedCount})
+            {t('crawl.processedAds')} ({processedCount})
           </button>
           {showProcessed && (
             <div className="space-y-1">
@@ -1239,12 +1240,12 @@ export function CrawlPage() {
                       {state.summary.price != null ? formatPrice(state.summary.price) : ''}
                     </span>
                     {state.summary.exists_in_db && (
-                      <Badge className="bg-amber-500/10 text-amber-300 text-[10px]">existait</Badge>
+                      <Badge className="bg-amber-500/10 text-amber-300 text-[10px]">{t('crawl.existed')}</Badge>
                     )}
                     {state.potentialDuplicates && state.potentialDuplicates.length > 0 && (
                       <Link to={`/ads/${state.potentialDuplicates[0].id}`} target="_blank">
                         <Badge className="bg-purple-500/10 text-purple-300 text-[10px] hover:bg-purple-500/20 transition-colors">
-                          repost de #{state.potentialDuplicates[0].id}
+                          {t('crawl.repostOf', { id: state.potentialDuplicates[0].id })}
                         </Badge>
                       </Link>
                     )}
@@ -1261,16 +1262,16 @@ export function CrawlPage() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-0.5">
-                Résultats de recherche
-                <span className="ml-1.5 text-text-primary">{newCount} nouvelle{newCount > 1 ? 's' : ''}</span>
+                {t('crawl.searchResults')}
+                <span className="ml-1.5 text-text-primary">{t('crawl.new', { count: newCount })}</span>
                 {inDbCount > 0 && (
                   <span className="ml-1 text-text-dim font-normal">
-                    · {inDbCount} déjà en base
+                    · {inDbCount} {t('crawl.alreadyInDb')}
                   </span>
                 )}
               </h3>
               <p className="text-xs text-text-dim">
-                Cliquez sur une annonce pour la traiter.
+                {t('crawl.clickToProcess')}
               </p>
             </div>
             {inDbCount > 0 && (
@@ -1282,7 +1283,7 @@ export function CrawlPage() {
                   <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 mt-0.5 ${showInDb ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
                 </span>
                 <span className={showInDb ? 'text-amber-300' : ''}>
-                  Afficher celles en base ({inDbCount})
+                  {t('crawl.showInDb')} ({inDbCount})
                 </span>
               </button>
             )}
@@ -1320,7 +1321,7 @@ export function CrawlPage() {
                   <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
                     <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/20 backdrop-blur-sm border border-green-500/30">
                       <Check className="h-4 w-4 text-green-400" />
-                      <span className="text-xs font-semibold text-green-300">Ajoutée</span>
+                      <span className="text-xs font-semibold text-green-300">{t('crawl.added')}</span>
                     </div>
                   </div>
                 )}
@@ -1328,7 +1329,7 @@ export function CrawlPage() {
                   <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
                     <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.08] backdrop-blur-sm border border-white/[0.12]">
                       <SkipForward className="h-4 w-4 text-text-dim" />
-                      <span className="text-xs font-semibold text-text-dim">Ignorée</span>
+                      <span className="text-xs font-semibold text-text-dim">{t('crawl.skippedLabel')}</span>
                     </div>
                   </div>
                 )}
@@ -1336,14 +1337,14 @@ export function CrawlPage() {
                   <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
                     <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/20 backdrop-blur-sm border border-red-500/30">
                       <X className="h-4 w-4 text-red-400" />
-                      <span className="text-xs font-semibold text-red-300">Erreur</span>
+                      <span className="text-xs font-semibold text-red-300">{t('common.error')}</span>
                     </div>
                   </div>
                 )}
                 {isWaiting && (
                   <div className="absolute top-2 right-10 z-10 flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/20 backdrop-blur-sm border border-amber-500/30">
                     <Pencil className="h-3 w-3 text-amber-400" />
-                    <span className="text-[10px] font-semibold text-amber-300 uppercase tracking-wide">En cours</span>
+                    <span className="text-[10px] font-semibold text-amber-300 uppercase tracking-wide">{t('crawl.inProgress')}</span>
                   </div>
                 )}
                 {/* Remove button */}
@@ -1355,7 +1356,7 @@ export function CrawlPage() {
                     if (sessionId) removeAdMut.mutate({ sessionId, adId: state.summary.id })
                   }}
                   className="absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/35 hover:text-red-200 transition-colors backdrop-blur-sm"
-                  title="Retirer de la liste"
+                  title={t('crawl.removeFromList')}
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -1363,13 +1364,13 @@ export function CrawlPage() {
                 {inDb && isPending && (
                   <div className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/20 backdrop-blur-sm border border-amber-500/30">
                     <AlertTriangle className="h-3 w-3 text-amber-400" />
-                    <span className="text-[10px] font-semibold text-amber-300 uppercase tracking-wide">En base</span>
+                    <span className="text-[10px] font-semibold text-amber-300 uppercase tracking-wide">{t('crawl.inDb')}</span>
                   </div>
                 )}
                 {!inDb && isPending && state.summary.possible_repost_of && (
                   <div className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-1 rounded-md bg-purple-500/20 backdrop-blur-sm border border-purple-500/30">
                     <Copy className="h-3 w-3 text-purple-400" />
-                    <span className="text-[10px] font-semibold text-purple-300 uppercase tracking-wide">Repost ?</span>
+                    <span className="text-[10px] font-semibold text-purple-300 uppercase tracking-wide">{t('crawl.repostQuestion')}</span>
                   </div>
                 )}
                 {state.summary.thumbnail && (
@@ -1381,7 +1382,7 @@ export function CrawlPage() {
                   </p>
                   <div className="flex items-center justify-between">
                     <span className="text-amber-300 text-sm font-semibold">
-                      {state.summary.price != null ? formatPrice(state.summary.price) : 'N/A'}
+                      {state.summary.price != null ? formatPrice(state.summary.price) : t('common.na')}
                     </span>
                     <span className="text-text-secondary text-xs">
                       {[state.summary.city, state.summary.department].filter(Boolean).join(', ')}
@@ -1393,18 +1394,18 @@ export function CrawlPage() {
                     return (
                       <div className="flex items-center gap-1.5 text-[11px] text-purple-300/80 flex-wrap">
                         <Copy className="h-3 w-3 shrink-0" />
-                        <span>Repost possible de </span>
+                        <span>{t('crawl.possibleRepost')} </span>
                         <Link to={`/ads/${repost.id}`} target="_blank" className="text-purple-300 underline hover:text-purple-200" onClick={(e) => e.stopPropagation()}>
                           #{repost.id}
                         </Link>
-                        {repost.sold && <span className="text-red-400">(vendue)</span>}
+                        {repost.sold && <span className="text-red-400">({t('common.sold').toLowerCase()})</span>}
                         {delta != null && delta !== 0 && (
                           <span className={`font-semibold tabular-nums ${delta < 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                             {delta < 0 ? '' : '+'}{delta}€
                           </span>
                         )}
                         {delta != null && delta === 0 && (
-                          <span className="text-text-dim">meme prix</span>
+                          <span className="text-text-dim">{t('crawl.samePrice')}</span>
                         )}
                       </div>
                     )

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { X, Plus, Loader2, Link as LinkIcon, Check, Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from './ui/Button'
 import { CategoryBadge } from './AccessoryBadge'
 import { usePreviewAd, useConfirmAd, useAccessoryCatalog } from '../hooks/queries'
@@ -19,6 +20,7 @@ const COLORS: Record<string, string[]> = {
 const WHEEL_TYPES = ['standard', 'tubeless'] as const
 
 export function AdForm() {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [url, setUrl] = useState('')
   const [previewData, setPreviewData] = useState<Record<string, unknown> | null>(null)
@@ -78,7 +80,7 @@ export function AdForm() {
     if (!previewData) return
     confirmMut.mutate(previewData, {
       onSuccess: (data) => {
-        toast(`Annonce ajoutée : ${data.subject ?? 'OK'}`, 'success')
+        toast(t('adForm.adAdded', { subject: data.subject ?? 'OK' }), 'success')
         handleClose()
       },
       onError: (err) => {
@@ -126,20 +128,20 @@ export function AdForm() {
       <Dialog.Trigger asChild>
         <Button className="gap-2">
           <Plus className="h-4 w-4" />
-          Ajouter une URL
+          {t('adForm.addUrl')}
         </Button>
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-md z-40" />
         <Dialog.Content className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] ${previewData ? 'max-w-4xl' : 'max-w-2xl'} max-h-[85vh] overflow-y-auto bg-surface border border-white/[0.08] rounded-2xl p-7 z-50 shadow-2xl shadow-black/50`}>
           <Dialog.Title className="text-xl font-semibold text-text-primary mb-1" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
-            {previewData ? 'Vérification de l\'extraction' : 'Ajouter une annonce'}
+            {previewData ? t('adForm.verifyExtraction') : t('adForm.addAd')}
           </Dialog.Title>
 
           {/* Step 1: URL input */}
           {!previewData && (
             <>
-              <p className="text-sm text-text-muted mb-6">Collez l'URL d'une annonce LeBonCoin pour l'analyser.</p>
+              <p className="text-sm text-text-muted mb-6">{t('adForm.pasteInstruction')}</p>
               <form onSubmit={handleExtract} className="space-y-5">
                 <div className="relative">
                   <LinkIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-dim" />
@@ -160,16 +162,16 @@ export function AdForm() {
                 )}
                 <div className="flex justify-end gap-3 pt-1">
                   <Dialog.Close asChild>
-                    <Button type="button" variant="ghost">Annuler</Button>
+                    <Button type="button" variant="ghost">{t('common.cancel')}</Button>
                   </Dialog.Close>
                   <Button type="submit" disabled={previewMut.isPending}>
                     {previewMut.isPending ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Extraction...
+                        {t('adForm.extracting')}
                       </>
                     ) : (
-                      'Extraire'
+                      t('adForm.extract')
                     )}
                   </Button>
                 </div>
@@ -180,7 +182,7 @@ export function AdForm() {
           {/* Step 2: Preview & confirm */}
           {previewData && (
             <div className="space-y-5 mt-4">
-              <p className="text-sm text-text-muted">Vérifiez les données extraites. Cliquez sur un champ pour le corriger.</p>
+              <p className="text-sm text-text-muted">{t('adForm.verifyInstruction')}</p>
 
               {/* Image gallery */}
               {images.length > 0 && (
@@ -195,7 +197,7 @@ export function AdForm() {
                     <button
                       onClick={() => setLightboxOpen(true)}
                       className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 text-white/80 hover:text-white hover:bg-black/70 transition-colors backdrop-blur-sm"
-                      title="Agrandir"
+                      title={t('common.enlargeImage')}
                     >
                       <Maximize2 className="h-4 w-4" />
                     </button>
@@ -279,20 +281,20 @@ export function AdForm() {
               <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 space-y-3">
                 <h3 className="text-sm font-semibold text-text-primary truncate">{previewData.subject as string}</h3>
                 <div className="grid grid-cols-2 gap-y-2.5 gap-x-4 text-sm">
-                  <span className="text-text-muted">Prix</span>
+                  <span className="text-text-muted">{t('common.price')}</span>
                   <span className="font-semibold text-amber-300">{formatPrice(previewData.price as number)}</span>
 
-                  <span className="text-text-muted">Année</span>
-                  <span className="text-text-primary">{(previewData.year as number) ?? 'N/A'}</span>
+                  <span className="text-text-muted">{t('common.year')}</span>
+                  <span className="text-text-primary">{(previewData.year as number) ?? t('common.na')}</span>
 
-                  <span className="text-text-muted">Kilométrage</span>
-                  <span className="text-text-primary">{(previewData.mileage_km as number)?.toLocaleString('fr-FR') ?? 'N/A'} km</span>
+                  <span className="text-text-muted">{t('common.mileage')}</span>
+                  <span className="text-text-primary">{(previewData.mileage_km as number)?.toLocaleString('fr-FR') ?? t('common.na')} km</span>
 
-                  <span className="text-text-muted">Localisation</span>
+                  <span className="text-text-muted">{t('common.location')}</span>
                   <span className="text-text-primary">{previewData.city as string ?? '?'}, {previewData.department as string ?? '?'}</span>
 
                   {/* Variante - editable */}
-                  <span className="text-text-muted">Variante</span>
+                  <span className="text-text-muted">{t('common.variant')}</span>
                   {editingField === 'variant' ? (
                     <div className="flex flex-wrap gap-1.5">
                       {VARIANTS.map((v) => (
@@ -304,13 +306,13 @@ export function AdForm() {
                     </div>
                   ) : (
                     <button onClick={() => setEditingField('variant')} className="flex items-center gap-1.5 group text-left">
-                      <Badge className={variantColor(variant)}>{variant ?? 'N/A'}</Badge>
+                      <Badge className={variantColor(variant)}>{variant ?? t('common.na')}</Badge>
                       <Pencil className="h-3 w-3 text-text-dim opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
                   )}
 
                   {/* Couleur - editable */}
-                  <span className="text-text-muted">Couleur</span>
+                  <span className="text-text-muted">{t('common.color')}</span>
                   {editingField === 'color' ? (
                     <div className="flex flex-wrap gap-1.5">
                       {availableColors.map((c) => (
@@ -322,13 +324,13 @@ export function AdForm() {
                     </div>
                   ) : (
                     <button onClick={() => setEditingField('color')} className="flex items-center gap-1.5 group text-left">
-                      <span className="text-text-primary">{previewData.color as string ?? 'N/A'}</span>
+                      <span className="text-text-primary">{previewData.color as string ?? t('common.na')}</span>
                       <Pencil className="h-3 w-3 text-text-dim opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
                   )}
 
                   {/* Jantes - editable */}
-                  <span className="text-text-muted">Jantes</span>
+                  <span className="text-text-muted">{t('common.wheels')}</span>
                   {editingField === 'wheel_type' ? (
                     <div className="flex gap-1.5">
                       {WHEEL_TYPES.map((w) => (
@@ -340,14 +342,14 @@ export function AdForm() {
                     </div>
                   ) : (
                     <button onClick={() => setEditingField('wheel_type')} className="flex items-center gap-1.5 group text-left">
-                      <span className="text-text-primary">{previewData.wheel_type as string ?? 'N/A'}</span>
+                      <span className="text-text-primary">{previewData.wheel_type as string ?? t('common.na')}</span>
                       <Pencil className="h-3 w-3 text-text-dim opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
                   )}
 
                   {previewData.estimated_new_price && (
                     <>
-                      <span className="text-text-muted">Prix neuf ref.</span>
+                      <span className="text-text-muted">{t('common.newRefPrice')}</span>
                       <span className="text-text-primary">{formatPrice(previewData.estimated_new_price as number)}</span>
                     </>
                   )}
@@ -358,14 +360,14 @@ export function AdForm() {
               <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold">
-                    Accessoires ({accessories.length})
+                    {t('adForm.accessories')} ({accessories.length})
                   </h3>
                   <button
                     onClick={() => setShowAddAccessory(!showAddAccessory)}
                     className="flex items-center gap-1 text-xs text-amber-300 hover:text-amber-200 transition-colors"
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    Ajouter
+                    {t('common.add')}
                   </button>
                 </div>
 
@@ -374,7 +376,7 @@ export function AdForm() {
                   <div className="mb-3 rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 space-y-2">
                     <input
                       type="text"
-                      placeholder="Rechercher un accessoire..."
+                      placeholder={t('common.searchAccessory')}
                       value={accessorySearch}
                       onChange={(e) => setAccessorySearch(e.target.value)}
                       className="w-full rounded-lg bg-white/[0.04] border border-white/[0.08] px-3 py-2 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
@@ -393,7 +395,7 @@ export function AdForm() {
                         </button>
                       ))}
                       {catalogFiltered.length === 0 && (
-                        <p className="text-sm text-text-dim py-2 text-center">Aucun accessoire correspondant.</p>
+                        <p className="text-sm text-text-dim py-2 text-center">{t('common.noAccessoryMatch')}</p>
                       )}
                     </div>
                   </div>
@@ -406,19 +408,19 @@ export function AdForm() {
                         <CategoryBadge category={acc.category} />
                         <span className="text-sm text-text-primary flex-1">{acc.name}</span>
                         {acc.source === 'manual' && (
-                          <span className="text-[10px] text-amber-300/60 uppercase tracking-wide">manuel</span>
+                          <span className="text-[10px] text-amber-300/60 uppercase tracking-wide">{t('common.manual')}</span>
                         )}
-                        <span className="text-xs text-text-dim">{acc.estimated_new_price} &euro; neuf</span>
+                        <span className="text-xs text-text-dim">{acc.estimated_new_price} &euro; {t('common.new')}</span>
                         <button onClick={() => removeAccessory(i)}
                           className="p-1 rounded-md text-text-dim opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                          title="Retirer cet accessoire">
+                          title={t('common.removeAccessory')}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-text-dim">Aucun accessoire détecté.</p>
+                  <p className="text-sm text-text-dim">{t('common.noAccessoryDetected')}</p>
                 )}
               </div>
 
@@ -432,20 +434,20 @@ export function AdForm() {
               {/* Actions */}
               <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between pt-1">
                 <Button variant="ghost" onClick={handleReset}>
-                  Recommencer
+                  {t('common.reset')}
                 </Button>
                 <div className="flex gap-3 justify-end">
-                  <Button variant="ghost" onClick={handleClose}>Annuler</Button>
+                  <Button variant="ghost" onClick={handleClose}>{t('common.cancel')}</Button>
                   <Button onClick={handleConfirm} disabled={confirmMut.isPending} className="gap-2">
                     {confirmMut.isPending ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Enregistrement...
+                        {t('common.saving')}
                       </>
                     ) : (
                       <>
                         <Check className="h-4 w-4" />
-                        Confirmer
+                        {t('common.confirm')}
                       </>
                     )}
                   </Button>
@@ -455,7 +457,7 @@ export function AdForm() {
           )}
 
           <Dialog.Close asChild>
-            <button onClick={handleClose} className="absolute top-5 right-5 text-text-dim hover:text-text-secondary transition-colors" aria-label="Fermer">
+            <button onClick={handleClose} className="absolute top-5 right-5 text-text-dim hover:text-text-secondary transition-colors" aria-label={t('common.close')}>
               <X className="h-5 w-5" />
             </button>
           </Dialog.Close>

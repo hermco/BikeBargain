@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, AlertTriangle, ExternalLink, Search, X, Wifi } from 'lucide-react'
 import { useRankings, useCheckAdsOnline } from '../hooks/queries'
@@ -14,6 +15,8 @@ import { formatPrice, formatKm, variantColor, cn } from '../lib/utils'
 import type { Ranking } from '../types'
 
 function RankingDetail({ r }: { r: Ranking }) {
+  const { t } = useTranslation()
+
   return (
     <motion.div
       initial={{ height: 0, opacity: 0 }}
@@ -25,7 +28,7 @@ function RankingDetail({ r }: { r: Ranking }) {
         {/* Accessories */}
         <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-4">
           <h4 className="text-[10px] text-text-muted uppercase tracking-widest font-semibold mb-3">
-            Accessoires ({r.acc_count}) — <span className="text-emerald-400">{formatPrice(r.acc_used_total)}</span>
+            {t('ranking.accessories')} ({r.acc_count}) — <span className="text-emerald-400">{formatPrice(r.acc_used_total)}</span>
           </h4>
           {r.accessories.length > 0 ? (
             <ul className="space-y-1.5">
@@ -37,14 +40,14 @@ function RankingDetail({ r }: { r: Ranking }) {
               ))}
             </ul>
           ) : (
-            <p className="text-text-dim">Aucun</p>
+            <p className="text-text-dim">{t('common.none')}</p>
           )}
         </div>
 
         {/* Consumables */}
         <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-4">
           <h4 className="text-[10px] text-text-muted uppercase tracking-widest font-semibold mb-3">
-            Consommables — <span className="text-orange-400">+{formatPrice(r.wear_total)}</span>
+            {t('ranking.consumables')} — <span className="text-orange-400">+{formatPrice(r.wear_total)}</span>
           </h4>
           <ul className="space-y-1.5">
             {r.wear_details.map((c) => (
@@ -55,14 +58,14 @@ function RankingDetail({ r }: { r: Ranking }) {
             ))}
           </ul>
           <p className="text-[10px] text-text-dim mt-3 pt-2 border-t border-white/[0.04]">
-            Mécanique : +{formatPrice(r.mechanical_wear)} · Risque état : +{formatPrice(r.condition_risk)} ({r.km} km)
+            {t('ranking.mechanical')} : +{formatPrice(r.mechanical_wear)} · {t('ranking.conditionRisk')} : +{formatPrice(r.condition_risk)} ({r.km} km)
           </p>
         </div>
 
         {/* Warranty & alerts */}
         <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-4">
           <h4 className="text-[10px] text-text-muted uppercase tracking-widest font-semibold mb-3">
-            Garantie — {r.warranty.remaining_years} an(s) — <span className="text-blue-400">{formatPrice(r.warranty.value)}</span>
+            {t('ranking.warranty')} — {r.warranty.remaining_years} {t('ranking.years')} — <span className="text-blue-400">{formatPrice(r.warranty.value)}</span>
           </h4>
           {r.warranty.circulation_date && (
             <p className="text-text-muted text-xs mb-3">
@@ -74,7 +77,7 @@ function RankingDetail({ r }: { r: Ranking }) {
             <div className="mt-2 p-3 rounded-lg bg-red-500/5 border border-red-500/15">
               <div className="flex items-center gap-1.5 text-red-400 text-[11px] font-semibold mb-1.5">
                 <AlertTriangle className="h-3.5 w-3.5" />
-                Court terme : {formatPrice(r.short_term_total)}
+                {t('ranking.shortTerm')} {formatPrice(r.short_term_total)}
               </div>
               {r.short_term_items.map((s) => (
                 <p key={s.name} className="text-[11px] text-red-300/70">
@@ -86,7 +89,7 @@ function RankingDetail({ r }: { r: Ranking }) {
 
           <div className="mt-3 pt-2 border-t border-white/[0.04] flex gap-3">
             <Link to={`/ads/${r.id}`} className="text-xs text-amber-400 hover:text-amber-300 transition-colors">
-              Voir l'annonce
+              {t('ranking.viewAd')}
             </Link>
             <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-xs text-text-dim hover:text-text-secondary flex items-center gap-0.5 transition-colors">
               <ExternalLink className="h-3 w-3" /> LBC
@@ -100,6 +103,7 @@ function RankingDetail({ r }: { r: Ranking }) {
 
 /* Mobile card for a ranking entry */
 function RankingCard({ r, rank, isOpen, onToggle }: { r: Ranking; rank: number; isOpen: boolean; onToggle: () => void }) {
+  const { t } = useTranslation()
   const colorStr = `${r.color || r.variant}${r.wheel_type === 'tubeless' ? ' TL' : ''}`
 
   return (
@@ -111,7 +115,7 @@ function RankingCard({ r, rank, isOpen, onToggle }: { r: Ranking; rank: number; 
             <div>
               <p className="text-sm font-medium text-text-primary">
                 {r.city}
-                {r.sold && <span className="ml-2 text-[10px] text-red-400 uppercase font-semibold">Vendue</span>}
+                {r.sold && <span className="ml-2 text-[10px] text-red-400 uppercase font-semibold">{t('common.sold')}</span>}
               </p>
               <Badge className={variantColor(r.variant)}>{colorStr}</Badge>
             </div>
@@ -126,7 +130,7 @@ function RankingCard({ r, rank, isOpen, onToggle }: { r: Ranking; rank: number; 
 
         <div className="flex items-center justify-between text-xs text-text-muted border-t border-white/[0.04] pt-3">
           <div className="flex gap-4">
-            <span>Affiché : <span className="text-text-primary font-medium">{formatPrice(r.price)}</span></span>
+            <span>{t('ranking.listed')} : <span className="text-text-primary font-medium">{formatPrice(r.price)}</span></span>
             <span>{formatKm(r.km)}</span>
           </div>
           <div className="flex items-center gap-3 tabular-nums">
@@ -149,6 +153,7 @@ type SortKey = 'rank' | 'price' | 'km' | 'effective_price' | 'decote_pct' | 'acc
 const WHEEL_TYPES = ['rayons', 'tubeless']
 
 export function RankingPage() {
+  const { t } = useTranslation()
   const { data: rankings, isLoading } = useRankings()
   const checkOnlineMut = useCheckAdsOnline()
   const { toast } = useToast()
@@ -180,7 +185,7 @@ export function RankingPage() {
   }
 
   if (isLoading) return <TableSkeleton rows={10} />
-  if (!rankings?.length) return <EmptyState title="Aucun classement" description="Ajoutez des annonces pour voir le classement." />
+  if (!rankings?.length) return <EmptyState title={t('ranking.emptyTitle')} description={t('ranking.emptyDescription')} />
 
   function handleSort(key: SortKey) {
     if (key === sortKey) {
@@ -240,9 +245,9 @@ export function RankingPage() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>Classement</h1>
+          <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>{t('ranking.title')}</h1>
           <p className="text-xs text-text-dim mt-1.5 max-w-2xl">
-            Effectif = Affiché - Accessoires(occ.) + Consommables + Mécanique + Risque état - Garantie. Cliquer sur une ligne pour les détails.
+            {t('ranking.description')}
           </p>
         </div>
         <Button
@@ -255,8 +260,8 @@ export function RankingPage() {
               onSuccess: (data) => {
                 toast(
                   data.newly_sold > 0
-                    ? `${data.newly_sold} annonce${data.newly_sold > 1 ? 's' : ''} marquée${data.newly_sold > 1 ? 's' : ''} vendue${data.newly_sold > 1 ? 's' : ''}`
-                    : `${data.checked} annonces vérifiées, aucune vendue`,
+                    ? t('ads.newlySold', { count: data.newly_sold })
+                    : t('ads.checkedNone', { count: data.checked }),
                   data.newly_sold > 0 ? 'success' : 'info',
                 )
               },
@@ -265,7 +270,7 @@ export function RankingPage() {
           }}
         >
           <Wifi className={`h-3.5 w-3.5 ${checkOnlineMut.isPending ? 'animate-pulse' : ''}`} />
-          <span className="hidden sm:inline">{checkOnlineMut.isPending ? 'Vérification...' : 'Vérifier en ligne'}</span>
+          <span className="hidden sm:inline">{checkOnlineMut.isPending ? t('common.checking') : t('common.checkOnline')}</span>
         </Button>
       </div>
 
@@ -275,7 +280,7 @@ export function RankingPage() {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-dim" />
           <input
             type="text"
-            placeholder="Rechercher par ville, couleur, variante..."
+            placeholder={t('ranking.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-xl bg-white/[0.04] border border-white/[0.06] pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/30 transition-all"
@@ -301,22 +306,22 @@ export function RankingPage() {
           value={filterWheel}
           onChange={setFilterWheel}
           options={[
-            { value: '', label: 'Toutes roues' },
-            { value: 'rayons', label: 'Rayons' },
-            { value: 'tubeless', label: 'Tubeless' },
+            { value: '', label: t('ranking.allWheels') },
+            { value: 'rayons', label: t('ranking.spoked') },
+            { value: 'tubeless', label: t('ranking.tubeless') },
           ]}
           className="w-full sm:w-auto sm:min-w-[140px]"
         />
         <input
           type="number"
-          placeholder="Km max"
+          placeholder={t('ranking.maxKm')}
           value={maxKm}
           onChange={(e) => setMaxKm(e.target.value)}
           className="rounded-xl bg-white/[0.04] border border-white/[0.06] px-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all w-full sm:w-[110px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
         <input
           type="number"
-          placeholder="Prix max"
+          placeholder={t('ranking.maxPrice')}
           value={maxPrice}
           onChange={(e) => setMaxPrice(e.target.value)}
           className="rounded-xl bg-white/[0.04] border border-white/[0.06] px-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all w-full sm:w-[110px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
@@ -326,14 +331,14 @@ export function RankingPage() {
             onClick={clearFilters}
             className="rounded-xl bg-white/[0.04] border border-white/[0.06] px-3 py-2.5 text-sm text-text-dim hover:text-text-secondary hover:bg-white/[0.06] transition-all flex items-center gap-1.5"
           >
-            <X className="h-3.5 w-3.5" /> Effacer
+            <X className="h-3.5 w-3.5" /> {t('common.clear')}
           </button>
         )}
       </div>
 
       {filtered.length < rankings.length && (
         <p className="text-xs text-text-dim">
-          {filtered.length} / {rankings.length} annonce{rankings.length > 1 ? 's' : ''}
+          {filtered.length} / {rankings.length} {t('ranking.ad', { count: rankings.length })}
         </p>
       )}
 
@@ -358,14 +363,14 @@ export function RankingPage() {
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10 bg-surface">
             <tr className="text-left text-[11px] text-text-dim uppercase tracking-widest border-b border-white/[0.06]">
-              <SortHeader k="rank" className="pl-5 w-12 text-center">#</SortHeader>
-              <th className="py-4 pr-4">Ville</th>
-              <th className="py-4 pr-4">Couleur</th>
-              <SortHeader k="km" className="text-right">Km</SortHeader>
-              <SortHeader k="price" className="text-right">Affiché</SortHeader>
-              <SortHeader k="acc_used_total" className="text-right">Acc.</SortHeader>
-              <SortHeader k="effective_price" className="text-right">Effectif</SortHeader>
-              <SortHeader k="decote_pct" className="pr-5 text-right">Décote</SortHeader>
+              <SortHeader k="rank" className="pl-5 w-12 text-center">{t('ranking.rank')}</SortHeader>
+              <th className="py-4 pr-4">{t('ranking.city')}</th>
+              <th className="py-4 pr-4">{t('ranking.color')}</th>
+              <SortHeader k="km" className="text-right">{t('ranking.km')}</SortHeader>
+              <SortHeader k="price" className="text-right">{t('ranking.listed')}</SortHeader>
+              <SortHeader k="acc_used_total" className="text-right">{t('ranking.acc')}</SortHeader>
+              <SortHeader k="effective_price" className="text-right">{t('ranking.effective')}</SortHeader>
+              <SortHeader k="decote_pct" className="pr-5 text-right">{t('ranking.discount')}</SortHeader>
             </tr>
           </thead>
           <tbody>
@@ -386,7 +391,7 @@ export function RankingPage() {
                     <td className="py-3 pl-5 pr-4 w-12 text-center font-bold text-text-muted" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>{origRank}</td>
                     <td className="py-3 pr-4 text-text-secondary">
                       {r.city}
-                      {r.sold && <span className="ml-2 text-[10px] text-red-400 uppercase font-semibold">Vendue</span>}
+                      {r.sold && <span className="ml-2 text-[10px] text-red-400 uppercase font-semibold">{t('common.sold')}</span>}
                     </td>
                     <td className="py-3 pr-4">
                       <Badge className={variantColor(r.variant)}>{colorStr}</Badge>
