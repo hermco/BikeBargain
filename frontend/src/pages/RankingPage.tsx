@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, AlertTriangle, ExternalLink, Search, X, Wifi } from 'lucide-react'
+import { ChevronDown, AlertTriangle, ExternalLink, Search, X, Wifi, Car } from 'lucide-react'
 import { useRankings, useCheckAdsOnline } from '../hooks/queries'
 import { useToast } from '../components/Toast'
 import { Button } from '../components/ui/Button'
@@ -10,10 +10,36 @@ import { Badge } from '../components/ui/Badge'
 import { Select } from '../components/ui/Select'
 import { TableSkeleton } from '../components/LoadingSkeleton'
 import { EmptyState } from '../components/EmptyState'
+import { LocationPicker } from '../components/LocationPicker'
 import { formatPrice, formatKm, variantColor, cn } from '../lib/utils'
+import {
+  getUserLocation, setUserLocation, clearUserLocation,
+  haversineKm, travelTimeBand, DISTANCE_BAND_CONFIG,
+  fetchTravelTimes, formatDuration,
+  type UserLocation, type TravelInfo,
+} from '../lib/geo'
 import type { Ranking } from '../types'
 
-function RankingDetail({ r }: { r: Ranking }) {
+// ─── Travel badge ─────────────────────────────────────────────────────────────
+
+function TravelBadge({ travel, loading }: { travel?: TravelInfo; loading?: boolean }) {
+  const base = 'inline-flex items-center justify-center rounded-lg px-2 py-0.5 min-w-[3.5rem] text-center text-[11px] leading-[16px]'
+  if (loading && !travel) {
+    return <span className={cn(base, 'bg-white/[0.06] animate-pulse')}>&nbsp;</span>
+  }
+  if (!travel) return null
+  const band = travelTimeBand(travel.durationSec)
+  const cfg = DISTANCE_BAND_CONFIG[band]
+  return (
+    <span className={cn(base, 'font-semibold tabular-nums', cfg.bg, cfg.color)}>
+      {formatDuration(travel.durationSec)}
+    </span>
+  )
+}
+
+// ─── Ranking detail (expanded row) ───────────────────────────────────────────
+
+function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
   return (
     <motion.div
       initial={{ height: 0, opacity: 0 }}
@@ -55,7 +81,7 @@ function RankingDetail({ r }: { r: Ranking }) {
             ))}
           </ul>
           <p className="text-[10px] text-text-dim mt-3 pt-2 border-t border-white/[0.04]">
-            Mécanique : +{formatPrice(r.mechanical_wear)} · Risque état : +{formatPrice(r.condition_risk)} ({r.km} km)
+            Mecanique : +{formatPrice(r.mechanical_wear)} · Risque etat : +{formatPrice(r.condition_risk)} ({r.km} km)
           </p>
         </div>
 
@@ -84,6 +110,13 @@ function RankingDetail({ r }: { r: Ranking }) {
             </div>
           )}
 
+          {travel && (
+            <p className="text-[11px] text-text-dim mt-2 flex items-center gap-1">
+              <Car className="h-3 w-3" />
+              {formatDuration(travel.durationSec)} · {Math.round(travel.distanceKm)} km par la route
+            </p>
+          )}
+
           <div className="mt-3 pt-2 border-t border-white/[0.04] flex gap-3">
             <Link to={`/ads/${r.id}`} className="text-xs text-amber-400 hover:text-amber-300 transition-colors">
               Voir l'annonce
@@ -98,8 +131,11 @@ function RankingDetail({ r }: { r: Ranking }) {
   )
 }
 
-/* Mobile card for a ranking entry */
-function RankingCard({ r, rank, isOpen, onToggle }: { r: Ranking; rank: number; isOpen: boolean; onToggle: () => void }) {
+// ─── Mobile card ─────────────────────────────────────────────────────────────
+
+function RankingCard({ r, rank, isOpen, onToggle, travel, travelLoading }: {
+  r: Ranking; rank: number; isOpen: boolean; onToggle: () => void; travel?: TravelInfo; travelLoading?: boolean
+}) {
   const colorStr = `${r.color || r.variant}${r.wheel_type === 'tubeless' ? ' TL' : ''}`
 
   return (
@@ -109,9 +145,10 @@ function RankingCard({ r, rank, isOpen, onToggle }: { r: Ranking; rank: number; 
           <div className="flex items-center gap-3">
             <span className="text-lg font-bold text-text-muted" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>#{rank}</span>
             <div>
-              <p className="text-sm font-medium text-text-primary">
+              <p className="text-sm font-medium text-text-primary flex items-center gap-2 flex-wrap">
                 {r.city}
-                {r.sold && <span className="ml-2 text-[10px] text-red-400 uppercase font-semibold">Vendue</span>}
+                <TravelBadge travel={travel} loading={travelLoading} />
+                {r.sold && <span className="text-[10px] text-red-400 uppercase font-semibold">Vendue</span>}
               </p>
               <Badge className={variantColor(r.variant)}>{colorStr}</Badge>
             </div>
@@ -126,7 +163,7 @@ function RankingCard({ r, rank, isOpen, onToggle }: { r: Ranking; rank: number; 
 
         <div className="flex items-center justify-between text-xs text-text-muted border-t border-white/[0.04] pt-3">
           <div className="flex gap-4">
-            <span>Affiché : <span className="text-text-primary font-medium">{formatPrice(r.price)}</span></span>
+            <span>Affiche : <span className="text-text-primary font-medium">{formatPrice(r.price)}</span></span>
             <span>{formatKm(r.km)}</span>
           </div>
           <div className="flex items-center gap-3 tabular-nums">
@@ -138,15 +175,15 @@ function RankingCard({ r, rank, isOpen, onToggle }: { r: Ranking; rank: number; 
       </button>
 
       <AnimatePresence>
-        {isOpen && <RankingDetail r={r} />}
+        {isOpen && <RankingDetail r={r} travel={travel} />}
       </AnimatePresence>
     </Card>
   )
 }
 
-type SortKey = 'rank' | 'price' | 'km' | 'effective_price' | 'decote_pct' | 'acc_used_total'
+// ─── Main page ───────────────────────────────────────────────────────────────
 
-const WHEEL_TYPES = ['rayons', 'tubeless']
+type SortKey = 'rank' | 'price' | 'km' | 'effective_price' | 'decote_pct' | 'acc_used_total' | 'distance'
 
 export function RankingPage() {
   const { data: rankings, isLoading } = useRankings()
@@ -162,13 +199,59 @@ export function RankingPage() {
   const [filterWheel, setFilterWheel] = useState('')
   const [maxKm, setMaxKm] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
+  const [maxTrajet, setMaxTrajet] = useState('')
+
+  // Localisation utilisateur
+  const [userLoc, setUserLoc] = useState<UserLocation | null>(() => getUserLocation())
+
+  const handleLocationChange = useCallback((loc: UserLocation | null) => {
+    setUserLoc(loc)
+    setTravelMap(new Map())
+    setTravelLoading(!!loc)
+    if (loc) setUserLocation(loc)
+    else clearUserLocation()
+  }, [])
+
+  // Calcul des distances
+  const distanceMap = useMemo(() => {
+    if (!userLoc || !rankings) return new Map<number, number>()
+    const m = new Map<number, number>()
+    for (const r of rankings) {
+      if (r.lat != null && r.lng != null) {
+        m.set(r.id, haversineKm(userLoc.lat, userLoc.lng, r.lat, r.lng))
+      }
+    }
+    return m
+  }, [userLoc, rankings])
+
+  // Temps de trajet (OSRM)
+  const [travelMap, setTravelMap] = useState<Map<number, TravelInfo>>(new Map())
+  const [travelLoading, setTravelLoading] = useState(false)
+
+  useEffect(() => {
+    if (!userLoc || !rankings) {
+      setTravelMap(new Map())
+      return
+    }
+    let cancelled = false
+    const dests = rankings
+      .filter((r) => r.lat != null && r.lng != null)
+      .map((r) => ({ id: r.id, lat: r.lat!, lng: r.lng! }))
+
+    setTravelMap(new Map())
+    setTravelLoading(true)
+    fetchTravelTimes(userLoc, dests)
+      .then((m) => { if (!cancelled) setTravelMap(m) })
+      .finally(() => { if (!cancelled) setTravelLoading(false) })
+    return () => { cancelled = true }
+  }, [userLoc, rankings])
 
   const availableColors = useMemo(
     () => rankings ? [...new Set(rankings.map((r) => r.color).filter(Boolean))].sort() : [],
     [rankings],
   )
 
-  const hasFilters = search || filterColors.size > 0 || filterWheel || maxKm || maxPrice
+  const hasFilters = search || filterColors.size > 0 || filterWheel || maxKm || maxPrice || maxTrajet
 
   function toggleColor(color: string) {
     setFilterColors((prev) => {
@@ -187,7 +270,7 @@ export function RankingPage() {
       setSortAsc(!sortAsc)
     } else {
       setSortKey(key)
-      setSortAsc(key === 'price' || key === 'km')
+      setSortAsc(key === 'price' || key === 'km' || key === 'distance')
     }
   }
 
@@ -197,6 +280,7 @@ export function RankingPage() {
     setFilterWheel('')
     setMaxKm('')
     setMaxPrice('')
+    setMaxTrajet('')
   }
 
   const filtered = rankings.filter((r) => {
@@ -208,6 +292,10 @@ export function RankingPage() {
     if (filterWheel && r.wheel_type !== filterWheel) return false
     if (maxKm && r.km > Number(maxKm)) return false
     if (maxPrice && r.price > Number(maxPrice)) return false
+    if (maxTrajet) {
+      const t = travelMap.get(r.id)
+      if (t == null || t.durationSec > Number(maxTrajet) * 60) return false
+    }
     return true
   })
 
@@ -222,9 +310,18 @@ export function RankingPage() {
       case 'effective_price': cmp = a.effective_price - b.effective_price; break
       case 'decote_pct': cmp = a.decote_pct - b.decote_pct; break
       case 'acc_used_total': cmp = a.acc_used_total - b.acc_used_total; break
+      case 'distance': {
+        const da = travelMap.get(a.id)?.durationSec ?? (distanceMap.get(a.id) ?? 99999) * 60
+        const db = travelMap.get(b.id)?.durationSec ?? (distanceMap.get(b.id) ?? 99999) * 60
+        cmp = da - db
+        break
+      }
     }
     return sortAsc ? cmp : -cmp
   })
+
+  const hasLocation = userLoc != null
+  const colSpan = hasLocation ? 9 : 8
 
   const SortHeader = ({ k, children, className: cls }: { k: SortKey; children: React.ReactNode; className?: string }) => (
     <th
@@ -242,7 +339,7 @@ export function RankingPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>Classement</h1>
           <p className="text-xs text-text-dim mt-1.5 max-w-2xl">
-            Effectif = Affiché - Accessoires(occ.) + Consommables + Mécanique + Risque état - Garantie. Cliquer sur une ligne pour les détails.
+            Effectif = Affiche - Accessoires(occ.) + Consommables + Mecanique + Risque etat - Garantie. Cliquer sur une ligne pour les details.
           </p>
         </div>
         <Button
@@ -255,8 +352,8 @@ export function RankingPage() {
               onSuccess: (data) => {
                 toast(
                   data.newly_sold > 0
-                    ? `${data.newly_sold} annonce${data.newly_sold > 1 ? 's' : ''} marquée${data.newly_sold > 1 ? 's' : ''} vendue${data.newly_sold > 1 ? 's' : ''}`
-                    : `${data.checked} annonces vérifiées, aucune vendue`,
+                    ? `${data.newly_sold} annonce${data.newly_sold > 1 ? 's' : ''} marquee${data.newly_sold > 1 ? 's' : ''} vendue${data.newly_sold > 1 ? 's' : ''}`
+                    : `${data.checked} annonces verifiees, aucune vendue`,
                   data.newly_sold > 0 ? 'success' : 'info',
                 )
               },
@@ -265,9 +362,12 @@ export function RankingPage() {
           }}
         >
           <Wifi className={`h-3.5 w-3.5 ${checkOnlineMut.isPending ? 'animate-pulse' : ''}`} />
-          <span className="hidden sm:inline">{checkOnlineMut.isPending ? 'Vérification...' : 'Vérifier en ligne'}</span>
+          <span className="hidden sm:inline">{checkOnlineMut.isPending ? 'Verification...' : 'Verifier en ligne'}</span>
         </Button>
       </div>
+
+      {/* Location picker */}
+      <LocationPicker location={userLoc} onChange={handleLocationChange} />
 
       {/* Filtres */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -321,6 +421,29 @@ export function RankingPage() {
           onChange={(e) => setMaxPrice(e.target.value)}
           className="rounded-xl bg-white/[0.04] border border-white/[0.06] px-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all w-full sm:w-[110px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
+        {hasLocation && (
+          <div className="flex gap-1.5 items-center">
+            {[
+              { label: '< 1h', value: '60' },
+              { label: '< 2h', value: '120' },
+              { label: '< 3h', value: '180' },
+              { label: '< 5h', value: '300' },
+            ].map((p) => (
+              <button
+                key={p.value}
+                onClick={() => setMaxTrajet(maxTrajet === p.value ? '' : p.value)}
+                className={cn(
+                  'rounded-lg px-2.5 py-1.5 text-xs font-medium border transition-all cursor-pointer',
+                  maxTrajet === p.value
+                    ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                    : 'bg-white/[0.03] border-white/[0.06] text-text-dim hover:text-text-secondary hover:bg-white/[0.06]',
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        )}
         {hasFilters && (
           <button
             onClick={clearFilters}
@@ -348,6 +471,8 @@ export function RankingPage() {
               rank={origRank}
               isOpen={expanded === r.id}
               onToggle={() => setExpanded(expanded === r.id ? null : r.id)}
+              travel={travelMap.get(r.id)}
+              travelLoading={travelLoading}
             />
           )
         })}
@@ -360,12 +485,13 @@ export function RankingPage() {
             <tr className="text-left text-[11px] text-text-dim uppercase tracking-widest border-b border-white/[0.06]">
               <SortHeader k="rank" className="pl-5 w-12 text-center">#</SortHeader>
               <th className="py-4 pr-4">Ville</th>
+              {hasLocation && <SortHeader k="distance" className="text-right w-20">Trajet</SortHeader>}
               <th className="py-4 pr-4">Couleur</th>
               <SortHeader k="km" className="text-right">Km</SortHeader>
-              <SortHeader k="price" className="text-right">Affiché</SortHeader>
+              <SortHeader k="price" className="text-right">Affiche</SortHeader>
               <SortHeader k="acc_used_total" className="text-right">Acc.</SortHeader>
               <SortHeader k="effective_price" className="text-right">Effectif</SortHeader>
-              <SortHeader k="decote_pct" className="pr-5 text-right">Décote</SortHeader>
+              <SortHeader k="decote_pct" className="pr-5 text-right">Decote</SortHeader>
             </tr>
           </thead>
           <tbody>
@@ -373,6 +499,7 @@ export function RankingPage() {
               const origRank = rankings.indexOf(r) + 1
               const isOpen = expanded === r.id
               const colorStr = `${r.color || r.variant}${r.wheel_type === 'tubeless' ? ' TL' : ''}`
+
               return (
                 <React.Fragment key={r.id}>
                   <tr
@@ -388,6 +515,11 @@ export function RankingPage() {
                       {r.city}
                       {r.sold && <span className="ml-2 text-[10px] text-red-400 uppercase font-semibold">Vendue</span>}
                     </td>
+                    {hasLocation && (
+                      <td className="py-3 pr-4 text-right w-20">
+                        <TravelBadge travel={travelMap.get(r.id)} loading={travelLoading} />
+                      </td>
+                    )}
                     <td className="py-3 pr-4">
                       <Badge className={variantColor(r.variant)}>{colorStr}</Badge>
                     </td>
@@ -407,8 +539,8 @@ export function RankingPage() {
                   <AnimatePresence>
                     {isOpen && (
                       <tr>
-                        <td colSpan={8} className="p-0">
-                          <RankingDetail r={r} />
+                        <td colSpan={colSpan} className="p-0">
+                          <RankingDetail r={r} travel={travelMap.get(r.id)} />
                         </td>
                       </tr>
                     )}

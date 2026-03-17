@@ -240,6 +240,8 @@ def rank_ads(today: Optional[date] = None) -> list[dict]:
             "url": ad.get("url", ""),
             "sold": bool(ad.get("sold", 0)),
             "city": ad.get("city", "?"),
+            "lat": ad.get("lat"),
+            "lng": ad.get("lng"),
             "variant": ad.get("variant", "?"),
             "color": ad.get("color", "?"),
             "wheel_type": ad.get("wheel_type", ""),

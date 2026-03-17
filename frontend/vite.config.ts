@@ -2,9 +2,21 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
+import { execSync } from 'child_process'
+
+function gitBranch(): string {
+  try {
+    return execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim()
+  } catch {
+    return 'unknown'
+  }
+}
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  define: {
+    __GIT_BRANCH__: JSON.stringify(gitBranch()),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

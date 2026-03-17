@@ -105,6 +105,8 @@ export interface Ranking {
   url: string
   sold: boolean
   city: string
+  lat: number | null
+  lng: number | null
   variant: string
   color: string
   wheel_type: string

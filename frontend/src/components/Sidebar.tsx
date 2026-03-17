@@ -93,6 +93,12 @@ export function Sidebar() {
           <p className="text-[10px] text-text-dim text-center">
             LeBonCoin Scraper
           </p>
+          {__GIT_BRANCH__ !== 'master' && __GIT_BRANCH__ !== 'main' && (
+            <div className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/20">
+              <div className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+              <span className="text-[10px] text-violet-300 font-mono font-medium truncate">{__GIT_BRANCH__}</span>
+            </div>
+          )}
         </div>
       </aside>
 
