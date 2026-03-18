@@ -108,7 +108,7 @@ Frontend (Vercel) → API (Railway) → Service LBC (chez toi, Docker) → LeBon
 
 ```bash
 make lbc                    # Demarre le service LBC local (port 8001)
-make tunnel                 # Demarre le service LBC + tunnel Cloudflare
+make tunnel                 # Demarre le service LBC + tunnel ngrok
 ```
 
 Pour activer sur Railway : `railway variables set LBC_SERVICE_URL=https://ton-tunnel.com`

@@ -12,20 +12,22 @@ services:
       - pgdata:/var/lib/postgresql/data
 
   lbc:
-    build: .
+    build:
+      context: .
+      dockerfile: lbc.Dockerfile
     container_name: himalayan-lbc
     command: uvicorn src.lbc_service:app --host 0.0.0.0 --port 8001
     ports:
       - "8001:8001"
 
-  tunnel:
-    image: cloudflare/cloudflared:latest
-    container_name: himalayan-tunnel
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: himalayan-ngrok
     depends_on:
       - lbc
-    command: tunnel --no-autoupdate run
     environment:
-      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    command: http lbc:8001 --url ${NGROK_DOMAIN}
     profiles:
       - tunnel
 

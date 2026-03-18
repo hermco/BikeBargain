@@ -1,4 +1,4 @@
-.PHONY: dev install build proxy db db-stop db-reset lbc lbc-stop tunnel
+.PHONY: dev install build proxy db db-stop db-reset tunnel tunnel-stop
 
 include .env
 export
@@ -16,14 +16,11 @@ db-stop:  ## Arrete le container PostgreSQL
 db-reset:  ## Supprime le volume et repart de zero
 	@docker compose down -v
 
-lbc:  ## Demarre le service LBC local (scraping via IP residentielle)
-	@docker compose up lbc -d --build
+tunnel:  ## Demarre le service LBC + tunnel ngrok
+	@docker compose --profile tunnel up lbc ngrok -d --build
 
-lbc-stop:  ## Arrete le service LBC
-	@docker compose stop lbc
-
-tunnel:  ## Demarre le service LBC + tunnel Cloudflare
-	@docker compose --profile tunnel up lbc tunnel -d --build
+tunnel-stop:  ## Arrete le service LBC + tunnel ngrok
+	@docker compose --profile tunnel stop lbc ngrok
 
 dev:  ## Lance le backend + frontend en parallele (ports auto-detectes)
 	$(eval PORTS := $(shell .venv/bin/python devproxy_register.py find-ports))
