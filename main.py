@@ -150,8 +150,8 @@ def _confirm_extraction(ad_data: dict) -> dict | None:
 
 def cmd_add(urls: list[str]) -> None:
     """Ajoute une ou plusieurs annonces a la base."""
-    import lbc as lbc_lib
-    client = lbc_lib.Client()
+    from src.extractor import get_lbc_client
+    client = get_lbc_client()
 
     with Session(engine) as session:
         for url in urls:

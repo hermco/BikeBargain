@@ -33,6 +33,15 @@ class Settings(BaseSettings):
     debug: bool = False
     cors_origin_regex: str = r"http://localhost:\d+"
 
+    # Proxy residentiel pour les requetes LeBonCoin (optionnel)
+    # Format : http://user:pass@host:port
+    lbc_proxy_url: str | None = None
+
+    # URL du service LBC local (optionnel, pour le mode split)
+    # Si defini, les endpoints qui appellent LeBonCoin delegueront au service local
+    # Ex : https://lbc.mon-tunnel.com
+    lbc_service_url: str | None = None
+
     @property
     def database_url_normalized(self) -> str:
         """Normalise postgres:// en postgresql:// (Heroku/Render)."""

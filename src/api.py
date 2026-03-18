@@ -130,14 +130,16 @@ def get_ad(ad_id: int, session: Session = Depends(get_session)):
 
 @app.post("/api/ads/preview")
 def preview_ad(req: AddAdRequest, session: Session = Depends(get_session)):
-    from .extractor import fetch_ad
-    import lbc as lbc_lib
-
     overrides = get_accessory_overrides(session)
 
     try:
-        client = lbc_lib.Client()
-        ad_data = fetch_ad(req.url, client=client, price_overrides=overrides)
+        if settings.lbc_service_url:
+            from . import lbc_client
+            ad_data = lbc_client.fetch_ad(req.url, price_overrides=overrides)
+        else:
+            from .extractor import fetch_ad, get_lbc_client
+            client = get_lbc_client()
+            ad_data = fetch_ad(req.url, client=client, price_overrides=overrides)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erreur extraction : {e}")
 
@@ -164,14 +166,16 @@ def confirm_ad(req: ConfirmAdRequest, session: Session = Depends(get_session)):
 
 @app.post("/api/ads")
 def add_ad(req: AddAdRequest, session: Session = Depends(get_session)):
-    from .extractor import fetch_ad
-    import lbc as lbc_lib
-
     overrides = get_accessory_overrides(session)
 
     try:
-        client = lbc_lib.Client()
-        ad_data = fetch_ad(req.url, client=client, price_overrides=overrides)
+        if settings.lbc_service_url:
+            from . import lbc_client
+            ad_data = lbc_client.fetch_ad(req.url, price_overrides=overrides)
+        else:
+            from .extractor import fetch_ad, get_lbc_client
+            client = get_lbc_client()
+            ad_data = fetch_ad(req.url, client=client, price_overrides=overrides)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erreur extraction : {e}")
 
@@ -409,26 +413,38 @@ def refresh_ad_accessories(ad_id: int, session: Session = Depends(get_session)):
 
 @app.post("/api/ads/check-online")
 def check_ads_online(session: Session = Depends(get_session)):
-    import lbc as lbc_lib
-
     ads = session.exec(select(Ad).where(Ad.sold == 0)).all()
-    client = lbc_lib.Client()
     results = []
 
-    for ad in ads:
-        try:
-            lbc_ad = client.get_ad(ad.id)
-            ad_status = getattr(lbc_ad, "status", None)
-            if ad_status and ad_status not in ("active",):
+    if settings.lbc_service_url:
+        from . import lbc_client
+        lbc_results = lbc_client.check_ads([ad.id for ad in ads])
+        ads_by_id = {ad.id: ad for ad in ads}
+        for r in lbc_results:
+            ad = ads_by_id[r["ad_id"]]
+            if not r["online"]:
                 ad.sold = 1
                 ad.updated_at = datetime.now().isoformat()
-                results.append({"id": ad.id, "sold": True, "reason": f"status={ad_status}"})
+                results.append({"id": r["ad_id"], "sold": True, "reason": r.get("reason", "")})
             else:
-                results.append({"id": ad.id, "sold": False})
-        except Exception:
-            ad.sold = 1
-            ad.updated_at = datetime.now().isoformat()
-            results.append({"id": ad.id, "sold": True, "reason": "inaccessible"})
+                results.append({"id": r["ad_id"], "sold": False})
+    else:
+        from .extractor import get_lbc_client
+        client = get_lbc_client()
+        for ad in ads:
+            try:
+                lbc_ad = client.get_ad(ad.id)
+                ad_status = getattr(lbc_ad, "status", None)
+                if ad_status and ad_status not in ("active",):
+                    ad.sold = 1
+                    ad.updated_at = datetime.now().isoformat()
+                    results.append({"id": ad.id, "sold": True, "reason": f"status={ad_status}"})
+                else:
+                    results.append({"id": ad.id, "sold": False})
+            except Exception:
+                ad.sold = 1
+                ad.updated_at = datetime.now().isoformat()
+                results.append({"id": ad.id, "sold": True, "reason": "inaccessible"})
 
     session.commit()
     newly_sold = sum(1 for r in results if r["sold"])
@@ -437,27 +453,36 @@ def check_ads_online(session: Session = Depends(get_session)):
 
 @app.post("/api/ads/{ad_id}/check-online")
 def check_ad_online(ad_id: int, session: Session = Depends(get_session)):
-    import lbc as lbc_lib
-
     ad = session.get(Ad, ad_id)
     if not ad:
         raise HTTPException(status_code=404, detail="Annonce non trouvee")
 
-    client = lbc_lib.Client()
-    try:
-        lbc_ad = client.get_ad(ad_id)
-        ad_status = getattr(lbc_ad, "status", None)
-        if ad_status and ad_status not in ("active",):
+    if settings.lbc_service_url:
+        from . import lbc_client
+        r = lbc_client.check_ad(ad_id)
+        if not r["online"]:
             ad.sold = 1
             ad.updated_at = datetime.now().isoformat()
             session.commit()
-            return {"id": ad_id, "sold": True, "reason": f"status={ad_status}"}
+            return {"id": ad_id, "sold": True, "reason": r.get("reason", "")}
         return {"id": ad_id, "sold": False}
-    except Exception:
-        ad.sold = 1
-        ad.updated_at = datetime.now().isoformat()
-        session.commit()
-        return {"id": ad_id, "sold": True, "reason": "inaccessible"}
+    else:
+        from .extractor import get_lbc_client
+        client = get_lbc_client()
+        try:
+            lbc_ad = client.get_ad(ad_id)
+            ad_status = getattr(lbc_ad, "status", None)
+            if ad_status and ad_status not in ("active",):
+                ad.sold = 1
+                ad.updated_at = datetime.now().isoformat()
+                session.commit()
+                return {"id": ad_id, "sold": True, "reason": f"status={ad_status}"}
+            return {"id": ad_id, "sold": False}
+        except Exception:
+            ad.sold = 1
+            ad.updated_at = datetime.now().isoformat()
+            session.commit()
+            return {"id": ad_id, "sold": True, "reason": "inaccessible"}
 
 
 @app.get("/api/stats")
@@ -527,10 +552,13 @@ class ExtractRequest(BaseModel):
 
 @app.get("/api/crawl/search")
 def crawl_search(session: Session = Depends(get_session)):
-    from .crawler import search_all_ads
-
     try:
-        results = search_all_ads()
+        if settings.lbc_service_url:
+            from . import lbc_client
+            results = lbc_client.search()
+        else:
+            from .crawler import search_all_ads
+            results = search_all_ads()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Erreur recherche LeBonCoin : {e}")
 
@@ -842,14 +870,16 @@ def _find_potential_duplicates(session: Session, ad_data: dict, exclude_id: int)
 
 @app.post("/api/crawl/extract")
 def crawl_extract(req: ExtractRequest, session: Session = Depends(get_session)):
-    from .extractor import fetch_ad
-    import lbc as lbc_lib
-
     overrides = get_accessory_overrides(session)
 
     try:
-        client = lbc_lib.Client()
-        ad_data = fetch_ad(req.url, client=client, price_overrides=overrides)
+        if settings.lbc_service_url:
+            from . import lbc_client
+            ad_data = lbc_client.fetch_ad(req.url, price_overrides=overrides)
+        else:
+            from .extractor import fetch_ad, get_lbc_client
+            client = get_lbc_client()
+            ad_data = fetch_ad(req.url, client=client, price_overrides=overrides)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erreur extraction : {e}")
 

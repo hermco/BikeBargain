@@ -11,5 +11,23 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  lbc:
+    build: .
+    container_name: himalayan-lbc
+    command: uvicorn src.lbc_service:app --host 0.0.0.0 --port 8001
+    ports:
+      - "8001:8001"
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: himalayan-tunnel
+    depends_on:
+      - lbc
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    profiles:
+      - tunnel
+
 volumes:
   pgdata:

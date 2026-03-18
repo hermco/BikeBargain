@@ -70,7 +70,8 @@ def search_all_ads() -> dict:
     Returns:
         dict avec total et liste complete d'annonces legeres.
     """
-    client = lbc.Client()
+    from .extractor import get_lbc_client
+    client = get_lbc_client()
 
     # Premiere page
     results = client.search(

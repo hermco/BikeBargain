@@ -5,10 +5,31 @@ Utilise la librairie lbc (https://github.com/etienne-hd/lbc) pour interroger l'A
 """
 
 import re
+from urllib.parse import urlparse
+
 import lbc
 from typing import Optional
 
 from .accessories import detect_accessories
+from .config import get_settings
+
+
+def get_lbc_client() -> lbc.Client:
+    """Cree un client LBC avec proxy residentiel si configure."""
+    proxy_url = get_settings().lbc_proxy_url
+    if not proxy_url:
+        return lbc.Client()
+    parsed = urlparse(proxy_url)
+    if not parsed.hostname or not parsed.port:
+        raise ValueError("LBC_PROXY_URL invalide (hostname/port manquant)")
+    proxy = lbc.Proxy(
+        host=parsed.hostname,
+        port=parsed.port,
+        username=parsed.username,
+        password=parsed.password,
+        scheme=parsed.scheme or "http",
+    )
+    return lbc.Client(proxy=proxy)
 
 # ─── Prix neuf de reference (France, mars 2026) ────────────────────────────────
 
@@ -212,7 +233,7 @@ def fetch_ad(url: str, client: Optional[lbc.Client] = None, price_overrides: Opt
         raise ValueError(f"Impossible d'extraire l'ID depuis l'URL : {url}")
 
     if client is None:
-        client = lbc.Client()
+        client = get_lbc_client()
 
     ad = client.get_ad(ad_id)
 

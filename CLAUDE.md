@@ -56,13 +56,15 @@ No test suite exists.
 **Data flow (Web):** LeBonCoin URL → `POST /api/ads/preview` → user review/edit → `POST /api/ads/confirm` → PostgreSQL
 
 - `main.py` — CLI dispatcher (add/list/show/stats/export commands)
-- `src/config.py` — Centralized configuration via `pydantic-settings`. `Settings` class loaded from env vars + `.env` file. Cached via `@lru_cache`. Exposes `APP_ENV`, `DATABASE_URL`, `DEBUG`, `CORS_ORIGIN_REGEX`
-- `src/extractor.py` — Fetches ads via the `lbc` library, detects variant/color/wheel type using regex patterns against `VARIANT_PATTERNS`, estimates new price from `NEW_PRICES` catalog
+- `src/config.py` — Centralized configuration via `pydantic-settings`. `Settings` class loaded from env vars + `.env` file. Cached via `@lru_cache`. Exposes `APP_ENV`, `DATABASE_URL`, `DEBUG`, `CORS_ORIGIN_REGEX`, `LBC_PROXY_URL`
+- `src/extractor.py` — Fetches ads via the `lbc` library, detects variant/color/wheel type using regex patterns against `VARIANT_PATTERNS`, estimates new price from `NEW_PRICES` catalog. `get_lbc_client()` factory creates `lbc.Client` with optional residential proxy (from `LBC_PROXY_URL` env var) to bypass Datadome on datacenter IPs
 - `src/models.py` — SQLModel table models (ORM). 8 tables: `Ad`, `AdAttribute`, `AdImage`, `AdAccessory`, `CrawlSession`, `CrawlSessionAd`, `AdPriceHistory`, `AccessoryOverride`. Relationships with cascade delete. All models use SQLModel (SQLAlchemy + Pydantic)
 - `src/database.py` — Engine creation (PostgreSQL via `Settings.database_url`), session management (`get_session()` for FastAPI Depends), Alembic migration runner (`run_migrations()`), CRUD functions (`upsert_ad`, `get_all_ads`, `refresh_accessories`, etc.)
 - `src/accessories.py` — Regex-based accessory detection with deduplication groups. Patterns are ordered specific-before-generic within each group. `EXCLUSION_PATTERNS` strips garage service text before detection. Each accessory has a new price estimate and a 65% depreciation rate for used value
 - `src/analyzer.py` — Ranking algorithm: `effective_price = listed_price - accessories(used) + consumable_wear + mechanical_wear - warranty_value`. Run standalone via `python -m src.analyzer`
-- `src/api.py` — FastAPI REST API with SQLModel sessions via `Depends(get_session)`. Runs `alembic upgrade head` at startup. Exposes ads CRUD, stats, rankings, CSV export. CORS regex from `Settings.cors_origin_regex`. Includes preview/confirm workflow, ad editing, accessory catalog, sold status check, crawl system
+- `src/api.py` — FastAPI REST API with SQLModel sessions via `Depends(get_session)`. Runs `alembic upgrade head` at startup. Exposes ads CRUD, stats, rankings, CSV export. CORS regex from `Settings.cors_origin_regex`. Includes preview/confirm workflow, ad editing, accessory catalog, sold status check, crawl system. If `LBC_SERVICE_URL` is set, delegates LBC calls to the local service
+- `src/lbc_service.py` — Micro-service FastAPI local pour le scraping LeBonCoin. Tourne sur la machine de l'utilisateur (IP residentielle). Expose `/search`, `/fetch-ad`, `/check-ad`, `/check-ads`
+- `src/lbc_client.py` — Client HTTP (httpx) pour appeler le service LBC depuis l'API principale
 - `devproxy.py` — Reverse proxy multi-worktree (stdlib only). Sert le frontend Vite du worktree actif sur localhost:3000. Dashboard à `/_proxy/`, API de contrôle à `/_proxy/api/`
 - `devproxy_register.py` — Helper CLI : `find-ports` (détecte ports libres), `register`/`unregister` (s'enregistre auprès du proxy)
 - `frontend/` — React 19 + TypeScript + Vite + Tailwind CSS v4 + TanStack Query v5 + Recharts + framer-motion. Proxies `/api` to backend via Vite config. Environment config via Vite `.env` files and `src/config.ts`
@@ -91,6 +93,25 @@ No test suite exists.
 - `modeles-prix-neuf.md` — Full catalog of new prices (France, March 2026) with all variants, colors, and wheel types
 - `NEW_PRICES` dict in `extractor.py` — Simplified version used for programmatic price lookup
 - Price reference: Base 5890€ → Mana Black 6590€
+
+## LBC Service (mode split production)
+
+En production, LeBonCoin bloque les IPs datacenter (Railway) via Datadome. L'architecture split delegue les appels LBC a un micro-service tournant sur une machine avec IP residentielle :
+
+```
+Frontend (Vercel) → API (Railway) → Service LBC (chez toi, Docker) → LeBonCoin
+```
+
+- `src/lbc_service.py` — Micro FastAPI avec 4 endpoints : `/search`, `/fetch-ad`, `/check-ad`, `/check-ads`
+- `src/lbc_client.py` — Client HTTP utilise par l'API principale pour appeler le service LBC
+- Si `LBC_SERVICE_URL` est defini, l'API delegue. Sinon, elle appelle LBC directement (mode local)
+
+```bash
+make lbc                    # Demarre le service LBC local (port 8001)
+make tunnel                 # Demarre le service LBC + tunnel Cloudflare
+```
+
+Pour activer sur Railway : `railway variables set LBC_SERVICE_URL=https://ton-tunnel.com`
 
 ## Dev Proxy (multi-worktree)
 
