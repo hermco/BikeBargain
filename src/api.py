@@ -47,7 +47,10 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup():
-    run_migrations()
+    # En production (Railway), les migrations sont lancees par le startCommand
+    # avant uvicorn. En dev local, on les lance au startup.
+    if settings.app_env != "production":
+        run_migrations()
 
 
 # ─── Schemas ─────────────────────────────────────────────────────────────────
