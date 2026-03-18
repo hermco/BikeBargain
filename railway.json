@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "alembic upgrade head && python -c 'from src.api import app; print(\"API import OK\")' && uvicorn src.api:app --host 0.0.0.0 --port $PORT",
+    "startCommand": "alembic upgrade head; echo 'MIGRATIONS DONE'; python -c 'import httpx; print(\"httpx OK\")' 2>&1; python -c 'from src.api import app; print(\"API IMPORT OK\")' 2>&1; uvicorn src.api:app --host 0.0.0.0 --port $PORT",
     "healthcheckPath": "/api/stats",
     "healthcheckTimeout": 600,
     "restartPolicyType": "ON_FAILURE",
