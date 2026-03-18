@@ -1,8 +1,20 @@
-.PHONY: dev install build proxy
+.PHONY: dev install build proxy db db-stop db-reset
+
+include .env
+export
 
 PROXY_PORT ?= 3000
 WORKTREE_NAME := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || basename $(CURDIR))
 WORKTREE_PATH := $(CURDIR)
+
+db:  ## Demarre le container PostgreSQL
+	@docker compose up -d
+
+db-stop:  ## Arrete le container PostgreSQL
+	@docker compose down
+
+db-reset:  ## Supprime le volume et repart de zero
+	@docker compose down -v
 
 dev:  ## Lance le backend + frontend en parallele (ports auto-detectes)
 	$(eval PORTS := $(shell .venv/bin/python devproxy_register.py find-ports))

@@ -15,7 +15,7 @@ Outil d'analyse des annonces de seconde main pour la **Royal Enfield Himalayan 4
 - **Suivi des ventes** : marquage vendu manuel ou vérification automatique en ligne
 - **Historique des prix** à travers les reposts (timeline prix initial → reposts → deltas)
 - **Catalogue accessoires éditable** : surcharge des prix par défaut avec propagation aux annonces
-- **Stockage SQLite** local avec historique
+- **Stockage PostgreSQL** (local via Docker, production via `DATABASE_URL`)
 - **Export CSV** pour analyse dans un tableur
 - **Statistiques** agrégées (prix, km, répartition par variante, accessoires les plus courants)
 - **Interface web** React avec dashboard, classement par décote, gestion des annonces et crawl
@@ -28,6 +28,57 @@ cd ~/Work/himalayan-450-analyzer
 python3 -m venv .venv
 source .venv/bin/activate
 make install
+make db    # Démarre le container PostgreSQL (Docker requis)
+cp .env.example .env   # Configurer les variables d'environnement
+```
+
+## Configuration des environnements
+
+Le projet gère deux environnements : **local** et **production**.
+
+### Backend (pydantic-settings)
+
+Configuration centralisée dans `src/config.py` via `pydantic-settings`. Les variables sont chargées par priorité :
+
+1. Variables d'environnement système (priorité haute)
+2. Fichier `.env` à la racine du projet
+
+| Variable | Description | Défaut |
+|----------|-------------|--------|
+| `APP_ENV` | Environnement (`local` / `production`) | `local` |
+| `DATABASE_URL` | URL PostgreSQL (obligatoire) | — |
+| `DEBUG` | Active les logs SQL et le mode debug FastAPI | `false` |
+| `CORS_ORIGIN_REGEX` | Regex des origines CORS autorisées | `http://localhost:\d+` |
+
+Fichiers :
+- `.env.example` — Documentation de toutes les variables (commité)
+- `.env` — Variables locales avec secrets (gitignored)
+
+### Frontend (Vite .env)
+
+Configuration via le [système d'env natif de Vite](https://vite.dev/guide/env-and-mode). Variables préfixées `VITE_`, résolues au build time.
+
+| Variable | Description | Défaut |
+|----------|-------------|--------|
+| `VITE_API_BASE_URL` | URL de base de l'API. Vide = proxy Vite en dev, même domaine en prod | `""` |
+
+Fichiers (par ordre de priorité) :
+- `frontend/.env.local` — Surcharges locales (gitignored)
+- `frontend/.env.production` — Défauts pour le build production (commité)
+- `frontend/.env` — Défauts partagés pour le dev (commité)
+- `frontend/.env.example` — Documentation (commité)
+
+### Exemple : production
+
+```bash
+# .env (racine)
+APP_ENV=production
+DATABASE_URL=postgresql://user:pass@db.example.com:5432/himalayan_450
+DEBUG=false
+CORS_ORIGIN_REGEX=https://himalayan\.example\.com
+
+# frontend/.env.production (ou .env.local)
+VITE_API_BASE_URL=https://api.example.com
 ```
 
 ## Usage
@@ -67,9 +118,11 @@ Affiche un rapport détaillé de toutes les annonces classées par décote (meil
 ```
 himalayan-450-analyzer/
 ├── main.py                  # CLI principal (add/list/show/stats/export)
+├── .env.example             # Documentation des variables d'environnement
 ├── src/
+│   ├── config.py            # Configuration centralisee (pydantic-settings)
 │   ├── api.py               # API REST FastAPI (25 endpoints)
-│   ├── database.py          # Schéma SQLite et opérations CRUD
+│   ├── database.py          # Engine PostgreSQL, sessions et CRUD
 │   ├── extractor.py         # Extraction LBC + détection variante/couleur
 │   ├── analyzer.py          # Algorithme de scoring et classement
 │   ├── accessories.py       # Détection des accessoires (86 patterns)
@@ -85,9 +138,10 @@ himalayan-450-analyzer/
 │   │   ├── lib/             # Client API et utilitaires
 │   │   └── types.ts         # Types TypeScript
 │   └── ...
-├── Makefile                 # dev / install / build
+├── Makefile                 # dev / install / build / db
+├── docker-compose.yml       # Container PostgreSQL local
 ├── modeles-prix-neuf.md     # Catalogue des prix neuf de référence
-├── himalayan_450.db         # Base SQLite (générée automatiquement)
+├── alembic/                 # Migrations + seed data
 ├── requirements.txt
 └── README.md
 ```
@@ -206,6 +260,47 @@ Le système de crawl permet de scanner LeBonCoin et traiter les résultats par l
 | Performance | Échappement aftermarket, filtre à air, leviers réglables, kit chaîne, pneus |
 | Autre | Antivol, alarme, housse, traceur GPS, kit rally |
 
+## Déploiement
+
+Le projet est séparé en deux services déployés indépendamment :
+
+```
+┌──────────────┐         ┌──────────────────────────┐
+│   Vercel     │  HTTPS  │       Railway            │
+│  (frontend)  │────────→│  (backend + PostgreSQL)  │
+│  React SPA   │  /api/* │  FastAPI + Alembic       │
+└──────────────┘         └──────────────────────────┘
+```
+
+### Frontend → Vercel
+
+1. Créer un projet Vercel lié au repo GitHub
+2. Configuration Vercel :
+   - **Root Directory** : `frontend`
+   - **Framework Preset** : Vite
+   - **Build Command** : `npm run build`
+   - **Output Directory** : `dist`
+3. Variables d'environnement dans les settings Vercel :
+
+| Variable | Valeur |
+|----------|--------|
+| `VITE_API_BASE_URL` | URL du backend Railway (ex: `https://himalayan-450-api.up.railway.app`) |
+
+### Backend → Railway
+
+1. Créer un projet Railway lié au repo GitHub
+2. Ajouter le plugin **PostgreSQL** (fournit automatiquement `DATABASE_URL`)
+3. Variables d'environnement dans Railway :
+
+| Variable | Valeur |
+|----------|--------|
+| `APP_ENV` | `production` |
+| `CORS_ORIGIN_REGEX` | Regex du domaine Vercel (ex: `https://himalayan-450.*\.vercel\.app`) |
+| `DATABASE_URL` | Fourni automatiquement par le plugin PostgreSQL |
+| `DEBUG` | `false` |
+
+Railway détecte automatiquement Python via `requirements.txt` et utilise le `Procfile` pour lancer uvicorn. Les migrations Alembic s'exécutent automatiquement au démarrage.
+
 ## Dépendances
 
 **Backend :**
@@ -213,7 +308,8 @@ Le système de crawl permet de scanner LeBonCoin et traiter les résultats par l
 - [FastAPI](https://fastapi.tiangolo.com/) + uvicorn — API REST
 - [orjson](https://github.com/ijl/orjson) — Sérialisation JSON rapide
 - Python 3.9+
-- SQLite3 (inclus dans Python)
+- PostgreSQL 17+ (local via Docker, `make db`)
+- [SQLModel](https://sqlmodel.tiangolo.com/) + Alembic — ORM et migrations
 
 **Frontend :**
 - React 19 + TypeScript + Vite

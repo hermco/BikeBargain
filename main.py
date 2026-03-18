@@ -15,7 +15,11 @@ import sys
 import csv
 from pathlib import Path
 
-from src.database import get_connection, init_db, upsert_ad, get_all_ads, get_ad_count
+from sqlmodel import Session, select
+from sqlalchemy.orm import selectinload
+
+from src.database import engine, run_migrations, upsert_ad, get_all_ads, get_ad_count, get_accessory_overrides
+from src.models import Ad, AdAttribute, AdAccessory, AdImage
 from src.extractor import fetch_ad, _estimate_new_price
 from src.accessories import estimate_total_accessories_value, ACCESSORY_PATTERNS
 
@@ -36,7 +40,6 @@ def _format_diff(price, new_price) -> str:
 
 
 def _get_available_colors() -> list[str]:
-    """Retourne la liste des couleurs connues depuis le catalogue de prix neuf."""
     from src.extractor import NEW_PRICES
     return sorted(set(info["color"] for info in NEW_PRICES.values()))
 
@@ -45,7 +48,6 @@ def _confirm_extraction(ad_data: dict) -> dict | None:
     """
     Demande confirmation a l'utilisateur avant insertion.
     Permet de corriger la couleur et retirer des accessoires.
-    Retourne ad_data modifie, ou None si l'utilisateur abandonne.
     """
     accessories = ad_data.get("accessories", [])
 
@@ -92,7 +94,6 @@ def _confirm_extraction(ad_data: dict) -> dict | None:
                     ad_data["color"] = c_input
                     break
 
-            # Recalcul du prix neuf avec la nouvelle couleur
             new_price = _estimate_new_price(
                 ad_data.get("variant"), ad_data.get("color"), ad_data.get("wheel_type")
             )
@@ -149,81 +150,75 @@ def _confirm_extraction(ad_data: dict) -> dict | None:
 
 def cmd_add(urls: list[str]) -> None:
     """Ajoute une ou plusieurs annonces a la base."""
-    conn = get_connection()
-    init_db(conn)
-
     import lbc as lbc_lib
     client = lbc_lib.Client()
 
-    for url in urls:
-        url = url.strip()
-        if not url:
-            continue
-
-        print(f"\n{'='*60}")
-        print(f"Extraction : {url}")
-        print(f"{'='*60}")
-
-        try:
-            ad_data = fetch_ad(url, client=client)
-
-            print(f"  ID          : {ad_data['id']}")
-            print(f"  Titre       : {ad_data['subject']}")
-            print(f"  Prix        : {_format_price(ad_data['price'])}")
-            print(f"  Annee       : {ad_data.get('year', 'N/A')}")
-            print(f"  Kilometrage : {ad_data.get('mileage_km', 'N/A')} km")
-            print(f"  Couleur     : {ad_data.get('color', 'N/A')}")
-            print(f"  Variante    : {ad_data.get('variant', 'Non detectee')}")
-            print(f"  Jantes      : {ad_data.get('wheel_type', 'N/A')}")
-            print(f"  Localisation: {ad_data.get('city', '?')}, {ad_data.get('department', '?')}")
-
-            if ad_data.get("estimated_new_price"):
-                print(f"  Prix neuf   : {_format_price(ad_data['estimated_new_price'])}")
-                print(f"  Ecart       : {_format_diff(ad_data['price'], ad_data['estimated_new_price'])}")
-
-            accessories = ad_data.get("accessories", [])
-            if accessories:
-                valuation = estimate_total_accessories_value(accessories)
-                print(f"  Accessoires ({len(accessories)}) - Valeur neuf: {_format_price(valuation['total_new_price'])} / Occasion: ~{_format_price(valuation['total_used_price'])} :")
-                for i, acc in enumerate(accessories, 1):
-                    print(f"    {i}. [{acc['category']:>11}] {acc['name']:<40} (neuf ~{acc['estimated_new_price']} EUR)")
-            else:
-                print("  Accessoires : Aucun detecte")
-
-            # Prix ajuste (prix annonce - valeur occasion accessoires)
-            if ad_data.get("price") and accessories:
-                valuation = estimate_total_accessories_value(accessories)
-                adjusted = ad_data["price"] - valuation["total_used_price"]
-                print(f"\n  >> Prix moto seule (estime) : {_format_price(adjusted)}  (prix annonce - valeur accessoires occasion)")
-                if ad_data.get("estimated_new_price"):
-                    diff_adjusted = adjusted - ad_data["estimated_new_price"]
-                    pct_adjusted = (diff_adjusted / ad_data["estimated_new_price"]) * 100
-                    print(f"  >> Ecart vs neuf (moto seule): {diff_adjusted:+,.0f} EUR ({pct_adjusted:+.1f}%)".replace(",", " "))
-
-            # Confirmation avant insertion
-            ad_data = _confirm_extraction(ad_data)
-            if ad_data is None:
-                print("  >> Annonce ignoree.")
+    with Session(engine) as session:
+        for url in urls:
+            url = url.strip()
+            if not url:
                 continue
 
-            ad_id = upsert_ad(conn, ad_data)
-            print(f"\n  Stocke en base (ID: {ad_id})")
+            print(f"\n{'='*60}")
+            print(f"Extraction : {url}")
+            print(f"{'='*60}")
 
-        except Exception as e:
-            print(f"  ERREUR : {e}")
+            try:
+                overrides = get_accessory_overrides(session)
+                ad_data = fetch_ad(url, client=client, price_overrides=overrides)
 
-    total = get_ad_count(conn)
-    conn.close()
+                print(f"  ID          : {ad_data['id']}")
+                print(f"  Titre       : {ad_data['subject']}")
+                print(f"  Prix        : {_format_price(ad_data['price'])}")
+                print(f"  Annee       : {ad_data.get('year', 'N/A')}")
+                print(f"  Kilometrage : {ad_data.get('mileage_km', 'N/A')} km")
+                print(f"  Couleur     : {ad_data.get('color', 'N/A')}")
+                print(f"  Variante    : {ad_data.get('variant', 'Non detectee')}")
+                print(f"  Jantes      : {ad_data.get('wheel_type', 'N/A')}")
+                print(f"  Localisation: {ad_data.get('city', '?')}, {ad_data.get('department', '?')}")
+
+                if ad_data.get("estimated_new_price"):
+                    print(f"  Prix neuf   : {_format_price(ad_data['estimated_new_price'])}")
+                    print(f"  Ecart       : {_format_diff(ad_data['price'], ad_data['estimated_new_price'])}")
+
+                accessories = ad_data.get("accessories", [])
+                if accessories:
+                    valuation = estimate_total_accessories_value(accessories)
+                    print(f"  Accessoires ({len(accessories)}) - Valeur neuf: {_format_price(valuation['total_new_price'])} / Occasion: ~{_format_price(valuation['total_used_price'])} :")
+                    for i, acc in enumerate(accessories, 1):
+                        print(f"    {i}. [{acc['category']:>11}] {acc['name']:<40} (neuf ~{acc['estimated_new_price']} EUR)")
+                else:
+                    print("  Accessoires : Aucun detecte")
+
+                if ad_data.get("price") and accessories:
+                    valuation = estimate_total_accessories_value(accessories)
+                    adjusted = ad_data["price"] - valuation["total_used_price"]
+                    print(f"\n  >> Prix moto seule (estime) : {_format_price(adjusted)}  (prix annonce - valeur accessoires occasion)")
+                    if ad_data.get("estimated_new_price"):
+                        diff_adjusted = adjusted - ad_data["estimated_new_price"]
+                        pct_adjusted = (diff_adjusted / ad_data["estimated_new_price"]) * 100
+                        print(f"  >> Ecart vs neuf (moto seule): {diff_adjusted:+,.0f} EUR ({pct_adjusted:+.1f}%)".replace(",", " "))
+
+                ad_data = _confirm_extraction(ad_data)
+                if ad_data is None:
+                    print("  >> Annonce ignoree.")
+                    continue
+
+                ad_id = upsert_ad(session, ad_data)
+                print(f"\n  Stocke en base (ID: {ad_id})")
+
+            except Exception as e:
+                print(f"  ERREUR : {e}")
+
+        total = get_ad_count(session)
     print(f"\n{'='*60}")
     print(f"Total annonces en base : {total}")
 
 
 def cmd_list() -> None:
     """Liste toutes les annonces stockees."""
-    conn = get_connection()
-    init_db(conn)
-    ads = get_all_ads(conn)
-    conn.close()
+    with Session(engine) as session:
+        ads = get_all_ads(session)
 
     if not ads:
         print("Aucune annonce en base. Utilisez 'python main.py add <url>' pour en ajouter.")
@@ -251,100 +246,87 @@ def cmd_list() -> None:
 
 def cmd_show(ad_id: str) -> None:
     """Affiche le detail d'une annonce."""
-    conn = get_connection()
-    init_db(conn)
+    with Session(engine) as session:
+        ad = session.get(Ad, int(ad_id))
+        if not ad:
+            print(f"Annonce {ad_id} non trouvee.")
+            return
 
-    row = conn.execute("SELECT * FROM ads WHERE id = ?", (int(ad_id),)).fetchone()
-    if not row:
-        print(f"Annonce {ad_id} non trouvee.")
-        conn.close()
-        return
+        print(f"\n{'='*60}")
+        print(f"  {ad.subject}")
+        print(f"{'='*60}")
+        print(f"  URL           : {ad.url}")
+        print(f"  Prix          : {_format_price(ad.price)}")
+        print(f"  Annee         : {ad.year or 'N/A'}")
+        print(f"  Kilometrage   : {ad.mileage_km or 'N/A'} km")
+        print(f"  Cylindree     : {ad.engine_size_cc or 'N/A'} cc")
+        print(f"  Carburant     : {ad.fuel_type or 'N/A'}")
+        print(f"  Couleur       : {ad.color or 'N/A'}")
+        print(f"  Variante      : {ad.variant or 'Non detectee'}")
+        print(f"  Jantes        : {ad.wheel_type or 'N/A'}")
+        print(f"  Vendeur       : {ad.seller_type or 'N/A'}")
+        print(f"  Localisation  : {ad.city or '?'}, {ad.zipcode or '?'} ({ad.department or '?'})")
+        print(f"  Publication   : {ad.first_publication_date or 'N/A'}")
 
-    ad = dict(row)
+        if ad.estimated_new_price:
+            print(f"  Prix neuf ref : {_format_price(ad.estimated_new_price)}")
+            print(f"  Ecart neuf    : {_format_diff(ad.price, ad.estimated_new_price)}")
 
-    print(f"\n{'='*60}")
-    print(f"  {ad['subject']}")
-    print(f"{'='*60}")
-    print(f"  URL           : {ad['url']}")
-    print(f"  Prix          : {_format_price(ad['price'])}")
-    print(f"  Annee         : {ad.get('year', 'N/A')}")
-    print(f"  Kilometrage   : {ad.get('mileage_km', 'N/A')} km")
-    print(f"  Cylindree     : {ad.get('engine_size_cc', 'N/A')} cc")
-    print(f"  Carburant     : {ad.get('fuel_type', 'N/A')}")
-    print(f"  Couleur       : {ad.get('color', 'N/A')}")
-    print(f"  Variante      : {ad.get('variant', 'Non detectee')}")
-    print(f"  Jantes        : {ad.get('wheel_type', 'N/A')}")
-    print(f"  Vendeur       : {ad.get('seller_type', 'N/A')}")
-    print(f"  Localisation  : {ad.get('city', '?')}, {ad.get('zipcode', '?')} ({ad.get('department', '?')})")
-    print(f"  Publication   : {ad.get('first_publication_date', 'N/A')}")
+        # Attributs
+        attrs = session.exec(
+            select(AdAttribute).where(AdAttribute.ad_id == ad.id).order_by(AdAttribute.key)
+        ).all()
+        if attrs:
+            print(f"\n  Attributs LBC ({len(attrs)}) :")
+            for a in attrs:
+                label = a.value_label or a.value or ""
+                print(f"    {a.key:<25} : {label}")
 
-    if ad.get("estimated_new_price"):
-        print(f"  Prix neuf ref : {_format_price(ad['estimated_new_price'])}")
-        print(f"  Ecart neuf    : {_format_diff(ad['price'], ad['estimated_new_price'])}")
+        # Accessoires
+        accessories = session.exec(
+            select(AdAccessory).where(AdAccessory.ad_id == ad.id).order_by(AdAccessory.category, AdAccessory.name)
+        ).all()
+        if accessories:
+            total_new = sum(a.estimated_new_price or 0 for a in accessories)
+            total_used = sum(a.estimated_used_price or 0 for a in accessories)
+            print(f"\n  Accessoires detectes ({len(accessories)}) — Valeur neuf: {_format_price(total_new)} / Occasion: ~{_format_price(total_used)}")
+            current_cat = None
+            for a in accessories:
+                if a.category != current_cat:
+                    current_cat = a.category
+                    print(f"    [{current_cat}]")
+                price_str = f"~{a.estimated_new_price} EUR neuf" if a.estimated_new_price else ""
+                print(f"      - {a.name:<40} {price_str}")
 
-    # Attributs bruts
-    attrs = conn.execute(
-        "SELECT key, value, value_label FROM ad_attributes WHERE ad_id = ? ORDER BY key",
-        (ad["id"],),
-    ).fetchall()
-    if attrs:
-        print(f"\n  Attributs LBC ({len(attrs)}) :")
-        for a in attrs:
-            label = a["value_label"] or a["value"] or ""
-            print(f"    {a['key']:<25} : {label}")
+            if ad.price and total_used > 0:
+                adjusted = ad.price - total_used
+                print(f"\n  >> Prix moto seule (estime) : {_format_price(adjusted)}")
+                if ad.estimated_new_price:
+                    diff_adj = adjusted - ad.estimated_new_price
+                    pct_adj = (diff_adj / ad.estimated_new_price) * 100
+                    print(f"  >> Ecart vs neuf (moto seule): {diff_adj:+,.0f} EUR ({pct_adj:+.1f}%)".replace(",", " "))
 
-    # Accessoires
-    accessories = conn.execute(
-        "SELECT name, category, source, estimated_new_price, estimated_used_price FROM ad_accessories WHERE ad_id = ? ORDER BY category, name",
-        (ad["id"],),
-    ).fetchall()
-    if accessories:
-        total_new = sum(a["estimated_new_price"] or 0 for a in accessories)
-        total_used = sum(a["estimated_used_price"] or 0 for a in accessories)
-        print(f"\n  Accessoires detectes ({len(accessories)}) — Valeur neuf: {_format_price(total_new)} / Occasion: ~{_format_price(total_used)}")
-        current_cat = None
-        for a in accessories:
-            if a["category"] != current_cat:
-                current_cat = a["category"]
-                print(f"    [{current_cat}]")
-            price_str = f"~{a['estimated_new_price']} EUR neuf" if a["estimated_new_price"] else ""
-            print(f"      - {a['name']:<40} {price_str}")
+        # Images
+        images = session.exec(
+            select(AdImage).where(AdImage.ad_id == ad.id).order_by(AdImage.position)
+        ).all()
+        if images:
+            print(f"\n  Images ({len(images)}) :")
+            for img in images:
+                print(f"    {img.url}")
 
-        # Prix moto seule
-        if ad.get("price") and total_used > 0:
-            adjusted = ad["price"] - total_used
-            print(f"\n  >> Prix moto seule (estime) : {_format_price(adjusted)}")
-            if ad.get("estimated_new_price"):
-                diff_adj = adjusted - ad["estimated_new_price"]
-                pct_adj = (diff_adj / ad["estimated_new_price"]) * 100
-                print(f"  >> Ecart vs neuf (moto seule): {diff_adj:+,.0f} EUR ({pct_adj:+.1f}%)".replace(",", " "))
-
-    # Images
-    images = conn.execute(
-        "SELECT url FROM ad_images WHERE ad_id = ? ORDER BY position",
-        (ad["id"],),
-    ).fetchall()
-    if images:
-        print(f"\n  Images ({len(images)}) :")
-        for img in images:
-            print(f"    {img['url']}")
-
-    # Description
-    if ad.get("body"):
-        print(f"\n  Description :")
-        print(f"  {'-'*50}")
-        for line in ad["body"].splitlines():
-            print(f"    {line}")
-
-    conn.close()
+        # Description
+        if ad.body:
+            print(f"\n  Description :")
+            print(f"  {'-'*50}")
+            for line in ad.body.splitlines():
+                print(f"    {line}")
 
 
 def cmd_stats() -> None:
     """Affiche des statistiques sur les annonces stockees."""
-    conn = get_connection()
-    init_db(conn)
-    ads = get_all_ads(conn)
-    conn.close()
+    with Session(engine) as session:
+        ads = get_all_ads(session)
 
     if not ads:
         print("Aucune annonce en base.")
@@ -374,7 +356,6 @@ def cmd_stats() -> None:
         print(f"    Max     : {max(kms):,} km".replace(",", " "))
         print(f"    Moyenne : {sum(kms)//len(kms):,} km".replace(",", " "))
 
-    # Repartition par variante
     variants = {}
     for a in ads:
         v = a.get("variant") or "Non detectee"
@@ -385,7 +366,6 @@ def cmd_stats() -> None:
             bar = "#" * count
             print(f"    {v:<15} : {count:>3}  {bar}")
 
-    # Repartition par departement
     depts = {}
     for a in ads:
         d = a.get("department") or "Inconnu"
@@ -395,7 +375,6 @@ def cmd_stats() -> None:
         for d, count in sorted(depts.items(), key=lambda x: -x[1])[:10]:
             print(f"    {d:<25} : {count}")
 
-    # Top accessoires
     all_acc = {}
     for a in ads:
         for acc in a.get("accessories", []):
@@ -410,10 +389,8 @@ def cmd_stats() -> None:
 
 def cmd_export() -> None:
     """Exporte toutes les annonces en CSV."""
-    conn = get_connection()
-    init_db(conn)
-    ads = get_all_ads(conn)
-    conn.close()
+    with Session(engine) as session:
+        ads = get_all_ads(session)
 
     if not ads:
         print("Aucune annonce a exporter.")
@@ -439,20 +416,15 @@ def cmd_export() -> None:
                 ecart = ad["price"] - ad["estimated_new_price"]
 
             writer.writerow({
-                "id": ad["id"],
-                "url": ad["url"],
-                "subject": ad["subject"],
-                "price": ad["price"],
-                "year": ad.get("year"),
+                "id": ad["id"], "url": ad["url"], "subject": ad["subject"],
+                "price": ad["price"], "year": ad.get("year"),
                 "mileage_km": ad.get("mileage_km"),
                 "engine_size_cc": ad.get("engine_size_cc"),
-                "color": ad.get("color"),
-                "variant": ad.get("variant"),
+                "color": ad.get("color"), "variant": ad.get("variant"),
                 "wheel_type": ad.get("wheel_type"),
                 "estimated_new_price": ad.get("estimated_new_price"),
                 "ecart_neuf": ecart,
-                "city": ad.get("city"),
-                "zipcode": ad.get("zipcode"),
+                "city": ad.get("city"), "zipcode": ad.get("zipcode"),
                 "department": ad.get("department"),
                 "seller_type": ad.get("seller_type"),
                 "first_publication_date": ad.get("first_publication_date"),
@@ -465,6 +437,8 @@ def cmd_export() -> None:
 
 
 def main():
+    run_migrations()
+
     if len(sys.argv) < 2:
         print(__doc__)
         sys.exit(1)
@@ -476,22 +450,17 @@ def main():
             print("Usage: python main.py add <url> [<url2> ...]")
             sys.exit(1)
         cmd_add(sys.argv[2:])
-
     elif command == "list":
         cmd_list()
-
     elif command == "show":
         if len(sys.argv) < 3:
             print("Usage: python main.py show <id>")
             sys.exit(1)
         cmd_show(sys.argv[2])
-
     elif command == "stats":
         cmd_stats()
-
     elif command == "export":
         cmd_export()
-
     else:
         print(f"Commande inconnue : {command}")
         print(__doc__)

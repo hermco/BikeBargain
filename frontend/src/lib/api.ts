@@ -1,6 +1,7 @@
 import type { AdsResponse, AdDetail, Stats, Ranking, CrawlSearchResult, CrawlExtractResult, PriceHistory } from '../types'
+import { config } from '../config'
 
-const BASE = '/api'
+const BASE = `${config.apiBaseUrl}/api`
 
 async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${url}`, init)

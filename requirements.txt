@@ -2,3 +2,7 @@ lbc>=1.0.0
 fastapi
 uvicorn[standard]
 orjson
+sqlmodel
+alembic
+psycopg2-binary
+pydantic-settings

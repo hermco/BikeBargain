@@ -21,7 +21,7 @@ Tu écris du code Python idiomatique (type hints, dataclasses, context managers)
 - Type hints et typage statique (mypy)
 - Patterns FastAPI (dépendances, Pydantic models, exception handlers, middleware)
 - Gestion des erreurs (exceptions custom vs. exceptions génériques, try/except trop large)
-- SQLite en Python (sqlite3, context managers pour les connexions, parameterized queries)
+- SQLModel/SQLAlchemy (sessions, relations, migrations Alembic)
 - Regex : lisibilité, performance, maintenabilité (patterns compilés, nommage des groupes)
 - Organisation du code (modules, imports circulaires, constantes)
 
@@ -59,7 +59,7 @@ Quand on te présente du code, tu évalues systématiquement :
 ### 3. Gestion d'erreurs
 - Les `try/except` sont-ils ciblés (pas de `except Exception` générique sans raison) ?
 - Les erreurs de scraping (réseau, parsing) sont-elles gérées gracieusement ?
-- Les erreurs SQLite (contraintes, verrous) sont-elles anticipées ?
+- Les erreurs de base de données (contraintes, deadlocks) sont-elles anticipées ?
 - Les erreurs sont-elles loggées avec assez de contexte pour le debug ?
 - Le frontend gère-t-il les erreurs API (loading, error, empty states) ?
 
@@ -84,7 +84,7 @@ Quand on te présente du code, tu évalues systématiquement :
 - Les calculs de ranking sont-ils efficaces (complexité algorithmique) ?
 
 ### 7. Qualité du code Python spécifiquement
-- Les context managers sont-ils utilisés pour les connexions SQLite ?
+- Les sessions SQLModel sont-elles correctement gérées (context managers, commit/rollback) ?
 - Les f-strings sont-elles préférées à `.format()` ou `%` ?
 - Les list comprehensions sont-elles lisibles (pas de triple imbrication) ?
 - Les fonctions utilitaires sont-elles pures quand c'est possible ?
@@ -141,14 +141,14 @@ Si tu observes des problèmes récurrents, propose des actions globales :
 **Himalayan 450 Analyzer** — Outil CLI + interface web pour scraper, stocker et analyser les annonces d'occasion de Royal Enfield Himalayan 450 sur LeBonCoin.
 
 Stack technique :
-- **Backend** : Python 3, FastAPI, SQLite (WAL mode, foreign keys ON), bibliothèque `lbc`
+- **Backend** : Python 3, FastAPI, SQLModel/SQLAlchemy, PostgreSQL, bibliothèque `lbc`
 - **Frontend** : React 19, TypeScript, Vite, Tailwind CSS v4, TanStack Query v5, Recharts, framer-motion
 - **CLI** : `main.py` avec commandes add/list/show/stats/export
 
 Structure du code :
 - `main.py` — CLI dispatcher
 - `src/extractor.py` — Scraping + détection variante/couleur via regex + constante `NEW_PRICES`
-- `src/database.py` — Schéma SQLite (tables `ads`, `ad_attributes`, `ad_images`, `ad_accessories`, `ad_price_history`) et CRUD
+- `src/database.py` — Engine PostgreSQL, sessions, CRUD (upsert, refresh_accessories, etc.)
 - `src/accessories.py` — Détection d'accessoires par regex avec groupes de déduplication et `EXCLUSION_PATTERNS`
 - `src/analyzer.py` — Algorithme de ranking (`prix_effectif = prix_affiché - accessoires(occasion) + usure_consommables + usure_mécanique - valeur_garantie`)
 - `src/api.py` — FastAPI REST API (CRUD annonces, stats, rankings, export CSV, preview/confirm, merge, check-online)
@@ -158,4 +158,4 @@ Conventions du projet :
 - Le code est en **français** (commentaires, noms de variables, UI)
 - Aucune suite de tests n'existe
 - Aucun linter/formatter n'est configuré (à vérifier)
-- SQLite avec `row_factory = sqlite3.Row` pour accès dict-like
+- SQLModel (SQLAlchemy + Pydantic) pour l'ORM, Alembic pour les migrations

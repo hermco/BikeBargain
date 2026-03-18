@@ -1,358 +1,236 @@
 """
-Base de donnees SQLite pour stocker les annonces Himalayan 450.
+Database engine et session management.
+
+PostgreSQL uniquement, via DATABASE_URL (fichier .env ou variable d'environnement).
 """
 
-import sqlite3
 from pathlib import Path
 from datetime import datetime
-from typing import Optional
 
-DB_PATH = Path(__file__).resolve().parent.parent / "himalayan_450.db"
+from sqlmodel import SQLModel, Session, create_engine, select
+from sqlalchemy.orm import selectinload
 
+# Import des modeles pour enregistrer les tables dans SQLModel.metadata
+from .models import (  # noqa: F401
+    Ad, AdAttribute, AdImage, AdAccessory,
+    CrawlSession, CrawlSessionAd, AdPriceHistory, AccessoryOverride,
+)
+from .config import get_settings
 
-def get_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
-    """Retourne une connexion SQLite avec row_factory activee."""
-    path = db_path or DB_PATH
-    conn = sqlite3.connect(str(path))
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA foreign_keys=ON")
-    return conn
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-
-def init_db(conn: sqlite3.Connection) -> None:
-    """Cree le schema si les tables n'existent pas encore."""
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS ads (
-            id              INTEGER PRIMARY KEY,
-            url             TEXT NOT NULL UNIQUE,
-            subject         TEXT,
-            body            TEXT,
-            price           REAL,
-            brand           TEXT,
-            model           TEXT,
-            year            INTEGER,
-            mileage_km      INTEGER,
-            engine_size_cc  INTEGER,
-            fuel_type       TEXT,
-            color           TEXT,
-            category_name   TEXT,
-            ad_type         TEXT,
-            status          TEXT,
-            has_phone       INTEGER DEFAULT 0,
-            -- Localisation
-            city            TEXT,
-            zipcode         TEXT,
-            department      TEXT,
-            region          TEXT,
-            lat             REAL,
-            lng             REAL,
-            -- Infos vendeur
-            seller_type     TEXT,   -- 'pro' ou 'private'
-            -- Dates
-            first_publication_date TEXT,
-            expiration_date        TEXT,
-            -- Analyse Himalayan
-            variant         TEXT,   -- Base / Pass / Summit / Mana Black
-            wheel_type      TEXT,   -- standard / tubeless
-            estimated_new_price REAL,
-            -- Meta
-            extracted_at    TEXT NOT NULL DEFAULT (datetime('now')),
-            updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
-        );
-
-        CREATE TABLE IF NOT EXISTS ad_attributes (
-            id      INTEGER PRIMARY KEY AUTOINCREMENT,
-            ad_id   INTEGER NOT NULL REFERENCES ads(id) ON DELETE CASCADE,
-            key     TEXT NOT NULL,
-            value   TEXT,
-            value_label TEXT,
-            UNIQUE(ad_id, key)
-        );
-
-        CREATE TABLE IF NOT EXISTS ad_images (
-            id      INTEGER PRIMARY KEY AUTOINCREMENT,
-            ad_id   INTEGER NOT NULL REFERENCES ads(id) ON DELETE CASCADE,
-            url     TEXT NOT NULL,
-            position INTEGER DEFAULT 0
-        );
-
-        CREATE TABLE IF NOT EXISTS ad_accessories (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            ad_id       INTEGER NOT NULL REFERENCES ads(id) ON DELETE CASCADE,
-            name        TEXT NOT NULL,
-            category    TEXT,  -- 'protection', 'bagagerie', 'confort', 'navigation', 'eclairage', 'esthetique', 'performance', 'autre'
-            source      TEXT,  -- 'body' ou 'attribute'
-            estimated_new_price   INTEGER DEFAULT 0,
-            estimated_used_price  INTEGER DEFAULT 0,
-            UNIQUE(ad_id, name)
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_ads_price ON ads(price);
-        CREATE INDEX IF NOT EXISTS idx_ads_year ON ads(year);
-        CREATE INDEX IF NOT EXISTS idx_ads_mileage ON ads(mileage_km);
-        CREATE INDEX IF NOT EXISTS idx_ads_variant ON ads(variant);
-        CREATE INDEX IF NOT EXISTS idx_ads_department ON ads(department);
-        CREATE INDEX IF NOT EXISTS idx_ad_attributes_ad_id ON ad_attributes(ad_id);
-        CREATE INDEX IF NOT EXISTS idx_ad_accessories_ad_id ON ad_accessories(ad_id);
-
-        -- Sessions de crawl (persistance des resultats de recherche)
-        CREATE TABLE IF NOT EXISTS crawl_sessions (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            status      TEXT NOT NULL DEFAULT 'active',  -- 'active', 'done'
-            total_ads   INTEGER NOT NULL DEFAULT 0,
-            created_at  TEXT NOT NULL DEFAULT (datetime('now'))
-        );
-
-        CREATE TABLE IF NOT EXISTS crawl_session_ads (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id  INTEGER NOT NULL REFERENCES crawl_sessions(id) ON DELETE CASCADE,
-            ad_id       INTEGER NOT NULL,
-            url         TEXT NOT NULL,
-            subject     TEXT,
-            price       REAL,
-            city        TEXT,
-            department  TEXT,
-            thumbnail   TEXT,
-            exists_in_db INTEGER DEFAULT 0,
-            action      TEXT NOT NULL DEFAULT 'pending',  -- 'pending', 'confirmed', 'skipped', 'error'
-            position    INTEGER DEFAULT 0,
-            UNIQUE(session_id, ad_id)
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_crawl_session_ads_session ON crawl_session_ads(session_id);
-
-        -- Historique des prix (reposts, baisses de prix)
-        CREATE TABLE IF NOT EXISTS ad_price_history (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            ad_id       INTEGER NOT NULL REFERENCES ads(id) ON DELETE CASCADE,
-            previous_ad_id INTEGER,  -- l'ancienne annonce remplacee (si repost)
-            price       REAL NOT NULL,
-            source      TEXT NOT NULL,  -- 'initial', 'repost', 'manual'
-            note        TEXT,
-            recorded_at TEXT NOT NULL DEFAULT (datetime('now'))
-        );
-        CREATE INDEX IF NOT EXISTS idx_ad_price_history_ad ON ad_price_history(ad_id);
-
-        -- Surcharges utilisateur des prix du catalogue d'accessoires
-        CREATE TABLE IF NOT EXISTS accessory_overrides (
-            group_key           TEXT PRIMARY KEY,
-            estimated_new_price INTEGER NOT NULL
-        );
-    """)
-    conn.commit()
-
-    # Migrations
-    cols = [r[1] for r in conn.execute("PRAGMA table_info(ads)").fetchall()]
-    if "accessories_manual" not in cols:
-        conn.execute("ALTER TABLE ads ADD COLUMN accessories_manual INTEGER NOT NULL DEFAULT 0")
-        conn.commit()
-    if "sold" not in cols:
-        conn.execute("ALTER TABLE ads ADD COLUMN sold INTEGER NOT NULL DEFAULT 0")
-        conn.commit()
-    if "previous_ad_id" not in cols:
-        conn.execute("ALTER TABLE ads ADD COLUMN previous_ad_id INTEGER")
-        conn.commit()
-    if "superseded_by" not in cols:
-        conn.execute("ALTER TABLE ads ADD COLUMN superseded_by INTEGER")
-        # Migration : marquer les anciennes annonces deja fusionnees
-        conn.execute("""
-            UPDATE ads SET superseded_by = (
-                SELECT a2.id FROM ads a2 WHERE a2.previous_ad_id = ads.id
-            )
-            WHERE EXISTS (SELECT 1 FROM ads a2 WHERE a2.previous_ad_id = ads.id)
-        """)
-        conn.commit()
+settings = get_settings()
 
 
-def upsert_ad(conn: sqlite3.Connection, ad_data: dict) -> int:
-    """
-    Insere ou met a jour une annonce.
-    Retourne l'id de l'annonce.
-    """
+def get_database_url() -> str:
+    """Retourne l'URL de la base de donnees (pour Alembic et compatibilite)."""
+    return settings.database_url_normalized
+
+
+engine = create_engine(get_database_url(), echo=settings.debug)
+
+
+def get_session():
+    """Generateur de session pour FastAPI Depends."""
+    with Session(engine) as session:
+        yield session
+
+
+def run_migrations():
+    """Execute les migrations Alembic (alembic upgrade head)."""
+    from alembic.config import Config
+    from alembic import command
+
+    alembic_cfg = Config(str(PROJECT_ROOT / "alembic.ini"))
+    command.upgrade(alembic_cfg, "head")
+
+
+# ─── CRUD ────────────────────────────────────────────────────────────────────
+
+# Champs de la table ads qu'on peut inserer/mettre a jour depuis un dict
+_AD_FIELDS = [
+    "id", "url", "subject", "body", "price", "brand", "model",
+    "year", "mileage_km", "engine_size_cc", "fuel_type", "color",
+    "category_name", "ad_type", "status", "has_phone",
+    "city", "zipcode", "department", "region", "lat", "lng",
+    "seller_type", "first_publication_date", "expiration_date",
+    "variant", "wheel_type", "estimated_new_price",
+    "previous_ad_id",
+]
+
+
+def upsert_ad(session: Session, ad_data: dict) -> int:
+    """Insere ou met a jour une annonce. Retourne l'id."""
     now = datetime.now().isoformat()
 
-    # Champs principaux
-    fields = [
-        "id", "url", "subject", "body", "price", "brand", "model",
-        "year", "mileage_km", "engine_size_cc", "fuel_type", "color",
-        "category_name", "ad_type", "status", "has_phone",
-        "city", "zipcode", "department", "region", "lat", "lng",
-        "seller_type", "first_publication_date", "expiration_date",
-        "variant", "wheel_type", "estimated_new_price",
-        "previous_ad_id",
-    ]
-
-    values = {f: ad_data.get(f) for f in fields}
-    values["updated_at"] = now
-
-    # Verifie si l'annonce existe deja
-    existing = conn.execute("SELECT id FROM ads WHERE id = ?", (values["id"],)).fetchone()
+    existing = session.get(Ad, ad_data["id"])
 
     if existing:
-        set_clause = ", ".join(f"{f} = :{f}" for f in fields if f != "id")
-        set_clause += ", updated_at = :updated_at"
-        conn.execute(f"UPDATE ads SET {set_clause} WHERE id = :id", values)
+        for f in _AD_FIELDS:
+            if f != "id":
+                setattr(existing, f, ad_data.get(f))
+        existing.updated_at = now
+        ad = existing
     else:
-        values["extracted_at"] = now
-        cols = ", ".join(values.keys())
-        placeholders = ", ".join(f":{k}" for k in values.keys())
-        conn.execute(f"INSERT INTO ads ({cols}) VALUES ({placeholders})", values)
-
-    ad_id = values["id"]
+        ad_fields = {f: ad_data.get(f) for f in _AD_FIELDS}
+        ad_fields["extracted_at"] = now
+        ad_fields["updated_at"] = now
+        ad = Ad(**ad_fields)
+        session.add(ad)
+        session.flush()
 
     # Attributs
     if "attributes" in ad_data:
-        conn.execute("DELETE FROM ad_attributes WHERE ad_id = ?", (ad_id,))
-        for attr in ad_data["attributes"]:
-            conn.execute(
-                "INSERT OR IGNORE INTO ad_attributes (ad_id, key, value, value_label) VALUES (?, ?, ?, ?)",
-                (ad_id, attr["key"], attr.get("value"), attr.get("value_label")),
-            )
+        _replace_attributes(session, ad.id, ad_data["attributes"])
 
     # Images
     if "images" in ad_data:
-        conn.execute("DELETE FROM ad_images WHERE ad_id = ?", (ad_id,))
-        for i, url in enumerate(ad_data["images"]):
-            conn.execute(
-                "INSERT INTO ad_images (ad_id, url, position) VALUES (?, ?, ?)",
-                (ad_id, url, i),
-            )
+        _replace_images(session, ad.id, ad_data["images"])
 
     # Accessoires
     if "accessories" in ad_data:
-        conn.execute("DELETE FROM ad_accessories WHERE ad_id = ?", (ad_id,))
-        for acc in ad_data["accessories"]:
-            conn.execute(
-                "INSERT OR IGNORE INTO ad_accessories (ad_id, name, category, source, estimated_new_price, estimated_used_price) VALUES (?, ?, ?, ?, ?, ?)",
-                (ad_id, acc["name"], acc.get("category"), acc.get("source"), acc.get("estimated_new_price", 0), acc.get("estimated_used_price", 0)),
-            )
+        _replace_accessories(session, ad.id, ad_data["accessories"])
 
-    conn.commit()
-    return ad_id
+    session.commit()
+    session.refresh(ad)
+    return ad.id
 
 
-def get_all_ads(conn: sqlite3.Connection, *, include_superseded: bool = False) -> list[dict]:
-    """Retourne toutes les annonces avec leurs accessoires.
+def _replace_attributes(session: Session, ad_id: int, attributes: list[dict]) -> None:
+    for attr in session.exec(select(AdAttribute).where(AdAttribute.ad_id == ad_id)).all():
+        session.delete(attr)
+    session.flush()
+    for attr in attributes:
+        session.add(AdAttribute(
+            ad_id=ad_id, key=attr["key"],
+            value=attr.get("value"), value_label=attr.get("value_label"),
+        ))
 
-    Args:
-        include_superseded: Si True, inclut aussi les annonces remplacees par un repost.
-    """
-    if include_superseded:
-        rows = conn.execute("SELECT * FROM ads ORDER BY price ASC").fetchall()
-    else:
-        rows = conn.execute("SELECT * FROM ads WHERE superseded_by IS NULL ORDER BY price ASC").fetchall()
+
+def _replace_images(session: Session, ad_id: int, images: list[str]) -> None:
+    for img in session.exec(select(AdImage).where(AdImage.ad_id == ad_id)).all():
+        session.delete(img)
+    session.flush()
+    for i, url in enumerate(images):
+        session.add(AdImage(ad_id=ad_id, url=url, position=i))
+
+
+def _replace_accessories(session: Session, ad_id: int, accessories: list[dict]) -> None:
+    for acc in session.exec(select(AdAccessory).where(AdAccessory.ad_id == ad_id)).all():
+        session.delete(acc)
+    session.flush()
+    for acc in accessories:
+        session.add(AdAccessory(
+            ad_id=ad_id, name=acc["name"],
+            category=acc.get("category"), source=acc.get("source"),
+            estimated_new_price=acc.get("estimated_new_price", 0),
+            estimated_used_price=acc.get("estimated_used_price", 0),
+        ))
+
+
+def get_all_ads(session: Session, *, include_superseded: bool = False) -> list[dict]:
+    """Retourne toutes les annonces avec leurs accessoires et images."""
+    statement = (
+        select(Ad)
+        .options(selectinload(Ad.accessories), selectinload(Ad.images))
+        .order_by(Ad.price)
+    )
+    if not include_superseded:
+        statement = statement.where(Ad.superseded_by == None)  # noqa: E711
+
+    ads = session.exec(statement).all()
     results = []
-    for row in rows:
-        ad = dict(row)
-        ad["accessories"] = [
-            dict(r) for r in conn.execute(
-                "SELECT name, category, source, estimated_new_price, estimated_used_price FROM ad_accessories WHERE ad_id = ?",
-                (ad["id"],),
-            ).fetchall()
+    for ad in ads:
+        d = _ad_to_dict(ad)
+        d["accessories"] = [
+            {"name": a.name, "category": a.category, "source": a.source,
+             "estimated_new_price": a.estimated_new_price, "estimated_used_price": a.estimated_used_price}
+            for a in ad.accessories
         ]
-        ad["images"] = [
-            r["url"] for r in conn.execute(
-                "SELECT url FROM ad_images WHERE ad_id = ? ORDER BY position",
-                (ad["id"],),
-            ).fetchall()
-        ]
-        results.append(ad)
+        d["images"] = [img.url for img in sorted(ad.images, key=lambda x: x.position)]
+        results.append(d)
     return results
 
 
+def _ad_to_dict(ad: Ad) -> dict:
+    """Convertit un Ad en dict (colonnes uniquement, sans relations)."""
+    return {c.name: getattr(ad, c.name) for c in Ad.__table__.columns}
+
+
 def refresh_accessories(
-    conn: sqlite3.Connection,
+    session: Session,
     *,
     skip_manual: bool = False,
     ad_ids: list[int] | None = None,
 ) -> list[dict]:
-    """
-    Re-detecte les accessoires des annonces en base
-    en relancant les regex sur le body stocke.
-
-    Utile apres une mise a jour des patterns dans accessories.py.
-
-    Args:
-        skip_manual: Si True, ignore les annonces dont les accessoires
-            ont ete modifies manuellement par l'utilisateur.
-        ad_ids: Si fourni, ne traite que ces annonces.
-
-    Returns:
-        Liste de dicts avec le resume par annonce :
-        {"id": int, "city": str, "before": int, "after": int}
-    """
+    """Re-detecte les accessoires en base."""
     from .accessories import detect_accessories
 
-    overrides = get_accessory_overrides(conn)
+    overrides = get_accessory_overrides(session)
 
-    query = "SELECT id, city, body, accessories_manual FROM ads"
-    params: list = []
-    clauses = []
-
+    statement = select(Ad)
     if skip_manual:
-        clauses.append("accessories_manual = 0")
+        statement = statement.where(Ad.accessories_manual == 0)
     if ad_ids is not None:
-        placeholders = ",".join("?" for _ in ad_ids)
-        clauses.append(f"id IN ({placeholders})")
-        params.extend(ad_ids)
+        statement = statement.where(Ad.id.in_(ad_ids))
 
-    if clauses:
-        query += " WHERE " + " AND ".join(clauses)
-
-    rows = conn.execute(query, params).fetchall()
+    ads = session.exec(statement.options(selectinload(Ad.accessories))).all()
     results = []
 
-    for row in rows:
-        ad_id, city, body = row["id"], row["city"], row["body"]
+    for ad in ads:
+        before = len(ad.accessories)
+        detected = detect_accessories(ad.body or "", price_overrides=overrides)
 
-        before = conn.execute(
-            "SELECT COUNT(*) FROM ad_accessories WHERE ad_id = ?", (ad_id,)
-        ).fetchone()[0]
+        # Supprimer les anciens
+        for acc in session.exec(select(AdAccessory).where(AdAccessory.ad_id == ad.id)).all():
+            session.delete(acc)
+        session.flush()
 
-        accessories = detect_accessories(body or "", price_overrides=overrides)
-
-        conn.execute("DELETE FROM ad_accessories WHERE ad_id = ?", (ad_id,))
-        for acc in accessories:
-            conn.execute(
-                "INSERT OR IGNORE INTO ad_accessories (ad_id, name, category, source, estimated_new_price, estimated_used_price) VALUES (?, ?, ?, ?, ?, ?)",
-                (ad_id, acc["name"], acc.get("category"), acc.get("source"),
-                 acc.get("estimated_new_price", 0), acc.get("estimated_used_price", 0)),
-            )
+        # Inserer les nouveaux
+        for acc in detected:
+            session.add(AdAccessory(
+                ad_id=ad.id, name=acc["name"],
+                category=acc.get("category"), source=acc.get("source"),
+                estimated_new_price=acc.get("estimated_new_price", 0),
+                estimated_used_price=acc.get("estimated_used_price", 0),
+            ))
 
         results.append({
-            "id": ad_id,
-            "city": city,
-            "before": before,
-            "after": len(accessories),
+            "id": ad.id, "city": ad.city,
+            "before": before, "after": len(detected),
         })
 
-    conn.commit()
+    session.commit()
     return results
 
 
-def get_accessory_overrides(conn: sqlite3.Connection) -> dict[str, int]:
+def get_accessory_overrides(session: Session) -> dict[str, int]:
     """Retourne les surcharges de prix {group_key: estimated_new_price}."""
-    rows = conn.execute("SELECT group_key, estimated_new_price FROM accessory_overrides").fetchall()
-    return {r["group_key"]: r["estimated_new_price"] for r in rows}
+    rows = session.exec(select(AccessoryOverride)).all()
+    return {r.group_key: r.estimated_new_price for r in rows}
 
 
-def set_accessory_override(conn: sqlite3.Connection, group_key: str, estimated_new_price: int) -> None:
+def set_accessory_override(session: Session, group_key: str, estimated_new_price: int) -> None:
     """Enregistre ou met a jour la surcharge de prix d'un groupe d'accessoires."""
-    conn.execute(
-        "INSERT INTO accessory_overrides (group_key, estimated_new_price) VALUES (?, ?) "
-        "ON CONFLICT(group_key) DO UPDATE SET estimated_new_price = excluded.estimated_new_price",
-        (group_key, estimated_new_price),
-    )
-    conn.commit()
+    existing = session.get(AccessoryOverride, group_key)
+    if existing:
+        existing.estimated_new_price = estimated_new_price
+    else:
+        session.add(AccessoryOverride(group_key=group_key, estimated_new_price=estimated_new_price))
+    session.commit()
 
 
-def delete_accessory_override(conn: sqlite3.Connection, group_key: str) -> None:
-    """Supprime la surcharge de prix d'un groupe (revient au prix par defaut)."""
-    conn.execute("DELETE FROM accessory_overrides WHERE group_key = ?", (group_key,))
-    conn.commit()
+def delete_accessory_override(session: Session, group_key: str) -> None:
+    """Supprime la surcharge de prix d'un groupe."""
+    existing = session.get(AccessoryOverride, group_key)
+    if existing:
+        session.delete(existing)
+        session.commit()
 
 
-def get_ad_count(conn: sqlite3.Connection) -> int:
-    """Retourne le nombre total d'annonces actives en base (hors superseded)."""
-    return conn.execute("SELECT COUNT(*) FROM ads WHERE superseded_by IS NULL").fetchone()[0]
+def get_ad_count(session: Session) -> int:
+    """Nombre total d'annonces actives (hors superseded)."""
+    from sqlalchemy import func
+    return session.exec(
+        select(func.count()).select_from(Ad).where(Ad.superseded_by == None)  # noqa: E711
+    ).one()

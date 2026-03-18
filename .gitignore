@@ -4,7 +4,7 @@ __pycache__/
 *.egg-info/
 .venv/
 
-# SQLite databases
+# Database
 *.db
 
 # Exports
@@ -13,6 +13,11 @@ export_annonces.csv
 # Frontend
 frontend/node_modules/
 frontend/dist/
+
+# Env (secrets — .env.example est commite)
+.env
+.env.local
+.env.*.local
 
 # OS
 .DS_Store

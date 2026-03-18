@@ -13,7 +13,8 @@ Usage :
 from datetime import date, datetime
 from typing import Optional
 
-from .database import get_connection, get_all_ads
+from sqlmodel import Session
+from .database import engine, get_all_ads
 
 # ─── CONSOMMABLES (tarif garage : pieces + main d'oeuvre) ─────────────────────
 
@@ -186,9 +187,8 @@ def rank_ads(today: Optional[date] = None) -> list[dict]:
     Returns:
         Liste de dicts tries par decote decroissante (meilleur deal en premier).
     """
-    conn = get_connection()
-    ads = get_all_ads(conn)
-    conn.close()
+    with Session(engine) as session:
+        ads = get_all_ads(session)
 
     results = []
 

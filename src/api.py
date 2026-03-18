@@ -6,31 +6,48 @@ Expose les fonctions existantes (database, extractor, analyzer) via des endpoint
 
 import csv
 import io
+from datetime import datetime
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from sqlmodel import Session, select
+from sqlalchemy import func
+from sqlalchemy.orm import selectinload
 
-from .database import get_connection, init_db, upsert_ad, get_all_ads, get_ad_count, get_accessory_overrides, set_accessory_override, delete_accessory_override, refresh_accessories
+from .models import (
+    Ad, AdAttribute, AdImage, AdAccessory,
+    CrawlSession, CrawlSessionAd, AdPriceHistory, AccessoryOverride,
+)
+from .database import (
+    get_session, run_migrations, upsert_ad, get_all_ads, get_ad_count,
+    get_accessory_overrides, set_accessory_override, delete_accessory_override,
+    refresh_accessories, _ad_to_dict, _replace_accessories,
+)
 from .analyzer import rank_ads
 from .accessories import estimate_total_accessories_value, ACCESSORY_PATTERNS, DEPRECIATION_RATE
+from .config import get_settings
 
-app = FastAPI(title="Himalayan 450 Analyzer API")
+settings = get_settings()
+
+app = FastAPI(
+    title="Himalayan 450 Analyzer API",
+    debug=settings.debug,
+)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"http://localhost:\d+",
+    allow_origin_regex=settings.cors_origin_regex,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-def _get_db():
-    conn = get_connection()
-    init_db(conn)
-    return conn
+@app.on_event("startup")
+def on_startup():
+    run_migrations()
 
 
 # ─── Schemas ─────────────────────────────────────────────────────────────────
@@ -40,12 +57,10 @@ class AddAdRequest(BaseModel):
 
 
 class ConfirmAdRequest(BaseModel):
-    """Donnees d'annonce validees par l'utilisateur apres preview."""
     ad_data: dict
 
 
 class UpdateAdRequest(BaseModel):
-    """Champs modifiables d'une annonce existante."""
     color: str | None = None
     variant: str | None = None
     wheel_type: str | None = None
@@ -62,13 +77,10 @@ def list_ads(
     max_price: Optional[float] = Query(None),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
+    session: Session = Depends(get_session),
 ):
-    """Liste les annonces avec filtres optionnels."""
-    conn = _get_db()
-    ads = get_all_ads(conn)
-    conn.close()
+    ads = get_all_ads(session)
 
-    # Filtrage
     if variant:
         ads = [a for a in ads if a.get("variant") == variant]
     if min_price is not None:
@@ -78,59 +90,47 @@ def list_ads(
 
     total = len(ads)
     ads = ads[offset:offset + limit]
-
     return {"total": total, "ads": ads}
 
 
 @app.get("/api/ads/{ad_id}")
-def get_ad(ad_id: int):
-    """Detail complet d'une annonce."""
-    conn = _get_db()
-    row = conn.execute("SELECT * FROM ads WHERE id = ?", (ad_id,)).fetchone()
-    if not row:
-        conn.close()
+def get_ad(ad_id: int, session: Session = Depends(get_session)):
+    ad = session.get(Ad, ad_id)
+    if not ad:
         raise HTTPException(status_code=404, detail="Annonce non trouvee")
 
-    ad = dict(row)
+    result = _ad_to_dict(ad)
 
-    # Accessoires
-    ad["accessories"] = [
-        dict(r) for r in conn.execute(
-            "SELECT name, category, source, estimated_new_price, estimated_used_price "
-            "FROM ad_accessories WHERE ad_id = ? ORDER BY category, name",
-            (ad_id,),
-        ).fetchall()
+    result["accessories"] = [
+        {"name": a.name, "category": a.category, "source": a.source,
+         "estimated_new_price": a.estimated_new_price, "estimated_used_price": a.estimated_used_price}
+        for a in session.exec(
+            select(AdAccessory).where(AdAccessory.ad_id == ad_id).order_by(AdAccessory.category, AdAccessory.name)
+        ).all()
     ]
 
-    # Images
-    ad["images"] = [
-        r["url"] for r in conn.execute(
-            "SELECT url FROM ad_images WHERE ad_id = ? ORDER BY position",
-            (ad_id,),
-        ).fetchall()
+    result["images"] = [
+        img.url for img in session.exec(
+            select(AdImage).where(AdImage.ad_id == ad_id).order_by(AdImage.position)
+        ).all()
     ]
 
-    # Attributs
-    ad["attributes"] = [
-        dict(r) for r in conn.execute(
-            "SELECT key, value, value_label FROM ad_attributes WHERE ad_id = ? ORDER BY key",
-            (ad_id,),
-        ).fetchall()
+    result["attributes"] = [
+        {"key": a.key, "value": a.value, "value_label": a.value_label}
+        for a in session.exec(
+            select(AdAttribute).where(AdAttribute.ad_id == ad_id).order_by(AdAttribute.key)
+        ).all()
     ]
 
-    conn.close()
-    return ad
+    return result
 
 
 @app.post("/api/ads/preview")
-def preview_ad(req: AddAdRequest):
-    """Extrait une annonce sans la sauvegarder, pour verification par l'utilisateur."""
+def preview_ad(req: AddAdRequest, session: Session = Depends(get_session)):
     from .extractor import fetch_ad
     import lbc as lbc_lib
 
-    conn = _get_db()
-    overrides = get_accessory_overrides(conn)
-    conn.close()
+    overrides = get_accessory_overrides(session)
 
     try:
         client = lbc_lib.Client()
@@ -142,38 +142,29 @@ def preview_ad(req: AddAdRequest):
 
 
 @app.post("/api/ads/confirm")
-def confirm_ad(req: ConfirmAdRequest):
-    """Sauvegarde une annonce apres verification/modification par l'utilisateur."""
+def confirm_ad(req: ConfirmAdRequest, session: Session = Depends(get_session)):
     from .extractor import _estimate_new_price
 
     ad_data = req.ad_data
-
     if not ad_data.get("id"):
         raise HTTPException(status_code=400, detail="Donnees d'annonce invalides (id manquant)")
 
-    # Recalculer le prix neuf si variante/couleur/jantes ont change
     new_price = _estimate_new_price(
         ad_data.get("variant"), ad_data.get("color"), ad_data.get("wheel_type")
     )
     if new_price:
         ad_data["estimated_new_price"] = new_price
 
-    conn = _get_db()
-    ad_id = upsert_ad(conn, ad_data)
-    conn.close()
-
+    ad_id = upsert_ad(session, ad_data)
     return {"id": ad_id, "subject": ad_data.get("subject"), "price": ad_data.get("price")}
 
 
 @app.post("/api/ads")
-def add_ad(req: AddAdRequest):
-    """Ajoute une annonce via URL LeBonCoin (sans preview)."""
+def add_ad(req: AddAdRequest, session: Session = Depends(get_session)):
     from .extractor import fetch_ad
     import lbc as lbc_lib
 
-    conn_tmp = _get_db()
-    overrides = get_accessory_overrides(conn_tmp)
-    conn_tmp.close()
+    overrides = get_accessory_overrides(session)
 
     try:
         client = lbc_lib.Client()
@@ -181,170 +172,111 @@ def add_ad(req: AddAdRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erreur extraction : {e}")
 
-    conn = _get_db()
-    ad_id = upsert_ad(conn, ad_data)
-    conn.close()
-
+    ad_id = upsert_ad(session, ad_data)
     return {"id": ad_id, "subject": ad_data.get("subject"), "price": ad_data.get("price")}
 
 
 @app.delete("/api/ads/{ad_id}")
-def delete_ad(ad_id: int):
-    """Supprime une annonce."""
-    conn = _get_db()
-    row = conn.execute("SELECT id FROM ads WHERE id = ?", (ad_id,)).fetchone()
-    if not row:
-        conn.close()
+def delete_ad(ad_id: int, session: Session = Depends(get_session)):
+    ad = session.get(Ad, ad_id)
+    if not ad:
         raise HTTPException(status_code=404, detail="Annonce non trouvee")
 
-    conn.execute("DELETE FROM ads WHERE id = ?", (ad_id,))
-    conn.commit()
-    conn.close()
+    session.delete(ad)
+    session.commit()
     return {"deleted": ad_id}
 
 
 @app.patch("/api/ads/{ad_id}")
-def update_ad(ad_id: int, req: UpdateAdRequest):
-    """Met a jour les champs modifiables d'une annonce (couleur, variante, accessoires)."""
+def update_ad(ad_id: int, req: UpdateAdRequest, session: Session = Depends(get_session)):
     from .extractor import _estimate_new_price
 
-    conn = _get_db()
-    row = conn.execute("SELECT * FROM ads WHERE id = ?", (ad_id,)).fetchone()
-    if not row:
-        conn.close()
+    ad = session.get(Ad, ad_id)
+    if not ad:
         raise HTTPException(status_code=404, detail="Annonce non trouvee")
 
-    updates = []
-    params = []
-
-    current = dict(row)
-    new_variant = req.variant if req.variant is not None else current["variant"]
-    new_color = req.color if req.color is not None else current["color"]
-    new_wheel = req.wheel_type if req.wheel_type is not None else current["wheel_type"]
-
     if req.color is not None:
-        updates.append("color = ?")
-        params.append(req.color)
+        ad.color = req.color
     if req.variant is not None:
-        updates.append("variant = ?")
-        params.append(req.variant)
+        ad.variant = req.variant
     if req.wheel_type is not None:
-        updates.append("wheel_type = ?")
-        params.append(req.wheel_type)
+        ad.wheel_type = req.wheel_type
     if req.sold is not None:
-        updates.append("sold = ?")
-        params.append(req.sold)
+        ad.sold = req.sold
 
     # Recalculer le prix neuf si variante/couleur/jantes modifiees
     if req.variant is not None or req.color is not None or req.wheel_type is not None:
-        new_price = _estimate_new_price(new_variant, new_color, new_wheel)
+        new_price = _estimate_new_price(
+            ad.variant, ad.color, ad.wheel_type
+        )
         if new_price:
-            updates.append("estimated_new_price = ?")
-            params.append(new_price)
+            ad.estimated_new_price = new_price
 
-    if updates:
-        updates.append("updated_at = datetime('now')")
-        params.append(ad_id)
-        conn.execute(f"UPDATE ads SET {', '.join(updates)} WHERE id = ?", params)
-        conn.commit()
+    ad.updated_at = datetime.now().isoformat()
 
     # Mise a jour des accessoires
     if req.accessories is not None:
-        conn.execute("DELETE FROM ad_accessories WHERE ad_id = ?", (ad_id,))
-        for acc in req.accessories:
-            conn.execute(
-                "INSERT OR IGNORE INTO ad_accessories (ad_id, name, category, source, estimated_new_price, estimated_used_price) VALUES (?, ?, ?, ?, ?, ?)",
-                (ad_id, acc["name"], acc.get("category"), acc.get("source"),
-                 acc.get("estimated_new_price", 0), acc.get("estimated_used_price", 0)),
-            )
-        # Marquer comme modifie manuellement
-        conn.execute("UPDATE ads SET accessories_manual = 1 WHERE id = ?", (ad_id,))
-        conn.commit()
+        _replace_accessories(session, ad_id, req.accessories)
+        ad.accessories_manual = 1
 
-    conn.close()
+    session.commit()
     return {"updated": ad_id}
 
 
 # ─── Merge / Price History ──────────────────────────────────────────────────
 
-
 class MergeAdRequest(BaseModel):
-    """Fusionne une nouvelle annonce crawlee avec une ancienne en base."""
-    new_ad_data: dict       # donnees extraites de la nouvelle annonce
-    old_ad_id: int          # annonce existante a remplacer
+    new_ad_data: dict
+    old_ad_id: int
 
 
 @app.post("/api/ads/merge")
-def merge_ad(req: MergeAdRequest):
-    """
-    Fusionne une nouvelle annonce (repost) avec une ancienne en base.
-
-    1. Enregistre le prix de l'ancienne annonce dans l'historique
-    2. Enregistre le prix de la nouvelle annonce dans l'historique
-    3. Marque l'ancienne annonce comme vendue
-    4. Sauvegarde la nouvelle annonce avec un lien vers l'ancienne
-    5. Copie l'historique de prix de l'ancienne vers la nouvelle
-    """
+def merge_ad(req: MergeAdRequest, session: Session = Depends(get_session)):
     from .extractor import _estimate_new_price
 
-    conn = _get_db()
-    old_row = conn.execute("SELECT * FROM ads WHERE id = ?", (req.old_ad_id,)).fetchone()
-    if not old_row:
-        conn.close()
+    old_ad = session.get(Ad, req.old_ad_id)
+    if not old_ad:
         raise HTTPException(status_code=404, detail="Ancienne annonce non trouvee")
 
-    old_ad = dict(old_row)
     new_data = req.new_ad_data
-
     if not new_data.get("id"):
-        conn.close()
         raise HTTPException(status_code=400, detail="Donnees d'annonce invalides (id manquant)")
 
     new_id = new_data["id"]
-    old_price = old_ad.get("price") or 0
+    old_price = old_ad.price or 0
     new_price_val = new_data.get("price") or 0
 
-    # Recalculer le prix neuf si besoin
     estimated = _estimate_new_price(
         new_data.get("variant"), new_data.get("color"), new_data.get("wheel_type")
     )
     if estimated:
         new_data["estimated_new_price"] = estimated
 
-    # Lier la nouvelle annonce a l'ancienne
     new_data["previous_ad_id"] = req.old_ad_id
+    ad_id = upsert_ad(session, new_data)
 
-    # Sauvegarder la nouvelle annonce
-    ad_id = upsert_ad(conn, new_data)
+    # Historique de prix
+    old_history = session.exec(
+        select(AdPriceHistory).where(AdPriceHistory.ad_id == req.old_ad_id)
+    ).all()
 
-    # Verifier si l'ancienne annonce avait deja un historique de prix
-    old_history = conn.execute(
-        "SELECT previous_ad_id, price, source, note, recorded_at FROM ad_price_history WHERE ad_id = ?",
-        (req.old_ad_id,),
-    ).fetchall()
-
-    # Date de publication de l'ancienne annonce (pour l'entree initiale)
-    old_pub_date = old_ad.get("first_publication_date") or old_ad.get("extracted_at")
-    # Date de publication de la nouvelle annonce (pour l'entree repost)
+    old_pub_date = old_ad.first_publication_date or old_ad.extracted_at
     new_pub_date = new_data.get("first_publication_date") or new_data.get("extracted_at")
 
     if old_history:
-        # Copier l'historique existant vers la nouvelle annonce
         for h in old_history:
-            conn.execute(
-                "INSERT INTO ad_price_history (ad_id, previous_ad_id, price, source, note, recorded_at) VALUES (?, ?, ?, ?, ?, ?)",
-                (ad_id, h["previous_ad_id"], h["price"], h["source"], h["note"], h["recorded_at"]),
-            )
+            session.add(AdPriceHistory(
+                ad_id=ad_id, previous_ad_id=h.previous_ad_id,
+                price=h.price, source=h.source, note=h.note, recorded_at=h.recorded_at,
+            ))
     elif old_price:
-        # Pas d'historique existant : creer l'entree initiale a partir de l'ancien prix
-        # previous_ad_id = NULL car c'est le point de depart de la timeline
-        conn.execute(
-            "INSERT INTO ad_price_history (ad_id, previous_ad_id, price, source, note, recorded_at) VALUES (?, NULL, ?, 'initial', ?, ?)",
-            (ad_id, old_price, f"Annonce #{req.old_ad_id}", old_pub_date),
-        )
+        session.add(AdPriceHistory(
+            ad_id=ad_id, previous_ad_id=None,
+            price=old_price, source="initial",
+            note=f"Annonce #{req.old_ad_id}", recorded_at=old_pub_date or "",
+        ))
 
     # Enregistrer le nouveau prix (repost)
-    # previous_ad_id = l'annonce qu'on remplace (old_ad_id)
     price_delta = int(new_price_val - old_price) if (old_price and new_price_val) else 0
     note = f"Annonce #{new_id}"
     if price_delta < 0:
@@ -354,19 +286,18 @@ def merge_ad(req: MergeAdRequest):
     else:
         note += f" — meme prix que #{req.old_ad_id}"
 
-    conn.execute(
-        "INSERT INTO ad_price_history (ad_id, previous_ad_id, price, source, note, recorded_at) VALUES (?, ?, ?, 'repost', ?, ?)",
-        (ad_id, req.old_ad_id, new_price_val, note, new_pub_date),
-    )
+    session.add(AdPriceHistory(
+        ad_id=ad_id, previous_ad_id=req.old_ad_id,
+        price=new_price_val, source="repost",
+        note=note, recorded_at=new_pub_date or "",
+    ))
 
     # Marquer l'ancienne annonce comme vendue et superseded
-    conn.execute(
-        "UPDATE ads SET sold = 1, superseded_by = ?, updated_at = datetime('now') WHERE id = ?",
-        (ad_id, req.old_ad_id),
-    )
+    old_ad.sold = 1
+    old_ad.superseded_by = ad_id
+    old_ad.updated_at = datetime.now().isoformat()
 
-    conn.commit()
-    conn.close()
+    session.commit()
 
     return {
         "id": ad_id,
@@ -377,37 +308,30 @@ def merge_ad(req: MergeAdRequest):
 
 
 @app.get("/api/ads/{ad_id}/price-history")
-def get_price_history(ad_id: int):
-    """Retourne l'historique des prix d'une annonce (inclut les reposts)."""
-    conn = _get_db()
-    row = conn.execute("SELECT id, price, previous_ad_id FROM ads WHERE id = ?", (ad_id,)).fetchone()
-    if not row:
-        conn.close()
+def get_price_history(ad_id: int, session: Session = Depends(get_session)):
+    ad = session.get(Ad, ad_id)
+    if not ad:
         raise HTTPException(status_code=404, detail="Annonce non trouvee")
 
     history = [
-        dict(r) for r in conn.execute(
-            "SELECT * FROM ad_price_history WHERE ad_id = ? ORDER BY recorded_at ASC",
-            (ad_id,),
-        ).fetchall()
+        {"id": h.id, "ad_id": h.ad_id, "previous_ad_id": h.previous_ad_id,
+         "price": h.price, "source": h.source, "note": h.note, "recorded_at": h.recorded_at}
+        for h in session.exec(
+            select(AdPriceHistory).where(AdPriceHistory.ad_id == ad_id).order_by(AdPriceHistory.recorded_at)
+        ).all()
     ]
-
-    conn.close()
 
     return {
         "ad_id": ad_id,
-        "current_price": row["price"],
-        "previous_ad_id": row["previous_ad_id"],
+        "current_price": ad.price,
+        "previous_ad_id": ad.previous_ad_id,
         "history": history,
     }
 
 
 @app.get("/api/accessory-catalog")
-def get_accessory_catalog():
-    """Retourne le catalogue complet des accessoires detectables, avec surcharges utilisateur."""
-    conn = _get_db()
-    overrides = get_accessory_overrides(conn)
-    conn.close()
+def get_accessory_catalog(session: Session = Depends(get_session)):
+    overrides = get_accessory_overrides(session)
 
     seen_groups: set[str] = set()
     catalog = []
@@ -432,48 +356,33 @@ class UpdateCatalogPriceRequest(BaseModel):
 
 
 @app.patch("/api/accessory-catalog/{group}")
-def update_catalog_price(group: str, req: UpdateCatalogPriceRequest):
-    """Met a jour le prix neuf d'un groupe d'accessoires et propage aux annonces existantes."""
-    # Verifier que le groupe existe
+def update_catalog_price(group: str, req: UpdateCatalogPriceRequest, session: Session = Depends(get_session)):
     valid_groups = {g for _, _, _, _, g in ACCESSORY_PATTERNS}
     if group not in valid_groups:
         raise HTTPException(status_code=404, detail=f"Groupe '{group}' inconnu")
 
-    conn = _get_db()
-    set_accessory_override(conn, group, req.estimated_new_price)
-
-    # Propager aux annonces existantes
-    results = refresh_accessories(conn)
-    conn.close()
-
+    set_accessory_override(session, group, req.estimated_new_price)
+    results = refresh_accessories(session)
     return {"group": group, "estimated_new_price": req.estimated_new_price, "ads_refreshed": len(results)}
 
 
 @app.delete("/api/accessory-catalog/{group}/override")
-def reset_catalog_price(group: str):
-    """Supprime la surcharge et revient au prix par defaut."""
+def reset_catalog_price(group: str, session: Session = Depends(get_session)):
     valid_groups = {g for _, _, _, _, g in ACCESSORY_PATTERNS}
     if group not in valid_groups:
         raise HTTPException(status_code=404, detail=f"Groupe '{group}' inconnu")
 
-    conn = _get_db()
-    delete_accessory_override(conn, group)
-
-    # Propager aux annonces existantes
-    results = refresh_accessories(conn)
-    conn.close()
-
+    delete_accessory_override(session, group)
+    results = refresh_accessories(session)
     return {"group": group, "reset": True, "ads_refreshed": len(results)}
 
 
 @app.post("/api/accessories/refresh")
-def refresh_all_accessories():
-    """Re-detecte les accessoires de toutes les annonces non editees manuellement."""
-    conn = _get_db()
-    # Compter les annonces ignorees (manuelles)
-    skipped = conn.execute("SELECT COUNT(*) FROM ads WHERE accessories_manual = 1").fetchone()[0]
-    results = refresh_accessories(conn, skip_manual=True)
-    conn.close()
+def refresh_all_accessories(session: Session = Depends(get_session)):
+    skipped = session.exec(
+        select(func.count()).select_from(Ad).where(Ad.accessories_manual == 1)
+    ).one()
+    results = refresh_accessories(session, skip_manual=True)
     return {
         "ads_refreshed": len(results),
         "ads_skipped_manual": skipped,
@@ -482,119 +391,90 @@ def refresh_all_accessories():
 
 
 @app.post("/api/ads/{ad_id}/refresh-accessories")
-def refresh_ad_accessories(ad_id: int):
-    """Re-detecte les accessoires d'une annonce specifique (reset le flag manuel)."""
-    conn = _get_db()
-    row = conn.execute("SELECT id FROM ads WHERE id = ?", (ad_id,)).fetchone()
-    if not row:
-        conn.close()
+def refresh_ad_accessories(ad_id: int, session: Session = Depends(get_session)):
+    ad = session.get(Ad, ad_id)
+    if not ad:
         raise HTTPException(status_code=404, detail="Annonce non trouvee")
 
-    # Reset le flag manuel puisque l'utilisateur demande explicitement le refresh
-    conn.execute("UPDATE ads SET accessories_manual = 0 WHERE id = ?", (ad_id,))
-    conn.commit()
+    ad.accessories_manual = 0
+    session.commit()
 
-    results = refresh_accessories(conn, ad_ids=[ad_id])
-    conn.close()
-
+    results = refresh_accessories(session, ad_ids=[ad_id])
     detail = results[0] if results else {"id": ad_id, "before": 0, "after": 0}
     return detail
 
 
 @app.post("/api/ads/check-online")
-def check_ads_online():
-    """
-    Verifie si les annonces non vendues sont toujours en ligne sur LeBonCoin.
-    Si une annonce n'est plus accessible, elle est marquee comme vendue.
-    """
+def check_ads_online(session: Session = Depends(get_session)):
     import lbc as lbc_lib
 
-    conn = _get_db()
-    rows = conn.execute("SELECT id, url FROM ads WHERE sold = 0").fetchall()
-
+    ads = session.exec(select(Ad).where(Ad.sold == 0)).all()
     client = lbc_lib.Client()
     results = []
 
-    for row in rows:
-        ad_id = row["id"]
+    for ad in ads:
         try:
-            ad = client.get_ad(ad_id)
-            # Verifier le statut LBC
-            ad_status = getattr(ad, "status", None)
+            lbc_ad = client.get_ad(ad.id)
+            ad_status = getattr(lbc_ad, "status", None)
             if ad_status and ad_status not in ("active",):
-                conn.execute("UPDATE ads SET sold = 1, updated_at = datetime('now') WHERE id = ?", (ad_id,))
-                results.append({"id": ad_id, "sold": True, "reason": f"status={ad_status}"})
+                ad.sold = 1
+                ad.updated_at = datetime.now().isoformat()
+                results.append({"id": ad.id, "sold": True, "reason": f"status={ad_status}"})
             else:
-                results.append({"id": ad_id, "sold": False})
+                results.append({"id": ad.id, "sold": False})
         except Exception:
-            # Annonce inaccessible = probablement vendue/supprimee
-            conn.execute("UPDATE ads SET sold = 1, updated_at = datetime('now') WHERE id = ?", (ad_id,))
-            results.append({"id": ad_id, "sold": True, "reason": "inaccessible"})
+            ad.sold = 1
+            ad.updated_at = datetime.now().isoformat()
+            results.append({"id": ad.id, "sold": True, "reason": "inaccessible"})
 
-    conn.commit()
-    conn.close()
-
+    session.commit()
     newly_sold = sum(1 for r in results if r["sold"])
-    return {
-        "checked": len(results),
-        "newly_sold": newly_sold,
-        "details": results,
-    }
+    return {"checked": len(results), "newly_sold": newly_sold, "details": results}
 
 
 @app.post("/api/ads/{ad_id}/check-online")
-def check_ad_online(ad_id: int):
-    """Verifie si une annonce est toujours en ligne sur LeBonCoin."""
+def check_ad_online(ad_id: int, session: Session = Depends(get_session)):
     import lbc as lbc_lib
 
-    conn = _get_db()
-    row = conn.execute("SELECT id FROM ads WHERE id = ?", (ad_id,)).fetchone()
-    if not row:
-        conn.close()
+    ad = session.get(Ad, ad_id)
+    if not ad:
         raise HTTPException(status_code=404, detail="Annonce non trouvee")
 
     client = lbc_lib.Client()
     try:
-        ad = client.get_ad(ad_id)
-        ad_status = getattr(ad, "status", None)
+        lbc_ad = client.get_ad(ad_id)
+        ad_status = getattr(lbc_ad, "status", None)
         if ad_status and ad_status not in ("active",):
-            conn.execute("UPDATE ads SET sold = 1, updated_at = datetime('now') WHERE id = ?", (ad_id,))
-            conn.commit()
-            conn.close()
+            ad.sold = 1
+            ad.updated_at = datetime.now().isoformat()
+            session.commit()
             return {"id": ad_id, "sold": True, "reason": f"status={ad_status}"}
-        conn.close()
         return {"id": ad_id, "sold": False}
     except Exception:
-        conn.execute("UPDATE ads SET sold = 1, updated_at = datetime('now') WHERE id = ?", (ad_id,))
-        conn.commit()
-        conn.close()
+        ad.sold = 1
+        ad.updated_at = datetime.now().isoformat()
+        session.commit()
         return {"id": ad_id, "sold": True, "reason": "inaccessible"}
 
 
 @app.get("/api/stats")
-def get_stats():
-    """Statistiques agregees."""
-    conn = _get_db()
-    ads = get_all_ads(conn)
-    conn.close()
+def get_stats(session: Session = Depends(get_session)):
+    ads = get_all_ads(session)
 
     prices = [a["price"] for a in ads if a["price"] is not None]
     kms = [a["mileage_km"] for a in ads if a["mileage_km"] is not None]
     years = [a["year"] for a in ads if a["year"] is not None]
 
-    # Variantes
     variants = {}
     for a in ads:
         v = a.get("variant") or "Non detectee"
         variants[v] = variants.get(v, 0) + 1
 
-    # Departements
     depts = {}
     for a in ads:
         d = a.get("department") or "Inconnu"
         depts[d] = depts.get(d, 0) + 1
 
-    # Accessoires
     all_acc = {}
     for a in ads:
         for acc in a.get("accessories", []):
@@ -632,22 +512,18 @@ def get_stats():
 
 @app.get("/api/rankings")
 def get_rankings():
-    """Classement par decote."""
     return rank_ads()
 
 
 # ─── Crawl ──────────────────────────────────────────────────────────────────
 
-
 class ExtractRequest(BaseModel):
-    """Demande d'extraction d'une annonce pour le crawl."""
     ad_id: int
     url: str
 
 
 @app.get("/api/crawl/search")
-def crawl_search():
-    """Lance la recherche LeBonCoin, sauvegarde une session, et retourne les resultats."""
+def crawl_search(session: Session = Depends(get_session)):
     from .crawler import search_all_ads
 
     try:
@@ -655,32 +531,27 @@ def crawl_search():
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Erreur recherche LeBonCoin : {e}")
 
-    conn = _get_db()
-
-    # Marquer les annonces deja en base
     existing_ids = {
-        row["id"]
-        for row in conn.execute("SELECT id FROM ads").fetchall()
+        row for row in session.exec(select(Ad.id)).all()
     }
 
-    # Charger toutes les annonces en base pour detection legere de doublons
-    db_ads = [
-        dict(r) for r in conn.execute(
-            "SELECT id, city, department, price, subject, sold FROM ads"
-        ).fetchall()
+    db_ads = session.exec(select(Ad)).all()
+    db_ads_data = [
+        {"id": a.id, "city": a.city, "department": a.department,
+         "price": a.price, "subject": a.subject, "sold": a.sold}
+        for a in db_ads
     ]
 
     for ad in results["ads"]:
         ad["exists_in_db"] = ad["id"] in existing_ids
-
-        # Detection legere : meme ville + prix ±15% (strict pour eviter faux positifs)
         ad["possible_repost_of"] = None
+
         if ad["id"] not in existing_ids:
             new_city = (ad.get("city") or "").lower().strip()
             new_price = ad.get("price") or 0
             best_match = None
             best_score = 0
-            for db_ad in db_ads:
+            for db_ad in db_ads_data:
                 s_city = (db_ad.get("city") or "").lower().strip()
                 if not (s_city and new_city and s_city == new_city):
                     continue
@@ -690,9 +561,9 @@ def crawl_search():
                 ratio = abs(new_price - s_price) / max(new_price, s_price)
                 if ratio > 0.15:
                     continue
-                score = 55  # ville + prix match
+                score = 55
                 if db_ad.get("sold"):
-                    score += 15  # forte indication
+                    score += 15
                 if score > best_score:
                     best_score = score
                     price_delta = int(new_price - s_price)
@@ -708,147 +579,136 @@ def crawl_search():
                 ad["possible_repost_of"] = best_match
 
     # Clore les sessions actives precedentes
-    conn.execute("UPDATE crawl_sessions SET status = 'done' WHERE status = 'active'")
+    active_sessions = session.exec(
+        select(CrawlSession).where(CrawlSession.status == "active")
+    ).all()
+    for s in active_sessions:
+        s.status = "done"
 
     # Creer une nouvelle session
-    cursor = conn.execute(
-        "INSERT INTO crawl_sessions (status, total_ads) VALUES ('active', ?)",
-        (len(results["ads"]),),
-    )
-    session_id = cursor.lastrowid
+    crawl_session = CrawlSession(status="active", total_ads=len(results["ads"]))
+    session.add(crawl_session)
+    session.flush()
 
-    # Sauvegarder les annonces de la session
     for i, ad in enumerate(results["ads"]):
-        conn.execute(
-            "INSERT INTO crawl_session_ads (session_id, ad_id, url, subject, price, city, department, thumbnail, exists_in_db, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (session_id, ad["id"], ad["url"], ad.get("subject"), ad.get("price"),
-             ad.get("city"), ad.get("department"), ad.get("thumbnail"),
-             1 if ad.get("exists_in_db") else 0, i),
-        )
+        session.add(CrawlSessionAd(
+            session_id=crawl_session.id, ad_id=ad["id"], url=ad["url"],
+            subject=ad.get("subject"), price=ad.get("price"),
+            city=ad.get("city"), department=ad.get("department"),
+            thumbnail=ad.get("thumbnail"),
+            exists_in_db=1 if ad.get("exists_in_db") else 0,
+            position=i,
+        ))
 
-    conn.commit()
-    conn.close()
-
-    return {**results, "session_id": session_id}
+    session.commit()
+    return {**results, "session_id": crawl_session.id}
 
 
 @app.get("/api/crawl/sessions/active")
-def get_active_crawl_session():
-    """Retourne la session de crawl active (la plus recente), ou null."""
-    conn = _get_db()
+def get_active_crawl_session(session: Session = Depends(get_session)):
+    crawl_session = session.exec(
+        select(CrawlSession)
+        .where(CrawlSession.status == "active")
+        .order_by(CrawlSession.created_at.desc())
+    ).first()
 
-    session = conn.execute(
-        "SELECT * FROM crawl_sessions WHERE status = 'active' ORDER BY created_at DESC LIMIT 1"
-    ).fetchone()
-
-    if not session:
-        conn.close()
+    if not crawl_session:
         return None
 
-    session_id = session["id"]
+    existing_ids = {ad.id for ad in session.exec(select(Ad.id)).all()}
 
-    # Re-verifier exists_in_db (des annonces ont pu etre ajoutees entre-temps)
-    existing_ids = {
-        row["id"]
-        for row in conn.execute("SELECT id FROM ads").fetchall()
-    }
-
-    rows = conn.execute(
-        "SELECT * FROM crawl_session_ads WHERE session_id = ? ORDER BY position",
-        (session_id,),
-    ).fetchall()
+    rows = session.exec(
+        select(CrawlSessionAd)
+        .where(CrawlSessionAd.session_id == crawl_session.id)
+        .order_by(CrawlSessionAd.position)
+    ).all()
 
     ads = []
     for row in rows:
-        ad = dict(row)
-        ad["exists_in_db"] = ad["ad_id"] in existing_ids
         ads.append({
-            "id": ad["ad_id"],
-            "url": ad["url"],
-            "subject": ad["subject"],
-            "price": ad["price"],
-            "city": ad["city"],
-            "department": ad["department"],
-            "thumbnail": ad["thumbnail"],
-            "exists_in_db": ad["exists_in_db"],
-            "action": ad["action"],
+            "id": row.ad_id,
+            "url": row.url,
+            "subject": row.subject,
+            "price": row.price,
+            "city": row.city,
+            "department": row.department,
+            "thumbnail": row.thumbnail,
+            "exists_in_db": row.ad_id in existing_ids,
+            "action": row.action,
         })
 
-    conn.close()
-
     return {
-        "session_id": session["id"],
-        "status": session["status"],
-        "total_ads": session["total_ads"],
-        "created_at": session["created_at"],
+        "session_id": crawl_session.id,
+        "status": crawl_session.status,
+        "total_ads": crawl_session.total_ads,
+        "created_at": crawl_session.created_at,
         "ads": ads,
     }
 
 
 class UpdateCrawlAdAction(BaseModel):
-    action: str  # 'confirmed', 'skipped', 'error'
+    action: str
 
 
 @app.patch("/api/crawl/sessions/{session_id}/ads/{ad_id}")
-def update_crawl_session_ad(session_id: int, ad_id: int, req: UpdateCrawlAdAction):
-    """Met a jour le statut d'une annonce dans une session de crawl."""
+def update_crawl_session_ad(session_id: int, ad_id: int, req: UpdateCrawlAdAction, session: Session = Depends(get_session)):
     if req.action not in ('confirmed', 'skipped', 'error'):
         raise HTTPException(status_code=400, detail="Action invalide")
 
-    conn = _get_db()
-    conn.execute(
-        "UPDATE crawl_session_ads SET action = ? WHERE session_id = ? AND ad_id = ?",
-        (req.action, session_id, ad_id),
-    )
+    crawl_ad = session.exec(
+        select(CrawlSessionAd)
+        .where(CrawlSessionAd.session_id == session_id, CrawlSessionAd.ad_id == ad_id)
+    ).first()
+    if crawl_ad:
+        crawl_ad.action = req.action
 
     # Verifier si toutes les annonces sont traitees
-    pending = conn.execute(
-        "SELECT COUNT(*) FROM crawl_session_ads WHERE session_id = ? AND action = 'pending'",
-        (session_id,),
-    ).fetchone()[0]
+    pending = session.exec(
+        select(func.count()).select_from(CrawlSessionAd)
+        .where(CrawlSessionAd.session_id == session_id, CrawlSessionAd.action == "pending")
+    ).one()
 
     if pending == 0:
-        conn.execute("UPDATE crawl_sessions SET status = 'done' WHERE id = ?", (session_id,))
+        cs = session.get(CrawlSession, session_id)
+        if cs:
+            cs.status = "done"
 
-    conn.commit()
-    conn.close()
+    session.commit()
     return {"updated": True}
 
 
 @app.delete("/api/crawl/sessions/{session_id}")
-def close_crawl_session(session_id: int):
-    """Cloture une session de crawl."""
-    conn = _get_db()
-    conn.execute("UPDATE crawl_sessions SET status = 'done' WHERE id = ?", (session_id,))
-    conn.commit()
-    conn.close()
+def close_crawl_session(session_id: int, session: Session = Depends(get_session)):
+    cs = session.get(CrawlSession, session_id)
+    if cs:
+        cs.status = "done"
+        session.commit()
     return {"closed": session_id}
 
 
 @app.delete("/api/crawl/sessions/{session_id}/ads/{ad_id}")
-def remove_crawl_session_ad(session_id: int, ad_id: int):
-    """Retire une annonce d'une session de crawl."""
-    conn = _get_db()
-    conn.execute(
-        "DELETE FROM crawl_session_ads WHERE session_id = ? AND ad_id = ?",
-        (session_id, ad_id),
-    )
-    # Mettre a jour le total
-    remaining = conn.execute(
-        "SELECT COUNT(*) FROM crawl_session_ads WHERE session_id = ?",
-        (session_id,),
-    ).fetchone()[0]
-    conn.execute(
-        "UPDATE crawl_sessions SET total_ads = ? WHERE id = ?",
-        (remaining, session_id),
-    )
-    conn.commit()
-    conn.close()
+def remove_crawl_session_ad(session_id: int, ad_id: int, session: Session = Depends(get_session)):
+    crawl_ad = session.exec(
+        select(CrawlSessionAd)
+        .where(CrawlSessionAd.session_id == session_id, CrawlSessionAd.ad_id == ad_id)
+    ).first()
+    if crawl_ad:
+        session.delete(crawl_ad)
+
+    remaining = session.exec(
+        select(func.count()).select_from(CrawlSessionAd)
+        .where(CrawlSessionAd.session_id == session_id)
+    ).one()
+
+    cs = session.get(CrawlSession, session_id)
+    if cs:
+        cs.total_ads = remaining
+
+    session.commit()
     return {"removed": ad_id}
 
 
 def _extract_significant_words(text: str, min_len: int = 4) -> set[str]:
-    """Extrait les mots significatifs d'un texte (>= min_len chars, lowercase)."""
     import re
     if not text:
         return set()
@@ -863,42 +723,16 @@ def _extract_significant_words(text: str, min_len: int = 4) -> set[str]:
     return {w for w in words if len(w) >= min_len and w not in stopwords}
 
 
-def _find_potential_duplicates(conn, ad_data: dict, exclude_id: int) -> list[dict]:
-    """
-    Cherche les annonces en base qui pourraient etre un repost de l'annonce crawlee.
+def _find_potential_duplicates(session: Session, ad_data: dict, exclude_id: int) -> list[dict]:
+    ads = session.exec(select(Ad).where(Ad.id != exclude_id)).all()
 
-    Approche stricte : toutes les annonces sont des Himalayan 450, donc variante/couleur
-    seules ne suffisent pas. On exige une convergence de signaux forts :
-      - Meme ville obligatoire (pas juste departement)
-      - Prix proche (±15%)
-      - Description tres similaire (Jaccard >= 0.3 sur mots significatifs)
-      - OU accessoires tres similaires (Jaccard >= 0.5)
-      - Bonus si annonce vendue
-
-    Scoring :
-      - Meme ville : +35 (prerequis quasi-obligatoire)
-      - Prix ±15% : +20, prix ±5% : +10 bonus
-      - Description Jaccard >= 0.3 : +25, >= 0.5 : +10 bonus
-      - Accessoires Jaccard >= 0.5 : +20, >= 0.75 : +10 bonus
-      - Meme kilometrage ±1000km : +15
-      - Annonce vendue : +10
-      - Meme couleur : +5 (faible — beaucoup de motos meme couleur)
-
-    Seuil : 80 pts minimum. On prefere rater un doublon que signaler un faux positif.
-    """
-    rows = conn.execute(
-        "SELECT * FROM ads WHERE id != ?", (exclude_id,)
-    ).fetchall()
-
-    # Pre-charger accessoires
-    all_acc_rows = conn.execute("SELECT ad_id, name FROM ad_accessories").fetchall()
+    all_accs = session.exec(select(AdAccessory)).all()
     acc_by_ad: dict[int, set[str]] = {}
-    for r in all_acc_rows:
-        acc_by_ad.setdefault(r["ad_id"], set()).add(r["name"])
+    for a in all_accs:
+        acc_by_ad.setdefault(a.ad_id, set()).add(a.name)
 
     new_price = ad_data.get("price") or 0
     new_city = (ad_data.get("city") or "").lower().strip()
-    new_variant = ad_data.get("variant") or ""
     new_color = (ad_data.get("color") or "").lower()
     new_km = ad_data.get("mileage_km") or 0
     new_acc_names = {a["name"] for a in ad_data.get("accessories", [])}
@@ -906,21 +740,17 @@ def _find_potential_duplicates(conn, ad_data: dict, exclude_id: int) -> list[dic
 
     candidates = []
 
-    for row in rows:
-        ad = dict(row)
-        ad_id = ad["id"]
+    for ad in ads:
         score = 0
         reasons = []
 
-        # ── Ville (signal fort — un repost est toujours dans la meme ville) ──
-        db_city = (ad.get("city") or "").lower().strip()
+        db_city = (ad.city or "").lower().strip()
         if not (db_city and new_city and db_city == new_city):
-            continue  # pas la meme ville = pas un repost, skip
+            continue
         score += 35
-        reasons.append(f"meme ville ({ad.get('city')})")
+        reasons.append(f"meme ville ({ad.city})")
 
-        # ── Prix ──
-        db_price = ad.get("price") or 0
+        db_price = ad.price or 0
         if new_price and db_price:
             ratio = abs(new_price - db_price) / max(new_price, db_price)
             if ratio <= 0.15:
@@ -935,11 +765,10 @@ def _find_potential_duplicates(conn, ad_data: dict, exclude_id: int) -> list[dic
                 if ratio <= 0.05:
                     score += 10
             else:
-                continue  # prix trop different = pas un repost
+                continue
 
-        # ── Description (signal le plus discriminant) ──
         if new_body_words:
-            db_body_words = _extract_significant_words(ad.get("body") or "")
+            db_body_words = _extract_significant_words(ad.body or "")
             if db_body_words:
                 common_words = new_body_words & db_body_words
                 union_words = new_body_words | db_body_words
@@ -951,8 +780,7 @@ def _find_potential_duplicates(conn, ad_data: dict, exclude_id: int) -> list[dic
                         if word_jaccard >= 0.5:
                             score += 10
 
-        # ── Accessoires ──
-        db_acc_names = acc_by_ad.get(ad_id, set())
+        db_acc_names = acc_by_ad.get(ad.id, set())
         if new_acc_names and db_acc_names:
             common = new_acc_names & db_acc_names
             union = new_acc_names | db_acc_names
@@ -964,71 +792,57 @@ def _find_potential_duplicates(conn, ad_data: dict, exclude_id: int) -> list[dic
                     if jaccard >= 0.75:
                         score += 10
 
-        # ── Kilometrage ──
-        db_km = ad.get("mileage_km") or 0
+        db_km = ad.mileage_km or 0
         if new_km and db_km:
             km_diff = abs(new_km - db_km)
             if km_diff <= 1000:
                 score += 15
                 reasons.append(f"km similaire ({db_km} vs {new_km})")
 
-        # ── Couleur (faible poids) ──
-        db_color = (ad.get("color") or "").lower()
+        db_color = (ad.color or "").lower()
         if new_color and db_color and new_color == db_color:
             score += 5
             reasons.append("meme couleur")
 
-        # ── Vendue (indicateur fort de repost) ──
-        if ad.get("sold"):
+        if ad.sold:
             score += 10
             reasons.append("annonce en base marquee vendue")
 
         if score >= 80:
-            # Calculer le delta prix pour l'affichage
             price_delta = None
             if new_price and db_price:
                 price_delta = int(new_price - db_price)
 
             candidates.append({
-                "id": ad_id,
-                "url": ad.get("url", ""),
-                "subject": ad.get("subject", ""),
-                "price": ad.get("price"),
-                "city": ad.get("city"),
-                "department": ad.get("department"),
-                "variant": ad.get("variant"),
-                "color": ad.get("color"),
-                "sold": bool(ad.get("sold", 0)),
-                "mileage_km": ad.get("mileage_km"),
+                "id": ad.id,
+                "url": ad.url or "",
+                "subject": ad.subject or "",
+                "price": ad.price,
+                "city": ad.city,
+                "department": ad.department,
+                "variant": ad.variant,
+                "color": ad.color,
+                "sold": bool(ad.sold),
+                "mileage_km": ad.mileage_km,
                 "score": score,
                 "reasons": reasons,
                 "price_delta": price_delta,
             })
 
-    # Trier : score desc, puis non-vendue d'abord (repost le plus recent),
-    # puis prix le plus proche
     candidates.sort(key=lambda x: (
         -x["score"],
-        0 if not x["sold"] else 1,  # non-vendue en premier
-        abs(x.get("price_delta") or 999999),  # prix le plus proche
+        0 if not x["sold"] else 1,
+        abs(x.get("price_delta") or 999999),
     ))
     return candidates[:3]
 
 
 @app.post("/api/crawl/extract")
-def crawl_extract(req: ExtractRequest):
-    """
-    Extrait une annonce complete pour le crawl.
-
-    Retourne les donnees extraites + si l'annonce existe deja en base,
-    les differences entre la version en base et la version crawlee.
-    """
+def crawl_extract(req: ExtractRequest, session: Session = Depends(get_session)):
     from .extractor import fetch_ad
     import lbc as lbc_lib
 
-    conn_ov = _get_db()
-    overrides = get_accessory_overrides(conn_ov)
-    conn_ov.close()
+    overrides = get_accessory_overrides(session)
 
     try:
         client = lbc_lib.Client()
@@ -1036,84 +850,60 @@ def crawl_extract(req: ExtractRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erreur extraction : {e}")
 
-    # Verifier si l'annonce existe deja en base
-    conn = _get_db()
-    existing_row = conn.execute("SELECT * FROM ads WHERE id = ?", (req.ad_id,)).fetchone()
-
-    existing = None
+    existing = session.get(Ad, req.ad_id)
+    existing_data = None
     diffs = []
 
-    if existing_row:
-        existing = dict(existing_row)
-        # Charger les accessoires existants
-        existing["accessories"] = [
-            dict(r) for r in conn.execute(
-                "SELECT name, category, source, estimated_new_price, estimated_used_price "
-                "FROM ad_accessories WHERE ad_id = ? ORDER BY category, name",
-                (req.ad_id,),
-            ).fetchall()
+    if existing:
+        existing_data = _ad_to_dict(existing)
+        existing_data["accessories"] = [
+            {"name": a.name, "category": a.category, "source": a.source,
+             "estimated_new_price": a.estimated_new_price, "estimated_used_price": a.estimated_used_price}
+            for a in session.exec(
+                select(AdAccessory).where(AdAccessory.ad_id == req.ad_id)
+                .order_by(AdAccessory.category, AdAccessory.name)
+            ).all()
         ]
 
-        # Calculer les differences
         compare_fields = [
-            ("price", "Prix"),
-            ("year", "Annee"),
-            ("mileage_km", "Kilometrage"),
-            ("variant", "Variante"),
-            ("color", "Couleur"),
-            ("wheel_type", "Jantes"),
-            ("city", "Ville"),
-            ("department", "Departement"),
-            ("seller_type", "Vendeur"),
+            ("price", "Prix"), ("year", "Annee"), ("mileage_km", "Kilometrage"),
+            ("variant", "Variante"), ("color", "Couleur"), ("wheel_type", "Jantes"),
+            ("city", "Ville"), ("department", "Departement"), ("seller_type", "Vendeur"),
             ("estimated_new_price", "Prix neuf ref."),
         ]
 
         for field, label in compare_fields:
-            old_val = existing.get(field)
+            old_val = existing_data.get(field)
             new_val = ad_data.get(field)
             if old_val != new_val:
-                diffs.append({
-                    "field": field,
-                    "label": label,
-                    "old": old_val,
-                    "new": new_val,
-                })
+                diffs.append({"field": field, "label": label, "old": old_val, "new": new_val})
 
-        # Comparer les accessoires
-        old_acc_names = sorted([a["name"] for a in existing.get("accessories", [])])
+        old_acc_names = sorted([a["name"] for a in existing_data.get("accessories", [])])
         new_acc_names = sorted([a["name"] for a in ad_data.get("accessories", [])])
         if old_acc_names != new_acc_names:
             added = [n for n in new_acc_names if n not in old_acc_names]
             removed = [n for n in old_acc_names if n not in new_acc_names]
             diffs.append({
-                "field": "accessories",
-                "label": "Accessoires",
+                "field": "accessories", "label": "Accessoires",
                 "old": f"{len(old_acc_names)} accessoires",
                 "new": f"{len(new_acc_names)} accessoires",
-                "added": added,
-                "removed": removed,
+                "added": added, "removed": removed,
             })
 
-    # Recherche de doublons potentiels (reposts)
-    potential_duplicates = _find_potential_duplicates(conn, ad_data, req.ad_id)
-
-    conn.close()
+    potential_duplicates = _find_potential_duplicates(session, ad_data, req.ad_id)
 
     return {
         "ad_data": ad_data,
         "exists_in_db": existing is not None,
-        "existing": existing,
+        "existing": existing_data,
         "diffs": diffs,
         "potential_duplicates": potential_duplicates,
     }
 
 
 @app.get("/api/export")
-def export_csv():
-    """Telecharge le CSV."""
-    conn = _get_db()
-    ads = get_all_ads(conn)
-    conn.close()
+def export_csv(session: Session = Depends(get_session)):
+    ads = get_all_ads(session)
 
     output = io.StringIO()
     fieldnames = [
@@ -1126,18 +916,12 @@ def export_csv():
 
     for ad in ads:
         writer.writerow({
-            "id": ad["id"],
-            "url": ad["url"],
-            "subject": ad["subject"],
-            "price": ad["price"],
-            "year": ad.get("year"),
-            "mileage_km": ad.get("mileage_km"),
-            "color": ad.get("color"),
-            "variant": ad.get("variant"),
-            "wheel_type": ad.get("wheel_type"),
+            "id": ad["id"], "url": ad["url"], "subject": ad["subject"],
+            "price": ad["price"], "year": ad.get("year"),
+            "mileage_km": ad.get("mileage_km"), "color": ad.get("color"),
+            "variant": ad.get("variant"), "wheel_type": ad.get("wheel_type"),
             "estimated_new_price": ad.get("estimated_new_price"),
-            "city": ad.get("city"),
-            "department": ad.get("department"),
+            "city": ad.get("city"), "department": ad.get("department"),
             "seller_type": ad.get("seller_type"),
             "nb_accessories": len(ad.get("accessories", [])),
         })

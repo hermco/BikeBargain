@@ -34,11 +34,16 @@ def _save_state(state: dict):
 
 
 def _check_port(host: str, port: int, timeout: float = 0.5) -> bool:
-    try:
-        with socket.create_connection((host, port), timeout=timeout):
-            return True
-    except (OSError, socket.timeout):
-        return False
+    for family in (socket.AF_INET, socket.AF_INET6):
+        try:
+            addr = "::1" if family == socket.AF_INET6 else host
+            with socket.socket(family, socket.SOCK_STREAM) as s:
+                s.settimeout(timeout)
+                s.connect((addr, port))
+                return True
+        except (OSError, socket.timeout):
+            continue
+    return False
 
 
 DASHBOARD_HTML = """\
