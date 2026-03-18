@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { X, Plus, Loader2, Link as LinkIcon, Check, Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react'
+import { X, Plus, Loader2, Link as LinkIcon, Check, Pencil, Trash2, ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from './ui/Button'
 import { CategoryBadge } from './AccessoryBadge'
@@ -291,7 +291,7 @@ export function AdForm() {
                   <span className="text-text-primary">{(previewData.mileage_km as number)?.toLocaleString('fr-FR') ?? t('common.na')} km</span>
 
                   <span className="text-text-muted">{t('common.location')}</span>
-                  <span className="text-text-primary">{previewData.city as string ?? '?'}, {previewData.department as string ?? '?'}</span>
+                  <span className="text-text-primary">{(previewData.city as string) ?? '?'}, {(previewData.department as string) ?? '?'}</span>
 
                   {/* Variante - editable */}
                   <span className="text-text-muted">{t('common.variant')}</span>
@@ -324,7 +324,7 @@ export function AdForm() {
                     </div>
                   ) : (
                     <button onClick={() => setEditingField('color')} className="flex items-center gap-1.5 group text-left">
-                      <span className="text-text-primary">{previewData.color as string ?? t('common.na')}</span>
+                      <span className="text-text-primary">{(previewData.color as string) ?? t('common.na')}</span>
                       <Pencil className="h-3 w-3 text-text-dim opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
                   )}
@@ -342,12 +342,12 @@ export function AdForm() {
                     </div>
                   ) : (
                     <button onClick={() => setEditingField('wheel_type')} className="flex items-center gap-1.5 group text-left">
-                      <span className="text-text-primary">{previewData.wheel_type as string ?? t('common.na')}</span>
+                      <span className="text-text-primary">{(previewData.wheel_type as string) ?? t('common.na')}</span>
                       <Pencil className="h-3 w-3 text-text-dim opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
                   )}
 
-                  {previewData.estimated_new_price && (
+                  {previewData.estimated_new_price != null && (
                     <>
                       <span className="text-text-muted">{t('common.newRefPrice')}</span>
                       <span className="text-text-primary">{formatPrice(previewData.estimated_new_price as number)}</span>

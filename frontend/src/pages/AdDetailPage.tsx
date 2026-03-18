@@ -136,8 +136,6 @@ export function AdDetailPage() {
   }
 
   const currentVariant = editing ? editVariant : ad.variant
-  const currentColor = editing ? editColor : ad.color
-  const currentWheelType = editing ? editWheelType : ad.wheel_type
   const currentAccessories = editing ? (editAccessories ?? []) : (ad.accessories ?? [])
   const availableColors = currentVariant ? COLORS[currentVariant] ?? [] : Object.values(COLORS).flat()
 
@@ -460,7 +458,6 @@ export function AdDetailPage() {
                 const prev = i > 0 ? priceHistory.history[i - 1] : null
                 const delta = prev ? entry.price - prev.price : 0
                 const isDown = delta < 0
-                const isUp = delta > 0
                 const isLatest = i === priceHistory.history.length - 1
 
                 return (
@@ -603,7 +600,7 @@ export function AdDetailPage() {
                 </thead>
                 <tbody>
                   {Object.entries(accByCategory).map(([cat, accs]) =>
-                    accs.map((a, i) => (
+                    accs.map((a) => (
                       <tr key={a.name} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
                         <td className="py-2.5 pr-4">
                           <CategoryBadge category={cat} />

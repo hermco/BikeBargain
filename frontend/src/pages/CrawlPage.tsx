@@ -94,6 +94,7 @@ export function CrawlPage() {
         department: ad.department,
         thumbnail: ad.thumbnail,
         exists_in_db: ad.exists_in_db,
+        possible_repost_of: null,
       },
       action: ad.action as AdAction,
     }))
@@ -371,7 +372,7 @@ export function CrawlPage() {
           setCurrentIndex(-1)
           toast(t('crawl.adAddedToast', { subject: state.summary.subject }), 'success')
         } else {
-          startTransition('confirmed', state.summary.subject, () => processNext(updated, currentIndex + 1))
+          startTransition('confirmed', state.summary.subject ?? '', () => processNext(updated, currentIndex + 1))
         }
       },
       onError: (err) => {
@@ -406,7 +407,7 @@ export function CrawlPage() {
       setCurrentIndex(-1)
       toast(t('crawl.adSkippedToast', { subject: state.summary.subject }), 'info')
     } else {
-      startTransition('skipped', state.summary.subject, () => processNext(updated, currentIndex + 1))
+      startTransition('skipped', state.summary.subject ?? '', () => processNext(updated, currentIndex + 1))
     }
   }
 
@@ -441,7 +442,7 @@ export function CrawlPage() {
           setStatus('ready')
           setCurrentIndex(-1)
         } else {
-          startTransition('confirmed', state.summary.subject, () => processNext(updated, currentIndex + 1))
+          startTransition('confirmed', state.summary.subject ?? '', () => processNext(updated, currentIndex + 1))
         }
       },
       onError: (err) => {
@@ -970,7 +971,7 @@ export function CrawlPage() {
                     </button>
                   )}
 
-                  {currentExtract.estimated_new_price && (
+                  {currentExtract.estimated_new_price != null && (
                     <>
                       <span className="text-text-muted">{t('common.newRefPrice')}</span>
                       <span className="text-text-primary">{formatPrice(currentExtract.estimated_new_price as number)}</span>
@@ -982,7 +983,7 @@ export function CrawlPage() {
           </div>
 
           {/* Description vendeur */}
-          {currentExtract.body && (
+          {currentExtract.body != null && (
             <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] mb-4">
               <button
                 onClick={() => setShowDescription(!showDescription)}

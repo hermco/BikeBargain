@@ -15,7 +15,7 @@ export function LocationPicker({ location, onChange }: LocationPickerProps) {
   const [loading, setLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   // Fermer le dropdown si clic en dehors
   useEffect(() => {
