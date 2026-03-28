@@ -46,3 +46,10 @@ def check_ads(ad_ids: list[int]) -> list[dict]:
     r = httpx.post(f"{_base_url()}/check-ads", json={"ad_ids": ad_ids}, timeout=TIMEOUT)
     r.raise_for_status()
     return r.json()["results"]
+
+
+def check_prices(ad_ids: list[int]) -> list[dict]:
+    """Recupere les prix actuels via le service local."""
+    r = httpx.post(f"{_base_url()}/check-prices", json={"ad_ids": ad_ids}, timeout=TIMEOUT)
+    r.raise_for_status()
+    return r.json()["results"]

@@ -96,3 +96,24 @@ def check_ads(req: CheckAdsRequest):
         except Exception:
             results.append({"ad_id": ad_id, "online": False, "reason": "inaccessible"})
     return {"results": results}
+
+
+@app.post("/check-prices")
+def check_prices(req: CheckAdsRequest):
+    """Recupere le prix actuel de chaque annonce."""
+    from .extractor import get_lbc_client
+
+    client = get_lbc_client()
+    results = []
+    for ad_id in req.ad_ids:
+        try:
+            lbc_ad = client.get_ad(ad_id)
+            status = getattr(lbc_ad, "status", None)
+            if status and status not in ("active",):
+                results.append({"ad_id": ad_id, "online": False, "price": None})
+            else:
+                price = getattr(lbc_ad, "price", None)
+                results.append({"ad_id": ad_id, "online": True, "price": price})
+        except Exception:
+            results.append({"ad_id": ad_id, "online": False, "price": None})
+    return {"results": results}
