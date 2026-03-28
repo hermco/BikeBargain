@@ -6,7 +6,7 @@ import { Card } from '../components/ui/Card'
 import { CategoryBadge } from '../components/AccessoryBadge'
 import { useAccessoryCatalog, useUpdateCatalogPrice, useResetCatalogPrice, useRefreshAllAccessories } from '../hooks/queries'
 import { useToast } from '../components/Toast'
-import { formatPrice } from '../lib/utils'
+import { useFormatters } from '../hooks/useFormatters'
 import { Button } from '../components/ui/Button'
 import type { CatalogAccessory } from '../lib/api'
 
@@ -17,6 +17,7 @@ function EditablePrice({ item }: { item: CatalogAccessory }) {
   const [value, setValue] = useState(String(item.estimated_new_price))
   const { toast } = useToast()
   const { t } = useTranslation()
+  const { formatPrice } = useFormatters()
   const updatePrice = useUpdateCatalogPrice()
   const resetPrice = useResetCatalogPrice()
 
@@ -111,6 +112,7 @@ function EditablePrice({ item }: { item: CatalogAccessory }) {
 
 function CategorySection({ category, items }: { category: string; items: CatalogAccessory[] }) {
   const { t } = useTranslation()
+  const { formatPrice } = useFormatters()
 
   return (
     <div>

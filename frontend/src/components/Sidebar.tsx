@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router-dom'
 import { BarChart3, Trophy, LayoutGrid, Plus, Search, Wrench, Globe } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { cn, formatPrice } from '../lib/utils'
+import { cn } from '../lib/utils'
+import { useFormatters } from '../hooks/useFormatters'
 import { useStats } from '../hooks/queries'
 
 function MobileLanguageToggle() {
@@ -86,6 +87,7 @@ function NavItem({ to, icon: Icon, label }: { to: string; icon: React.ElementTyp
 function SidebarStats() {
   const { data: stats } = useStats()
   const { t } = useTranslation()
+  const { formatPrice } = useFormatters()
   if (!stats) return null
 
   return (

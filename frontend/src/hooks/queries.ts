@@ -247,9 +247,13 @@ export function useCrawlConfirm() {
 }
 
 export function useUpdateCrawlAdAction() {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ sessionId, adId, action }: { sessionId: number; adId: number; action: string }) =>
       api.updateCrawlAdAction(sessionId, adId, action),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['crawl-session'] })
+    },
   })
 }
 
@@ -264,8 +268,12 @@ export function useCloseCrawlSession() {
 }
 
 export function useRemoveCrawlSessionAd() {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ sessionId, adId }: { sessionId: number; adId: number }) =>
       api.removeCrawlSessionAd(sessionId, adId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['crawl-session'] })
+    },
   })
 }

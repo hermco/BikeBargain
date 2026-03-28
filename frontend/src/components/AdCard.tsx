@@ -4,7 +4,8 @@ import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import type { Ad } from '../types'
 import { Badge } from './ui/Badge'
-import { formatPrice, formatKm, formatDate, variantColor } from '../lib/utils'
+import { variantColor } from '../lib/utils'
+import { useFormatters } from '../hooks/useFormatters'
 
 interface AdCardProps {
   ad: Ad
@@ -21,6 +22,7 @@ function getDealLevel(ad: Ad, t: (key: string) => string): { label: string; clas
 
 export function AdCard({ ad, index }: AdCardProps) {
   const { t } = useTranslation()
+  const { formatPrice, formatKm, formatDate } = useFormatters()
   const heroImage = ad.images?.[0]
   const accCount = ad.accessories?.length ?? 0
   const deal = getDealLevel(ad, t)

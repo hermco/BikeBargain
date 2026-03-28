@@ -39,7 +39,10 @@
     "noAccessoryDetected": "Aucun accessoire détecté.",
     "seller": "Vendeur",
     "professional": "Professionnel",
-    "private": "Particulier"
+    "private": "Particulier",
+    "yourCity": "Votre ville...",
+    "select": "Sélectionner...",
+    "backToListings": "Retour aux annonces"
   },
   "nav": {
     "ads": "Annonces",
@@ -182,7 +185,15 @@
     "conditionRisk": "Risque état",
     "viewAd": "Voir l'annonce",
     "ad_one": "{{count}} annonce",
-    "ad_other": "{{count}} annonces"
+    "ad_other": "{{count}} annonces",
+    "travel": "Trajet",
+    "byRoad": "par la route",
+    "distanceBand": {
+      "close": "Proche",
+      "medium": "Moyen",
+      "far": "Loin",
+      "very_far": "Très loin"
+    }
   },
   "crawl": {
     "title": "Recherche LeBonCoin",

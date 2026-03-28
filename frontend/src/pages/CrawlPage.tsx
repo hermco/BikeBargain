@@ -5,19 +5,14 @@ import { Badge } from '../components/ui/Badge'
 import { CategoryBadge } from '../components/AccessoryBadge'
 import { useToast } from '../components/Toast'
 import { useCrawlSearch, useCrawlExtract, useCrawlConfirm, useMergeAd, useAccessoryCatalog, useActiveCrawlSession, useUpdateCrawlAdAction, useCloseCrawlSession, useRemoveCrawlSessionAd } from '../hooks/queries'
-import { formatPrice, variantColor } from '../lib/utils'
+import { variantColor } from '../lib/utils'
+import { useFormatters } from '../hooks/useFormatters'
 import type { CrawlAdSummary, CrawlDiff, Accessory, PotentialDuplicate } from '../types'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
-const VARIANTS = ['Base', 'Pass', 'Summit', 'Mana Black'] as const
-const COLORS: Record<string, string[]> = {
-  Base: ['Kaza Brown'],
-  Pass: ['Slate Himalayan Salt', 'Slate Poppy Blue'],
-  Summit: ['Hanle Black', 'Kamet White'],
-  'Mana Black': ['Mana Black'],
-}
-const WHEEL_TYPES = ['standard', 'tubeless'] as const
+import { VARIANTS, COLORS, WHEEL_TYPES } from '../lib/constants'
+
 const CRAWL_DELAY_MS = 5000
 
 type CrawlStatus = 'idle' | 'searching' | 'ready' | 'crawling' | 'paused' | 'waiting_validation' | 'done'
@@ -36,6 +31,7 @@ interface AdState {
 
 export function CrawlPage() {
   const { t } = useTranslation()
+  const { formatPrice } = useFormatters()
   const [status, setStatus] = useState<CrawlStatus>('idle')
   const [adStates, setAdStates] = useState<AdState[]>([])
   const [currentIndex, setCurrentIndex] = useState(-1)

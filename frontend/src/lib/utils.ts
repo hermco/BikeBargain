@@ -5,19 +5,19 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatPrice(price: number | null | undefined): string {
+export function formatPrice(price: number | null | undefined, locale = 'fr-FR'): string {
   if (price == null) return 'N/A'
-  return `${price.toLocaleString('fr-FR')} \u20ac`
+  return `${price.toLocaleString(locale)} \u20ac`
 }
 
-export function formatKm(km: number | null | undefined): string {
+export function formatKm(km: number | null | undefined, locale = 'fr-FR'): string {
   if (km == null) return 'N/A'
-  return `${km.toLocaleString('fr-FR')} km`
+  return `${km.toLocaleString(locale)} km`
 }
 
-export function formatDate(dateStr: string | null | undefined): string {
+export function formatDate(dateStr: string | null | undefined, locale = 'fr-FR'): string {
   if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  return new Date(dateStr).toLocaleDateString(locale, { day: 'numeric', month: 'short' })
 }
 
 export function variantColor(variant: string | null): string {

@@ -6,24 +6,18 @@ import { Button } from './ui/Button'
 import { CategoryBadge } from './AccessoryBadge'
 import { usePreviewAd, useConfirmAd, useAccessoryCatalog } from '../hooks/queries'
 import { useToast } from './Toast'
-import { formatPrice, variantColor } from '../lib/utils'
+import { variantColor } from '../lib/utils'
+import { useFormatters } from '../hooks/useFormatters'
 import { Badge } from './ui/Badge'
-import type { Accessory } from '../types'
-
-const VARIANTS = ['Base', 'Pass', 'Summit', 'Mana Black'] as const
-const COLORS: Record<string, string[]> = {
-  Base: ['Kaza Brown'],
-  Pass: ['Slate Himalayan Salt', 'Slate Poppy Blue'],
-  Summit: ['Hanle Black', 'Kamet White'],
-  'Mana Black': ['Mana Black'],
-}
-const WHEEL_TYPES = ['standard', 'tubeless'] as const
+import type { Accessory, AdDetail } from '../types'
+import { VARIANTS, COLORS, WHEEL_TYPES } from '../lib/constants'
 
 export function AdForm() {
   const { t } = useTranslation()
+  const { formatPrice } = useFormatters()
   const [open, setOpen] = useState(false)
   const [url, setUrl] = useState('')
-  const [previewData, setPreviewData] = useState<Record<string, unknown> | null>(null)
+  const [previewData, setPreviewData] = useState<AdDetail | null>(null)
   const [editingField, setEditingField] = useState<string | null>(null)
   const [galleryIdx, setGalleryIdx] = useState(0)
   const [lightboxOpen, setLightboxOpen] = useState(false)
@@ -68,7 +62,7 @@ export function AdForm() {
     if (!url.trim()) return
     previewMut.mutate(url.trim(), {
       onSuccess: (data) => {
-        setPreviewData(data as unknown as Record<string, unknown>)
+        setPreviewData(data)
       },
       onError: (err) => {
         toast((err as Error).message, 'error')
@@ -78,7 +72,7 @@ export function AdForm() {
 
   function handleConfirm() {
     if (!previewData) return
-    confirmMut.mutate(previewData, {
+    confirmMut.mutate(previewData as unknown as Record<string, unknown>, {
       onSuccess: (data) => {
         toast(t('adForm.adAdded', { subject: data.subject ?? 'OK' }), 'success')
         handleClose()
@@ -91,7 +85,7 @@ export function AdForm() {
 
   function updateField(field: string, value: unknown) {
     if (!previewData) return
-    setPreviewData({ ...previewData, [field]: value })
+    setPreviewData({ ...previewData, [field]: value } as AdDetail)
     setEditingField(null)
   }
 
