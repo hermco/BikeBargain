@@ -537,6 +537,64 @@ def check_ad_online(ad_id: int, session: Session = Depends(get_session)):
             return {"id": ad_id, "sold": True, "reason": "inaccessible"}
 
 
+@app.post("/api/ads/check-prices")
+def check_prices(session: Session = Depends(get_session)):
+    ads = session.exec(select(Ad).where(Ad.sold == 0)).all()
+    if not ads:
+        return {"price_changes": [], "checked_count": 0, "unchanged_count": 0}
+
+    price_changes = []
+
+    if settings.lbc_service_url:
+        from . import lbc_client
+        results = lbc_client.check_prices([ad.id for ad in ads])
+        ads_by_id = {ad.id: ad for ad in ads}
+        for r in results:
+            if not r["online"] or r["price"] is None:
+                continue
+            ad = ads_by_id[r["ad_id"]]
+            if ad.price is not None and r["price"] != ad.price:
+                price_changes.append({
+                    "id": ad.id,
+                    "subject": ad.subject,
+                    "current_price": ad.price,
+                    "new_price": r["price"],
+                    "price_delta": int(r["price"] - ad.price),
+                    "city": ad.city,
+                    "department": ad.department,
+                    "url": ad.url,
+                })
+    else:
+        from .extractor import get_lbc_client
+        client = get_lbc_client()
+        for ad in ads:
+            try:
+                lbc_ad = client.get_ad(ad.id)
+                ad_status = getattr(lbc_ad, "status", None)
+                if ad_status and ad_status not in ("active",):
+                    continue
+                lbc_price = getattr(lbc_ad, "price", None)
+                if lbc_price is not None and ad.price is not None and lbc_price != ad.price:
+                    price_changes.append({
+                        "id": ad.id,
+                        "subject": ad.subject,
+                        "current_price": ad.price,
+                        "new_price": lbc_price,
+                        "price_delta": int(lbc_price - ad.price),
+                        "city": ad.city,
+                        "department": ad.department,
+                        "url": ad.url,
+                    })
+            except Exception:
+                continue
+
+    return {
+        "price_changes": price_changes,
+        "checked_count": len(ads),
+        "unchanged_count": len(ads) - len(price_changes),
+    }
+
+
 @app.get("/api/stats")
 def get_stats(session: Session = Depends(get_session)):
     ads = get_all_ads(session)
