@@ -26,6 +26,8 @@ from .database import (
     get_accessory_overrides, set_accessory_override, delete_accessory_override,
     refresh_accessories, _ad_to_dict, _replace_accessories,
 )
+from lbc.exceptions import NotFoundError
+
 from .analyzer import rank_ads
 from .accessories import estimate_total_accessories_value, ACCESSORY_PATTERNS, DEPRECIATION_RATE
 from .extractor import detect_new_listing_light, detect_new_listing
@@ -261,7 +263,7 @@ def merge_ad(req: MergeAdRequest, session: Session = Depends(get_session)):
         new_data["estimated_new_price"] = estimated
 
     new_data["previous_ad_id"] = req.old_ad_id
-    ad_id = upsert_ad(session, new_data)
+    ad_id = upsert_ad(session, new_data, auto_commit=False)
 
     # Historique de prix
     old_history = session.exec(
@@ -493,10 +495,12 @@ def check_ads_online(session: Session = Depends(get_session)):
                     results.append({"id": ad.id, "sold": True, "reason": f"status={ad_status}"})
                 else:
                     results.append({"id": ad.id, "sold": False})
-            except Exception:
+            except NotFoundError:
                 ad.sold = 1
                 ad.updated_at = datetime.now().isoformat()
                 results.append({"id": ad.id, "sold": True, "reason": "inaccessible"})
+            except Exception as e:
+                results.append({"id": ad.id, "sold": False, "reason": "error", "error": str(e)})
 
     session.commit()
     newly_sold = sum(1 for r in results if r["sold"])
@@ -530,11 +534,13 @@ def check_ad_online(ad_id: int, session: Session = Depends(get_session)):
                 session.commit()
                 return {"id": ad_id, "sold": True, "reason": f"status={ad_status}"}
             return {"id": ad_id, "sold": False}
-        except Exception:
+        except NotFoundError:
             ad.sold = 1
             ad.updated_at = datetime.now().isoformat()
             session.commit()
             return {"id": ad_id, "sold": True, "reason": "inaccessible"}
+        except Exception as e:
+            return {"id": ad_id, "sold": False, "reason": "error", "error": str(e)}
 
 
 @app.post("/api/ads/check-prices")
@@ -630,8 +636,8 @@ def get_stats(session: Session = Depends(get_session)):
 
 
 @app.get("/api/rankings")
-def get_rankings():
-    return rank_ads()
+def get_rankings(session: Session = Depends(get_session)):
+    return rank_ads(session)
 
 
 # ─── Crawl ──────────────────────────────────────────────────────────────────
