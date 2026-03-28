@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 import { X, Wifi } from 'lucide-react'
 import { useAds, useCheckAdsOnline } from '../hooks/queries'
 import { AdCard } from '../components/AdCard'
@@ -34,12 +35,21 @@ function sortAds(ads: Ad[], sort: SortOption): Ad[] {
 
 export function AdsPage() {
   const { t } = useTranslation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [variant, setVariant] = useState('')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortOption>('recent')
+  const [autoOpenAdd, setAutoOpenAdd] = useState(false)
   const { data, isLoading } = useAds()
   const checkOnlineMut = useCheckAdsOnline()
   const { toast } = useToast()
+
+  useEffect(() => {
+    if (searchParams.get('add') === 'true') {
+      setAutoOpenAdd(true)
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   const filtered = useMemo(() => {
     if (!data?.ads) return []
@@ -71,7 +81,7 @@ export function AdsPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>{t('ads.title')}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight font-fraunces">{t('ads.title')}</h1>
           {data && (
             <p className="text-sm text-text-muted mt-1">
               {hasFilters ? (
@@ -113,7 +123,7 @@ export function AdsPage() {
             <Wifi className={`h-3.5 w-3.5 ${checkOnlineMut.isPending ? 'animate-pulse' : ''}`} />
             <span className="hidden sm:inline">{checkOnlineMut.isPending ? t('common.checking') : t('common.checkOnline')}</span>
           </Button>
-          <AdForm />
+          <AdForm autoOpen={autoOpenAdd} onAutoOpened={() => setAutoOpenAdd(false)} />
         </div>
       </div>
 

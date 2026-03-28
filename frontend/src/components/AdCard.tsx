@@ -58,7 +58,7 @@ export function AdCard({ ad, index }: AdCardProps) {
             </div>
           )}
           <div className="absolute bottom-0 left-0 right-0 px-4 py-3 flex items-end justify-between">
-            <span className="text-xl font-semibold text-white drop-shadow-lg" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
+            <span className="text-xl font-semibold text-white drop-shadow-lg font-fraunces">
               {formatPrice(ad.price)}
             </span>
             {deal && !isSold && (
@@ -104,15 +104,15 @@ export function AdCard({ ad, index }: AdCardProps) {
 
           {/* Kilometrage avec jauge integree */}
           {ad.mileage_km != null && (() => {
-            const ratio = Math.min(ad.mileage_km / 30000, 1)
-            const kmColor = ratio < 0.33
+            const ratio = Math.min(ad.mileage_km / 50000, 1)
+            const kmColor = ratio < 0.3
               ? 'from-emerald-500/70 to-emerald-400/50'
-              : ratio < 0.66
+              : ratio < 0.6
                 ? 'from-amber-500/70 to-amber-400/50'
                 : 'from-red-500/70 to-red-400/50'
-            const textColor = ratio < 0.33
+            const textColor = ratio < 0.3
               ? 'text-emerald-400'
-              : ratio < 0.66
+              : ratio < 0.6
                 ? 'text-amber-400'
                 : 'text-red-400'
             return (

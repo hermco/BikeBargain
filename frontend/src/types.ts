@@ -146,6 +146,10 @@ export interface CrawlAdSummary {
   thumbnail: string | null
   exists_in_db: boolean
   possible_repost_of: CrawlRepostMatch | null
+  is_new_listing?: boolean
+  price_changed?: boolean
+  current_db_price?: number | null
+  price_delta?: number | null
 }
 
 export interface CrawlSearchResult {
@@ -183,7 +187,7 @@ export interface PriceHistoryEntry {
   ad_id: number
   previous_ad_id: number | null
   price: number
-  source: 'initial' | 'repost' | 'manual'
+  source: 'initial' | 'repost' | 'manual' | 'price_update'
   note: string | null
   recorded_at: string
 }
@@ -193,6 +197,23 @@ export interface PriceHistory {
   current_price: number | null
   previous_ad_id: number | null
   history: PriceHistoryEntry[]
+}
+
+export interface PriceChangeEntry {
+  id: number
+  subject: string | null
+  current_price: number
+  new_price: number
+  price_delta: number
+  city: string | null
+  department: string | null
+  url: string | null
+}
+
+export interface CheckPricesResult {
+  price_changes: PriceChangeEntry[]
+  checked_count: number
+  unchanged_count: number
 }
 
 export interface CrawlRepostMatch {
@@ -210,4 +231,5 @@ export interface CrawlExtractResult {
   existing: Record<string, unknown> | null
   diffs: CrawlDiff[]
   potential_duplicates: PotentialDuplicate[]
+  is_new_listing?: boolean
 }

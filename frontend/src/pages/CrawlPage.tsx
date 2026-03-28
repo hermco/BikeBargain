@@ -1,12 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Search, Loader2, Play, Pause, SkipForward, Check, X, AlertTriangle, ArrowRight, ExternalLink, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Pencil, Trash2, Plus, Maximize2, Copy } from 'lucide-react'
+import { Search, Loader2, Play, Pause, SkipForward, Check, X, AlertTriangle, ArrowRight, ExternalLink, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Pencil, Trash2, Plus, Maximize2, Copy, DollarSign } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { CategoryBadge } from '../components/AccessoryBadge'
 import { useToast } from '../components/Toast'
-import { useCrawlSearch, useCrawlExtract, useCrawlConfirm, useMergeAd, useAccessoryCatalog, useActiveCrawlSession, useUpdateCrawlAdAction, useCloseCrawlSession, useRemoveCrawlSessionAd } from '../hooks/queries'
+import { useCrawlSearch, useCrawlExtract, useCrawlConfirm, useMergeAd, useAccessoryCatalog, useActiveCrawlSession, useUpdateCrawlAdAction, useCloseCrawlSession, useRemoveCrawlSessionAd, useCheckPrices, useConfirmPrice } from '../hooks/queries'
 import { formatPrice, variantColor } from '../lib/utils'
-import type { CrawlAdSummary, CrawlDiff, Accessory, PotentialDuplicate } from '../types'
+import type { CrawlAdSummary, CrawlDiff, Accessory, PotentialDuplicate, PriceChangeEntry } from '../types'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
@@ -51,6 +51,10 @@ export function CrawlPage() {
   const [showDescription, setShowDescription] = useState(true)
   const [isManualPick, setIsManualPick] = useState(false)
   const [showInDb, setShowInDb] = useState(false)
+  const [hideNewListings, setHideNewListings] = useState(false)
+  const [priceChanges, setPriceChanges] = useState<PriceChangeEntry[]>([])
+  const [confirmedPriceIds, setConfirmedPriceIds] = useState<Set<number>>(new Set())
+  const [dismissedPriceIds, setDismissedPriceIds] = useState<Set<number>>(new Set())
 
   // Transition state after confirm/skip — shows countdown before next extraction
   const [transition, setTransition] = useState<{ type: 'confirmed' | 'skipped'; subject: string; countdown: number } | null>(null)
@@ -59,6 +63,7 @@ export function CrawlPage() {
   const pauseRef = useRef(false)
   const abortRef = useRef(false)
   const showInDbRef = useRef(false)
+  const hideNewListingsRef = useRef(false)
 
   const [sessionId, setSessionId] = useState<number | null>(null)
 
@@ -72,9 +77,12 @@ export function CrawlPage() {
   const { data: catalog } = useAccessoryCatalog()
   const { data: activeSession, isLoading: isLoadingSession } = useActiveCrawlSession()
   const { toast } = useToast()
+  const checkPricesMut = useCheckPrices()
+  const confirmPriceMut = useConfirmPrice()
 
   // Keep ref in sync for use inside processNext callback
   useEffect(() => { showInDbRef.current = showInDb }, [showInDb])
+  useEffect(() => { hideNewListingsRef.current = hideNewListings }, [hideNewListings])
 
   // ─── Restore session on mount ─────────────────────────────────────────
 
@@ -95,6 +103,7 @@ export function CrawlPage() {
         thumbnail: ad.thumbnail,
         exists_in_db: ad.exists_in_db,
         possible_repost_of: null,
+        is_new_listing: ad.is_new_listing,
       },
       action: ad.action as AdAction,
     }))
@@ -148,6 +157,38 @@ export function CrawlPage() {
     })
   }
 
+  function handleCheckPrices() {
+    checkPricesMut.mutate(undefined, {
+      onSuccess: (data) => {
+        setPriceChanges(data.price_changes)
+        setConfirmedPriceIds(new Set())
+        setDismissedPriceIds(new Set())
+        if (data.price_changes.length === 0) {
+          toast(t('crawl.noPriceChanges') + ` (${t('crawl.checkedCount', { count: data.checked_count })})`, 'info')
+        }
+      },
+      onError: (err) => {
+        toast((err as Error).message, 'error')
+      },
+    })
+  }
+
+  function handleConfirmPrice(adId: number, newPrice: number) {
+    confirmPriceMut.mutate({ adId, newPrice }, {
+      onSuccess: () => {
+        setConfirmedPriceIds(prev => new Set(prev).add(adId))
+        toast(t('crawl.priceChangeConfirmed'), 'success')
+      },
+      onError: (err) => {
+        toast((err as Error).message, 'error')
+      },
+    })
+  }
+
+  function handleDismissPrice(adId: number) {
+    setDismissedPriceIds(prev => new Set(prev).add(adId))
+  }
+
   // ─── Crawl loop ────────────────────────────────────────────────────────
 
   const processNext = useCallback((states: AdState[], startIdx: number) => {
@@ -161,6 +202,7 @@ export function CrawlPage() {
     for (let i = startIdx; i < states.length; i++) {
       if (states[i].action === 'pending') {
         if (!showInDbRef.current && states[i].summary.exists_in_db) continue
+        if (hideNewListingsRef.current && states[i].summary.is_new_listing) continue
         nextIdx = i
         break
       }
@@ -193,6 +235,10 @@ export function CrawlPage() {
           const newStates = [...updated]
           newStates[nextIdx] = {
             ...newStates[nextIdx],
+            summary: {
+              ...newStates[nextIdx].summary,
+              is_new_listing: result.is_new_listing,
+            },
             action: 'waiting',
             extractData: result.ad_data,
             existingData: result.existing,
@@ -526,9 +572,14 @@ export function CrawlPage() {
   const currentExtract = currentAd?.extractData
   const pendingCount = adStates.filter((s) => s.action === 'pending').length
   const inDbCount = adStates.filter((s) => s.summary.exists_in_db && s.action === 'pending').length
+  const newListingCount = adStates.filter((s) => s.summary.is_new_listing && s.action === 'pending').length
 
-  // Ads filtered by showInDb toggle
-  const visibleAdStates = showInDb ? adStates : adStates.filter((s) => !s.summary.exists_in_db || s.action !== 'pending')
+  // Ads filtered by showInDb and hideNewListings toggles
+  const visibleAdStates = adStates.filter((s) => {
+    if (!showInDb && s.summary.exists_in_db && s.action === 'pending') return false
+    if (hideNewListings && s.summary.is_new_listing && s.action === 'pending') return false
+    return true
+  })
   const newCount = adStates.filter((s) => !s.summary.exists_in_db && s.action === 'pending').length
   const variant = currentExtract?.variant as string | null
   const availableColors = variant ? COLORS[variant] ?? [] : Object.values(COLORS).flat()
@@ -545,7 +596,7 @@ export function CrawlPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
+          <h1 className="text-2xl font-semibold tracking-tight font-fraunces">
             {t('crawl.title')}
           </h1>
           <p className="text-sm text-text-muted mt-1">
@@ -628,7 +679,7 @@ export function CrawlPage() {
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400/20 to-amber-600/20 flex items-center justify-center mb-6">
             <Search className="h-7 w-7 text-amber-400" />
           </div>
-          <h2 className="text-lg font-semibold text-text-primary mb-2" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
+          <h2 className="text-lg font-semibold text-text-primary mb-2 font-fraunces">
             {t('crawl.searchTitle')}
           </h2>
           <p className="text-sm text-text-muted mb-6 text-center max-w-md">
@@ -652,6 +703,106 @@ export function CrawlPage() {
               {(searchMut.error as Error).message}
             </div>
           )}
+          <Button
+            onClick={handleCheckPrices}
+            disabled={checkPricesMut.isPending}
+            variant="secondary"
+            className="gap-2 mt-3"
+          >
+            {checkPricesMut.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t('crawl.checkingPrices')}
+              </>
+            ) : (
+              <>
+                <DollarSign className="h-4 w-4" />
+                {t('crawl.checkPrices')}
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+
+      {/* Price changes results */}
+      {priceChanges.length > 0 && (status === 'idle' || status === 'done') && (
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <h3 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold flex items-center gap-2">
+              <DollarSign className="h-3.5 w-3.5" />
+              {t('crawl.priceChanges')}
+            </h3>
+            <Badge className="bg-amber-500/15 text-amber-300 text-[10px]">
+              {t('crawl.priceChangeCount', { count: priceChanges.filter(pc => !confirmedPriceIds.has(pc.id) && !dismissedPriceIds.has(pc.id)).length })}
+            </Badge>
+          </div>
+          <div className="space-y-2">
+            {priceChanges.map((pc) => {
+              const isConfirmed = confirmedPriceIds.has(pc.id)
+              const isDismissed = dismissedPriceIds.has(pc.id)
+              if (isDismissed) return null
+
+              return (
+                <div
+                  key={pc.id}
+                  className={`rounded-xl border p-4 transition-all ${
+                    isConfirmed
+                      ? 'bg-green-500/5 border-green-500/20 opacity-60'
+                      : 'bg-card border-white/[0.06]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Link to={`/ads/${pc.id}`} className="text-sm font-medium text-text-primary hover:text-amber-400 transition-colors truncate">
+                          {pc.subject || `#${pc.id}`}
+                        </Link>
+                        {pc.city && (
+                          <span className="text-[10px] text-text-dim shrink-0">{pc.city}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-text-muted tabular-nums">{formatPrice(pc.current_price)}</span>
+                        <ArrowRight className="h-3 w-3 text-text-dim" />
+                        <span className="text-sm font-semibold tabular-nums text-text-primary">{formatPrice(pc.new_price)}</span>
+                        <span className={`text-xs font-semibold tabular-nums ${pc.price_delta < 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {pc.price_delta < 0 ? '' : '+'}{pc.price_delta}€
+                        </span>
+                      </div>
+                    </div>
+                    {!isConfirmed && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => handleDismissPrice(pc.id)}
+                          className="gap-1"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          {t('crawl.priceChangeIgnore')}
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleConfirmPrice(pc.id, pc.new_price)}
+                          disabled={confirmPriceMut.isPending}
+                          className="gap-1"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                          {t('crawl.priceChangeConfirm')}
+                        </Button>
+                      </div>
+                    )}
+                    {isConfirmed && (
+                      <Badge className="bg-green-500/15 text-green-300 text-[10px]">
+                        <Check className="h-3 w-3 mr-1" />
+                        {t('crawl.priceChangeConfirmed')}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
@@ -659,28 +810,48 @@ export function CrawlPage() {
       {status === 'done' && (
         <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-6 mb-6 text-center">
           <Check className="h-8 w-8 text-green-400 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-text-primary mb-1" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
+          <h3 className="text-lg font-semibold text-text-primary mb-1 font-fraunces">
             {t('crawl.doneTitle')}
           </h3>
           <p className="text-sm text-text-muted">
             {confirmedCount} {t(confirmedCount > 1 ? 'crawl.doneSummary_other' : 'crawl.doneSummary_one', { confirmed: confirmedCount, skipped: skippedCount })}
           </p>
-          <Button onClick={() => {
-            if (sessionId) closeSessionMut.mutate(sessionId)
-            restoredRef.current = true
-            setSessionId(null)
-            setStatus('idle')
-            setAdStates([])
-            setCurrentIndex(-1)
-            setProcessedCount(0)
-            setConfirmedCount(0)
-            setSkippedCount(0)
-    setTransition(null)
-    if (transitionTimerRef.current) { clearInterval(transitionTimerRef.current); transitionTimerRef.current = null }
-          }} variant="secondary" className="mt-4 gap-2">
-            <Search className="h-4 w-4" />
-            {t('crawl.newSearch')}
-          </Button>
+          <div className="flex items-center justify-center gap-3 mt-4">
+            <Button onClick={() => {
+              if (sessionId) closeSessionMut.mutate(sessionId)
+              restoredRef.current = true
+              setSessionId(null)
+              setStatus('idle')
+              setAdStates([])
+              setCurrentIndex(-1)
+              setProcessedCount(0)
+              setConfirmedCount(0)
+              setSkippedCount(0)
+              setTransition(null)
+              if (transitionTimerRef.current) { clearInterval(transitionTimerRef.current); transitionTimerRef.current = null }
+            }} variant="secondary" className="gap-2">
+              <Search className="h-4 w-4" />
+              {t('crawl.newSearch')}
+            </Button>
+            <Button
+              onClick={handleCheckPrices}
+              disabled={checkPricesMut.isPending}
+              variant="secondary"
+              className="gap-2"
+            >
+              {checkPricesMut.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t('crawl.checkingPrices')}
+                </>
+              ) : (
+                <>
+                  <DollarSign className="h-4 w-4" />
+                  {t('crawl.checkPrices')}
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -1270,24 +1441,44 @@ export function CrawlPage() {
                     · {inDbCount} {t('crawl.alreadyInDb')}
                   </span>
                 )}
+                {newListingCount > 0 && (
+                  <span className="ml-1 text-blue-300 font-normal">
+                    · {t('crawl.newListingCount', { count: newListingCount })}
+                  </span>
+                )}
               </h3>
               <p className="text-xs text-text-dim">
                 {t('crawl.clickToProcess')}
               </p>
             </div>
-            {inDbCount > 0 && (
-              <button
-                onClick={() => setShowInDb(!showInDb)}
-                className="flex items-center gap-2 text-xs text-text-muted hover:text-text-secondary transition-colors"
-              >
-                <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${showInDb ? 'bg-amber-500/40' : 'bg-white/[0.08]'}`}>
-                  <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 mt-0.5 ${showInDb ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
-                </span>
-                <span className={showInDb ? 'text-amber-300' : ''}>
-                  {t('crawl.showInDb')} ({inDbCount})
-                </span>
-              </button>
-            )}
+            <div className="flex items-center gap-4">
+              {newListingCount > 0 && (
+                <button
+                  onClick={() => setHideNewListings(!hideNewListings)}
+                  className="flex items-center gap-2 text-xs text-text-muted hover:text-text-secondary transition-colors"
+                >
+                  <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${hideNewListings ? 'bg-blue-500/40' : 'bg-white/[0.08]'}`}>
+                    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 mt-0.5 ${hideNewListings ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                  </span>
+                  <span className={hideNewListings ? 'text-blue-300' : ''}>
+                    {t('crawl.hideNewListings')} ({newListingCount})
+                  </span>
+                </button>
+              )}
+              {inDbCount > 0 && (
+                <button
+                  onClick={() => setShowInDb(!showInDb)}
+                  className="flex items-center gap-2 text-xs text-text-muted hover:text-text-secondary transition-colors"
+                >
+                  <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${showInDb ? 'bg-amber-500/40' : 'bg-white/[0.08]'}`}>
+                    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 mt-0.5 ${showInDb ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                  </span>
+                  <span className={showInDb ? 'text-amber-300' : ''}>
+                    {t('crawl.showInDb')} ({inDbCount})
+                  </span>
+                </button>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[70vh] overflow-y-auto pr-1">
             {visibleAdStates.map((state) => {
@@ -1374,6 +1565,11 @@ export function CrawlPage() {
                     <span className="text-[10px] font-semibold text-purple-300 uppercase tracking-wide">{t('crawl.repostQuestion')}</span>
                   </div>
                 )}
+                {state.summary.is_new_listing && isPending && !inDb && !state.summary.possible_repost_of && (
+                  <div className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-1 rounded-md bg-blue-500/20 backdrop-blur-sm border border-blue-500/30">
+                    <span className="text-[10px] font-semibold text-blue-300 uppercase tracking-wide">{t('crawl.newListingBadge')}</span>
+                  </div>
+                )}
                 {state.summary.thumbnail && (
                   <img src={state.summary.thumbnail} alt="" className={`w-full h-36 object-cover ${!isPending && !isWaiting ? 'opacity-40' : inDb ? 'opacity-70' : ''}`} />
                 )}
@@ -1389,6 +1585,11 @@ export function CrawlPage() {
                       {[state.summary.city, state.summary.department].filter(Boolean).join(', ')}
                     </span>
                   </div>
+                  {state.summary.price_changed && (
+                    <Badge className="bg-amber-500/15 text-amber-300 text-[10px]">
+                      {t('crawl.priceChangedBadge')} ({state.summary.price_delta! < 0 ? '' : '+'}{state.summary.price_delta}€)
+                    </Badge>
+                  )}
                   {isPending && !inDb && state.summary.possible_repost_of && (() => {
                     const repost = state.summary.possible_repost_of
                     const delta = repost.price_delta

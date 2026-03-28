@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { BarChart3, Trophy, LayoutGrid, Plus, Search, Wrench, Globe } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn, formatPrice } from '../lib/utils'
@@ -111,6 +111,7 @@ function SidebarStats() {
 
 export function Sidebar() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
 
   return (
     <>
@@ -118,7 +119,7 @@ export function Sidebar() {
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col bg-bg/80 backdrop-blur-xl border-r border-white/[0.06] z-30">
         <div className="flex items-center gap-3 px-6 py-6">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
-            <span className="text-bg font-bold text-sm" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>H</span>
+            <span className="text-bg font-bold text-sm font-fraunces">H</span>
           </div>
           <div>
             <span className="font-semibold text-sm tracking-tight text-text-primary">Himalayan</span>
@@ -137,13 +138,13 @@ export function Sidebar() {
         </div>
 
         <div className="mt-auto p-4 space-y-3">
-          <NavLink
-            to="/"
-            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 text-amber-300 text-xs font-medium hover:bg-amber-500/15 transition-colors border border-amber-500/15"
+          <button
+            onClick={() => navigate('/?add=true')}
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 text-amber-300 text-xs font-medium hover:bg-amber-500/15 transition-colors border border-amber-500/15 w-full"
           >
             <Plus className="h-3.5 w-3.5" />
             {t('sidebar.addAd')}
-          </NavLink>
+          </button>
           <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
           <LanguageSwitcher />
           <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
@@ -177,7 +178,6 @@ export function Sidebar() {
             <span>{t(n.labelKey)}</span>
           </NavLink>
         ))}
-        <MobileLanguageToggle />
       </nav>
     </>
   )

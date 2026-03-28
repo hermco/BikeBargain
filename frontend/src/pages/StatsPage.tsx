@@ -24,7 +24,7 @@ function KpiCard({ label, value, icon: Icon, accent }: { label: string; value: s
       <div className="flex items-start justify-between">
         <div>
           <p className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-2">{label}</p>
-          <p className="text-2xl font-bold text-text-primary" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>{value}</p>
+          <p className="text-2xl font-bold text-text-primary font-fraunces">{value}</p>
         </div>
         <div className="w-10 h-10 rounded-xl bg-white/[0.04] flex items-center justify-center">
           <Icon className="h-5 w-5 text-text-dim" />
@@ -57,7 +57,7 @@ export function StatsPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>{t('stats.title')}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight font-fraunces">{t('stats.title')}</h1>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)}
         </div>
@@ -77,7 +77,7 @@ export function StatsPage() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-      <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>{t('stats.title')}</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">{t('stats.title')}</h1>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

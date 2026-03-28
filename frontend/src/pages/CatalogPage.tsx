@@ -176,7 +176,7 @@ export function CatalogPage() {
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-text-primary" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
+          <h1 className="text-xl font-bold text-text-primary font-fraunces">
             {t('catalog.title')}
           </h1>
           <p className="text-sm text-text-muted mt-1">

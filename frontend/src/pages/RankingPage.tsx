@@ -146,7 +146,7 @@ function RankingCard({ r, rank, isOpen, onToggle, travel, travelLoading }: {
       <button onClick={onToggle} className="w-full text-left p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-lg font-bold text-text-muted" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>#{rank}</span>
+            <span className="text-lg font-bold text-text-muted font-fraunces">#{rank}</span>
             <div>
               <p className="text-sm font-medium text-text-primary flex items-center gap-2 flex-wrap">
                 {r.city}
@@ -341,7 +341,7 @@ export function RankingPage() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>{t('ranking.title')}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight font-fraunces">{t('ranking.title')}</h1>
           <p className="text-xs text-text-dim mt-1.5 max-w-2xl">
             {t('ranking.description')}
           </p>
@@ -514,7 +514,7 @@ export function RankingPage() {
                     )}
                     onClick={() => setExpanded(isOpen ? null : r.id)}
                   >
-                    <td className="py-3 pl-5 pr-4 w-12 text-center font-bold text-text-muted" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>{origRank}</td>
+                    <td className="py-3 pl-5 pr-4 w-12 text-center font-bold text-text-muted font-fraunces">{origRank}</td>
                     <td className="py-3 pr-4 text-text-secondary">
                       {r.city}
                       {r.sold && <span className="ml-2 text-[10px] text-red-400 uppercase font-semibold">{t('common.sold')}</span>}

@@ -208,12 +208,34 @@ export function useDeleteAd() {
   })
 }
 
+export function useCheckPrices() {
+  return useMutation({
+    mutationFn: () => api.checkPrices(),
+  })
+}
+
+export function useConfirmPrice() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ adId, newPrice }: { adId: number; newPrice: number }) =>
+      api.confirmPrice(adId, newPrice),
+    onSuccess: (_data, vars) => {
+      void qc.invalidateQueries({ queryKey: ['ad', vars.adId] })
+      void qc.invalidateQueries({ queryKey: ['ads'] })
+      void qc.invalidateQueries({ queryKey: ['stats'] })
+      void qc.invalidateQueries({ queryKey: ['rankings'] })
+      void qc.invalidateQueries({ queryKey: ['price-history', vars.adId] })
+    },
+  })
+}
+
 // ─── Crawl ────────────────────────────────────────────────────────────────
 
 export function useActiveCrawlSession() {
   return useQuery({
     queryKey: ['crawl-session'],
     queryFn: api.fetchActiveCrawlSession,
+    retry: false,
   })
 }
 

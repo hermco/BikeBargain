@@ -1,4 +1,4 @@
-import type { AdsResponse, AdDetail, Stats, Ranking, CrawlSearchResult, CrawlExtractResult, PriceHistory } from '../types'
+import type { AdsResponse, AdDetail, Stats, Ranking, CrawlSearchResult, CrawlExtractResult, PriceHistory, CheckPricesResult } from '../types'
 import { config } from '../config'
 
 const BASE = `${config.apiBaseUrl}/api`
@@ -144,6 +144,18 @@ export function fetchRankings(): Promise<Ranking[]> {
   return fetchJSON<Ranking[]>('/rankings')
 }
 
+export function checkPrices(): Promise<CheckPricesResult> {
+  return fetchJSON<CheckPricesResult>('/ads/check-prices', { method: 'POST' })
+}
+
+export function confirmPrice(adId: number, newPrice: number): Promise<{ id: number; price_delta: number; new_price: number }> {
+  return fetchJSON(`/ads/${adId}/confirm-price`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ new_price: newPrice }),
+  })
+}
+
 // ─── Crawl ────────────────────────────────────────────────────────────────
 
 export function crawlSearch(): Promise<CrawlSearchResult & { session_id: number }> {
@@ -168,6 +180,7 @@ export interface CrawlSessionAd {
   thumbnail: string | null
   exists_in_db: boolean
   action: string
+  is_new_listing?: boolean
 }
 
 export interface CrawlSession {
