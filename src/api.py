@@ -62,8 +62,44 @@ class AddAdRequest(BaseModel):
     url: str
 
 
+class AdPayload(BaseModel):
+    id: int  # LeBonCoin ID
+    url: str | None = None
+    subject: str | None = None
+    body: str | None = None
+    price: float | None = None
+    brand: str | None = None
+    model: str | None = None
+    year: int | None = None
+    mileage_km: int | None = None
+    engine_size_cc: int | None = None
+    fuel_type: str | None = None
+    color: str | None = None
+    category_name: str | None = None
+    ad_type: str | None = None
+    status: str | None = None
+    has_phone: int | None = None
+    city: str | None = None
+    zipcode: str | None = None
+    department: str | None = None
+    region: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+    seller_type: str | None = None
+    first_publication_date: str | None = None
+    expiration_date: str | None = None
+    variant: str | None = None
+    wheel_type: str | None = None
+    estimated_new_price: float | None = None
+    previous_ad_id: int | None = None
+    # Related data (not in _AD_FIELDS but consumed by upsert_ad)
+    attributes: list[dict] | None = None
+    images: list[str] | None = None
+    accessories: list[dict] | None = None
+
+
 class ConfirmAdRequest(BaseModel):
-    ad_data: dict
+    ad_data: AdPayload
 
 
 class UpdateAdRequest(BaseModel):
@@ -177,9 +213,7 @@ def preview_ad(req: AddAdRequest, session: Session = Depends(get_session)):
 def confirm_ad(req: ConfirmAdRequest, session: Session = Depends(get_session)):
     from .extractor import _estimate_new_price
 
-    ad_data = req.ad_data
-    if not ad_data.get("id"):
-        raise HTTPException(status_code=400, detail="Donnees d'annonce invalides (id manquant)")
+    ad_data = req.ad_data.model_dump(exclude_unset=True)
 
     new_price = _estimate_new_price(
         ad_data.get("variant"), ad_data.get("color"), ad_data.get("wheel_type")
@@ -260,7 +294,7 @@ def update_ad(ad_id: int, req: UpdateAdRequest, session: Session = Depends(get_s
 # ─── Merge / Price History ──────────────────────────────────────────────────
 
 class MergeAdRequest(BaseModel):
-    new_ad_data: dict
+    new_ad_data: AdPayload
     old_ad_id: int
 
 
@@ -272,9 +306,7 @@ def merge_ad(req: MergeAdRequest, session: Session = Depends(get_session)):
     if not old_ad:
         raise HTTPException(status_code=404, detail="Ancienne annonce non trouvee")
 
-    new_data = req.new_ad_data
-    if not new_data.get("id"):
-        raise HTTPException(status_code=400, detail="Donnees d'annonce invalides (id manquant)")
+    new_data = req.new_ad_data.model_dump(exclude_unset=True)
 
     new_id = new_data["id"]
     old_price = old_ad.price or 0

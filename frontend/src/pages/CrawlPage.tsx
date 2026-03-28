@@ -66,6 +66,8 @@ export function CrawlPage() {
   const hideNewListingsRef = useRef(false)
 
   const [sessionId, setSessionId] = useState<number | null>(null)
+  const sessionIdRef = useRef(sessionId)
+  useEffect(() => { sessionIdRef.current = sessionId }, [sessionId])
 
   const searchMut = useCrawlSearch()
   const extractMut = useCrawlExtract()
@@ -260,8 +262,8 @@ export function CrawlPage() {
           setProcessedCount((c) => c + 1)
 
           // Persister l'action dans la session
-          if (sessionId) {
-            updateActionMut.mutate({ sessionId, adId: ad.id, action: 'error' })
+          if (sessionIdRef.current) {
+            updateActionMut.mutate({ sessionId: sessionIdRef.current, adId: ad.id, action: 'error' })
           }
 
           // Continue after delay
@@ -269,7 +271,7 @@ export function CrawlPage() {
         },
       },
     )
-  }, [extractMut, sessionId, updateActionMut])
+  }, [extractMut, updateActionMut])
 
   function handleStartCrawl() {
     setIsManualPick(false)
@@ -363,7 +365,7 @@ export function CrawlPage() {
     setAccessorySearch('')
   }
 
-  function startTransition(type: 'confirmed' | 'skipped', subject: string, then: () => void) {
+  function startCrawlTransition(type: 'confirmed' | 'skipped', subject: string, then: () => void) {
     const total = CRAWL_DELAY_MS / 1000
     setTransition({ type, subject, countdown: total })
     setStatus('crawling') // exit waiting_validation so the card hides
@@ -418,7 +420,7 @@ export function CrawlPage() {
           setCurrentIndex(-1)
           toast(t('crawl.adAddedToast', { subject: state.summary.subject }), 'success')
         } else {
-          startTransition('confirmed', state.summary.subject ?? '', () => processNext(updated, currentIndex + 1))
+          startCrawlTransition('confirmed', state.summary.subject ?? '', () => processNext(updated, currentIndex + 1))
         }
       },
       onError: (err) => {
@@ -453,7 +455,7 @@ export function CrawlPage() {
       setCurrentIndex(-1)
       toast(t('crawl.adSkippedToast', { subject: state.summary.subject }), 'info')
     } else {
-      startTransition('skipped', state.summary.subject ?? '', () => processNext(updated, currentIndex + 1))
+      startCrawlTransition('skipped', state.summary.subject ?? '', () => processNext(updated, currentIndex + 1))
     }
   }
 
@@ -488,7 +490,7 @@ export function CrawlPage() {
           setStatus('ready')
           setCurrentIndex(-1)
         } else {
-          startTransition('confirmed', state.summary.subject ?? '', () => processNext(updated, currentIndex + 1))
+          startCrawlTransition('confirmed', state.summary.subject ?? '', () => processNext(updated, currentIndex + 1))
         }
       },
       onError: (err) => {
