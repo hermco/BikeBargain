@@ -26,3 +26,6 @@ frontend/dist/
 .vscode/
 .idea/
 .vercel
+
+# Superpowers brainstorm assets
+.superpowers/
