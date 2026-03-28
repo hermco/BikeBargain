@@ -39,7 +39,10 @@
     "noAccessoryDetected": "No accessory detected.",
     "seller": "Seller",
     "professional": "Professional",
-    "private": "Private"
+    "private": "Private",
+    "yourCity": "Your city...",
+    "select": "Select...",
+    "backToListings": "Back to listings"
   },
   "nav": {
     "ads": "Listings",
@@ -185,7 +188,15 @@
     "conditionRisk": "Condition risk",
     "viewAd": "View listing",
     "ad_one": "{{count}} listing",
-    "ad_other": "{{count}} listings"
+    "ad_other": "{{count}} listings",
+    "travel": "Travel",
+    "byRoad": "by road",
+    "distanceBand": {
+      "close": "Close",
+      "medium": "Medium",
+      "far": "Far",
+      "very_far": "Very far"
+    }
   },
   "crawl": {
     "title": "LeBonCoin Search",

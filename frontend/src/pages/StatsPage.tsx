@@ -7,7 +7,8 @@ import { useTranslation } from 'react-i18next'
 import { useStats } from '../hooks/queries'
 import { Card } from '../components/ui/Card'
 import { StatCardSkeleton } from '../components/LoadingSkeleton'
-import { formatPrice, formatKm, variantChartColor } from '../lib/utils'
+import { variantChartColor } from '../lib/utils'
+import { useFormatters } from '../hooks/useFormatters'
 import { Package, TrendingUp, ArrowUpDown, Gauge } from 'lucide-react'
 
 const TOOLTIP_STYLE = {
@@ -53,6 +54,7 @@ function buildHistogram(values: number[], bins: number): { label: string; count:
 export function StatsPage() {
   const { data: stats, isLoading } = useStats()
   const { t } = useTranslation()
+  const { formatPrice, formatKm } = useFormatters()
 
   if (isLoading) {
     return (

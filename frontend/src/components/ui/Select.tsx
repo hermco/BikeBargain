@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '../../lib/utils'
 
 export interface SelectOption {
@@ -17,6 +18,7 @@ interface SelectProps {
 }
 
 export function Select({ value, onChange, options, placeholder, className, icon }: SelectProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -45,7 +47,7 @@ export function Select({ value, onChange, options, placeholder, className, icon 
       >
         {icon && <span className="text-text-dim shrink-0">{icon}</span>}
         <span className={cn('flex-1 truncate', selected ? 'text-text-secondary' : 'text-text-dim')}>
-          {selected?.label ?? placeholder ?? 'Sélectionner...'}
+          {selected?.label ?? placeholder ?? t('common.select')}
         </span>
         <ChevronDown className={cn('h-4 w-4 text-text-dim shrink-0 transition-transform duration-200', open && 'rotate-180')} />
       </button>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { MapPin, X } from 'lucide-react'
 import { geocodeSearch, type UserLocation, type GeoSuggestion } from '../lib/geo'
 
@@ -9,6 +10,7 @@ interface LocationPickerProps {
 }
 
 export function LocationPicker({ location, onChange }: LocationPickerProps) {
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [focused, setFocused] = useState(false)
   const [suggestions, setSuggestions] = useState<GeoSuggestion[]>([])
@@ -65,7 +67,7 @@ export function LocationPicker({ location, onChange }: LocationPickerProps) {
   }
 
   const displayValue = focused ? query : (location?.label ?? '')
-  const placeholder = location ? location.label : 'Votre ville...'
+  const placeholder = location ? location.label : t('common.yourCity')
 
   return (
     <div ref={containerRef} className="relative max-w-xs">

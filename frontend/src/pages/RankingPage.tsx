@@ -12,7 +12,8 @@ import { Select } from '../components/ui/Select'
 import { TableSkeleton } from '../components/LoadingSkeleton'
 import { EmptyState } from '../components/EmptyState'
 import { LocationPicker } from '../components/LocationPicker'
-import { formatPrice, formatKm, variantColor, cn } from '../lib/utils'
+import { variantColor, cn } from '../lib/utils'
+import { useFormatters } from '../hooks/useFormatters'
 import {
   getUserLocation, setUserLocation, clearUserLocation,
   haversineKm, travelTimeBand, DISTANCE_BAND_CONFIG,
@@ -42,6 +43,7 @@ function TravelBadge({ travel, loading }: { travel?: TravelInfo; loading?: boole
 
 function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
   const { t } = useTranslation()
+  const { formatPrice } = useFormatters()
   return (
     <motion.div
       initial={{ height: 0, opacity: 0 }}
@@ -115,7 +117,7 @@ function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
           {travel && (
             <p className="text-[11px] text-text-dim mt-2 flex items-center gap-1">
               <Car className="h-3 w-3" />
-              {formatDuration(travel.durationSec)} · {Math.round(travel.distanceKm)} km par la route
+              {formatDuration(travel.durationSec)} · {Math.round(travel.distanceKm)} km {t('ranking.byRoad')}
             </p>
           )}
 
@@ -139,6 +141,7 @@ function RankingCard({ r, rank, isOpen, onToggle, travel, travelLoading }: {
   r: Ranking; rank: number; isOpen: boolean; onToggle: () => void; travel?: TravelInfo; travelLoading?: boolean
 }) {
   const { t } = useTranslation()
+  const { formatPrice, formatKm } = useFormatters()
   const colorStr = `${r.color || r.variant}${r.wheel_type === 'tubeless' ? ' TL' : ''}`
 
   return (
@@ -190,6 +193,7 @@ type SortKey = 'rank' | 'price' | 'km' | 'effective_price' | 'decote_pct' | 'acc
 
 export function RankingPage() {
   const { t } = useTranslation()
+  const { formatPrice, formatKm } = useFormatters()
   const { data: rankings, isLoading } = useRankings()
   const checkOnlineMut = useCheckAdsOnline()
   const { toast } = useToast()
@@ -496,7 +500,7 @@ export function RankingPage() {
             <tr className="text-left text-[11px] text-text-dim uppercase tracking-widest border-b border-white/[0.06]">
               <SortHeader k="rank" className="pl-5 w-12 text-center">{t('ranking.rank')}</SortHeader>
               <th className="py-4 pr-4">{t('ranking.city')}</th>
-              {hasLocation && <SortHeader k="distance" className="text-right w-20">Trajet</SortHeader>}
+              {hasLocation && <SortHeader k="distance" className="text-right w-20">{t('ranking.travel')}</SortHeader>}
               <th className="py-4 pr-4">{t('ranking.color')}</th>
               <SortHeader k="km" className="text-right">{t('ranking.km')}</SortHeader>
               <SortHeader k="price" className="text-right">{t('ranking.listed')}</SortHeader>

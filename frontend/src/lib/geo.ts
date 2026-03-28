@@ -87,11 +87,11 @@ export function distanceBand(km: number): DistanceBand {
   return 'very_far'
 }
 
-export const DISTANCE_BAND_CONFIG: Record<DistanceBand, { label: string; color: string; bg: string }> = {
-  close:    { label: 'Proche',       color: 'text-emerald-300', bg: 'bg-emerald-500/15' },
-  medium:   { label: 'Moyen',        color: 'text-amber-300',   bg: 'bg-amber-500/15' },
-  far:      { label: 'Loin',         color: 'text-orange-300',  bg: 'bg-orange-500/15' },
-  very_far: { label: 'Tres loin',    color: 'text-red-300',     bg: 'bg-red-500/15' },
+export const DISTANCE_BAND_CONFIG: Record<DistanceBand, { labelKey: string; color: string; bg: string }> = {
+  close:    { labelKey: 'ranking.distanceBand.close',    color: 'text-emerald-300', bg: 'bg-emerald-500/15' },
+  medium:   { labelKey: 'ranking.distanceBand.medium',   color: 'text-amber-300',   bg: 'bg-amber-500/15' },
+  far:      { labelKey: 'ranking.distanceBand.far',      color: 'text-orange-300',  bg: 'bg-orange-500/15' },
+  very_far: { labelKey: 'ranking.distanceBand.very_far', color: 'text-red-300',     bg: 'bg-red-500/15' },
 }
 
 // ─── Temps de trajet (OSRM) ─────────────────────────────────────────────────

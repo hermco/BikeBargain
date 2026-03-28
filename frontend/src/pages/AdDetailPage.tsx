@@ -8,25 +8,20 @@ import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { CategoryBadge } from '../components/AccessoryBadge'
 import { TableSkeleton } from '../components/LoadingSkeleton'
+import { EmptyState } from '../components/EmptyState'
 import { useToast } from '../components/Toast'
-import { formatPrice, formatKm, variantColor } from '../lib/utils'
+import { variantColor } from '../lib/utils'
+import { useFormatters } from '../hooks/useFormatters'
 import { useState, useEffect, useCallback } from 'react'
 import * as Accordion from '@radix-ui/react-accordion'
 import * as Dialog from '@radix-ui/react-dialog'
 import type { Accessory } from '../types'
-
-const VARIANTS = ['Base', 'Pass', 'Summit', 'Mana Black'] as const
-const COLORS: Record<string, string[]> = {
-  Base: ['Kaza Brown'],
-  Pass: ['Slate Himalayan Salt', 'Slate Poppy Blue'],
-  Summit: ['Hanle Black', 'Kamet White'],
-  'Mana Black': ['Mana Black'],
-}
-const WHEEL_TYPES = ['standard', 'tubeless'] as const
+import { VARIANTS, COLORS, WHEEL_TYPES } from '../lib/constants'
 
 export function AdDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { t } = useTranslation()
+  const { formatPrice, formatKm } = useFormatters()
   const { data: ad, isLoading, error } = useAd(Number(id))
   const deleteMut = useDeleteAd()
   const updateMut = useUpdateAd()
@@ -64,7 +59,20 @@ export function AdDetailPage() {
 
   if (isLoading) return <TableSkeleton rows={12} />
   if (error || !ad)
-    return <p className="text-red-400">{t('adDetail.notFound')}</p>
+    return (
+      <EmptyState
+        title={t('adDetail.notFound')}
+        action={
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 rounded-xl bg-amber-500/15 text-amber-300 px-4 py-2 text-sm font-medium hover:bg-amber-500/25 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {t('common.backToListings')}
+          </Link>
+        }
+      />
+    )
 
   function startEdit() {
     setEditing(true)
@@ -263,7 +271,7 @@ export function AdDetailPage() {
           <History className="h-4 w-4 shrink-0" />
           <span>{t('adDetail.repostOf')} </span>
           <Link to={`/ads/${ad.previous_ad_id}`} className="font-medium underline hover:text-purple-200 transition-colors">
-            l'annonce #{ad.previous_ad_id}
+            {t('adDetail.see', { id: ad.previous_ad_id })}
           </Link>
           {priceHistory && priceHistory.history.length >= 2 && (() => {
             const first = priceHistory.history[0].price
