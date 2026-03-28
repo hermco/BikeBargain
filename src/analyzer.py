@@ -14,7 +14,7 @@ from datetime import date, datetime
 from typing import Optional
 
 from sqlmodel import Session
-from .database import engine, get_all_ads
+from .database import get_all_ads
 
 # ─── CONSOMMABLES (tarif garage : pieces + main d'oeuvre) ─────────────────────
 
@@ -176,7 +176,7 @@ def compute_warranty(year: Optional[int], pub_date_str: Optional[str],
     }
 
 
-def rank_ads(today: Optional[date] = None) -> list[dict]:
+def rank_ads(session: Session, today: Optional[date] = None) -> list[dict]:
     """
     Analyse et classe toutes les annonces en base.
 
@@ -184,11 +184,14 @@ def rank_ads(today: Optional[date] = None) -> list[dict]:
 
     Plus la decote est grande, meilleur est le deal.
 
+    Args:
+        session: SQLModel session (injectee par FastAPI Depends ou fournie manuellement).
+        today: Date de reference pour le calcul de garantie (defaut: aujourd'hui).
+
     Returns:
         Liste de dicts tries par decote decroissante (meilleur deal en premier).
     """
-    with Session(engine) as session:
-        ads = get_all_ads(session)
+    ads = get_all_ads(session)
 
     results = []
 
@@ -277,7 +280,9 @@ def rank_ads(today: Optional[date] = None) -> list[dict]:
 def print_report(results: Optional[list[dict]] = None) -> None:
     """Affiche le rapport comparatif dans le terminal."""
     if results is None:
-        results = rank_ads()
+        from .database import engine
+        with Session(engine) as session:
+            results = rank_ads(session)
 
     if not results:
         print("Aucune annonce en base.")

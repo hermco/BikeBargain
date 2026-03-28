@@ -9,6 +9,7 @@ delegue les appels LBC ici.
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from lbc.exceptions import NotFoundError
 
 app = FastAPI(title="LBC Service")
 
@@ -74,8 +75,10 @@ def check_ad(req: CheckAdRequest):
         if status and status not in ("active",):
             return {"ad_id": req.ad_id, "online": False, "reason": f"status={status}"}
         return {"ad_id": req.ad_id, "online": True}
-    except Exception:
+    except NotFoundError:
         return {"ad_id": req.ad_id, "online": False, "reason": "inaccessible"}
+    except Exception as e:
+        return {"ad_id": req.ad_id, "online": None, "reason": "error", "error": str(e)}
 
 
 @app.post("/check-ads")
@@ -93,6 +96,8 @@ def check_ads(req: CheckAdsRequest):
                 results.append({"ad_id": ad_id, "online": False, "reason": f"status={status}"})
             else:
                 results.append({"ad_id": ad_id, "online": True})
-        except Exception:
+        except NotFoundError:
             results.append({"ad_id": ad_id, "online": False, "reason": "inaccessible"})
+        except Exception as e:
+            results.append({"ad_id": ad_id, "online": None, "reason": "error", "error": str(e)})
     return {"results": results}

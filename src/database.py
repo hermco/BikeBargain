@@ -58,9 +58,15 @@ _AD_FIELDS = [
     "previous_ad_id",
 ]
 
+_SENTINEL = object()
 
-def upsert_ad(session: Session, ad_data: dict) -> int:
-    """Insere ou met a jour une annonce. Retourne l'id."""
+
+def upsert_ad(session: Session, ad_data: dict, *, auto_commit: bool = True) -> int:
+    """Insere ou met a jour une annonce. Retourne l'id.
+
+    Si auto_commit=False, ne commit pas la transaction (utile pour
+    regrouper plusieurs operations dans un seul commit).
+    """
     now = datetime.now().isoformat()
 
     existing = session.get(Ad, ad_data["id"])
@@ -68,7 +74,9 @@ def upsert_ad(session: Session, ad_data: dict) -> int:
     if existing:
         for f in _AD_FIELDS:
             if f != "id":
-                setattr(existing, f, ad_data.get(f))
+                val = ad_data.get(f, _SENTINEL)
+                if val is not _SENTINEL:
+                    setattr(existing, f, val)
         existing.updated_at = now
         ad = existing
     else:
@@ -91,8 +99,11 @@ def upsert_ad(session: Session, ad_data: dict) -> int:
     if "accessories" in ad_data:
         _replace_accessories(session, ad.id, ad_data["accessories"])
 
-    session.commit()
-    session.refresh(ad)
+    if auto_commit:
+        session.commit()
+        session.refresh(ad)
+    else:
+        session.flush()
     return ad.id
 
 
