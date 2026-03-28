@@ -12,7 +12,12 @@ import { Badge } from './ui/Badge'
 import type { Accessory, AdDetail } from '../types'
 import { VARIANTS, COLORS, WHEEL_TYPES } from '../lib/constants'
 
-export function AdForm() {
+interface AdFormProps {
+  autoOpen?: boolean
+  onAutoOpened?: () => void
+}
+
+export function AdForm({ autoOpen, onAutoOpened }: AdFormProps) {
   const { t } = useTranslation()
   const { formatPrice } = useFormatters()
   const [open, setOpen] = useState(false)
@@ -39,6 +44,14 @@ export function AdForm() {
     previewMut.reset()
     confirmMut.reset()
   }
+
+  // Auto-open when triggered by query param
+  useEffect(() => {
+    if (autoOpen && !open) {
+      setOpen(true)
+      onAutoOpened?.()
+    }
+  }, [autoOpen, open, onAutoOpened])
 
   // Lightbox keyboard navigation
   useEffect(() => {
@@ -127,14 +140,17 @@ export function AdForm() {
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-md z-40" />
-        <Dialog.Content className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] ${previewData ? 'max-w-4xl' : 'max-w-2xl'} max-h-[85vh] overflow-y-auto bg-surface border border-white/[0.08] rounded-2xl p-7 z-50 shadow-2xl shadow-black/50`}>
-          <Dialog.Title className="text-xl font-semibold text-text-primary mb-1" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
-            {previewData ? t('adForm.verifyExtraction') : t('adForm.addAd')}
-          </Dialog.Title>
+        <Dialog.Content className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] ${previewData ? 'max-w-4xl' : 'max-w-2xl'} max-h-[85vh] flex flex-col bg-surface border border-white/[0.08] rounded-2xl z-50 shadow-2xl shadow-black/50`}>
+          {/* Header (non-scrolling) */}
+          <div className="px-7 pt-7 pb-2 shrink-0">
+            <Dialog.Title className="text-xl font-semibold text-text-primary mb-1 font-fraunces">
+              {previewData ? t('adForm.verifyExtraction') : t('adForm.addAd')}
+            </Dialog.Title>
+          </div>
 
           {/* Step 1: URL input */}
           {!previewData && (
-            <>
+            <div className="px-7 pb-7">
               <p className="text-sm text-text-muted mb-6">{t('adForm.pasteInstruction')}</p>
               <form onSubmit={handleExtract} className="space-y-5">
                 <div className="relative">
@@ -170,12 +186,13 @@ export function AdForm() {
                   </Button>
                 </div>
               </form>
-            </>
+            </div>
           )}
 
           {/* Step 2: Preview & confirm */}
           {previewData && (
-            <div className="space-y-5 mt-4">
+            <>
+            <div className="flex-1 overflow-y-auto px-7 space-y-5">
               <p className="text-sm text-text-muted">{t('adForm.verifyInstruction')}</p>
 
               {/* Image gallery */}
@@ -424,9 +441,11 @@ export function AdForm() {
                   {(confirmMut.error as Error).message}
                 </div>
               )}
+            </div>
 
-              {/* Actions */}
-              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between pt-1">
+            {/* Sticky footer with actions */}
+            <div className="sticky bottom-0 shrink-0 px-7 py-4 bg-surface border-t border-white/[0.06] rounded-b-2xl">
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
                 <Button variant="ghost" onClick={handleReset}>
                   {t('common.reset')}
                 </Button>
@@ -448,6 +467,7 @@ export function AdForm() {
                 </div>
               </div>
             </div>
+            </>
           )}
 
           <Dialog.Close asChild>

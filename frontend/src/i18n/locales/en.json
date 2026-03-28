@@ -99,6 +99,7 @@
   },
   "adDetail": {
     "notFound": "Listing not found.",
+    "photoLightbox": "Photo viewer",
     "markSold": "Mark as sold",
     "markAvailable": "Mark as available",
     "markedSold": "Listing marked as sold",

@@ -594,7 +594,7 @@ export function CrawlPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
+          <h1 className="text-2xl font-semibold tracking-tight font-fraunces">
             {t('crawl.title')}
           </h1>
           <p className="text-sm text-text-muted mt-1">
@@ -677,7 +677,7 @@ export function CrawlPage() {
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400/20 to-amber-600/20 flex items-center justify-center mb-6">
             <Search className="h-7 w-7 text-amber-400" />
           </div>
-          <h2 className="text-lg font-semibold text-text-primary mb-2" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
+          <h2 className="text-lg font-semibold text-text-primary mb-2 font-fraunces">
             {t('crawl.searchTitle')}
           </h2>
           <p className="text-sm text-text-muted mb-6 text-center max-w-md">
@@ -723,7 +723,7 @@ export function CrawlPage() {
       )}
 
       {/* Price changes results */}
-      {priceChanges.length > 0 && status === 'idle' && (
+      {priceChanges.length > 0 && (status === 'idle' || status === 'done') && (
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-4">
             <h3 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold flex items-center gap-2">
@@ -808,28 +808,48 @@ export function CrawlPage() {
       {status === 'done' && (
         <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-6 mb-6 text-center">
           <Check className="h-8 w-8 text-green-400 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-text-primary mb-1" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
+          <h3 className="text-lg font-semibold text-text-primary mb-1 font-fraunces">
             {t('crawl.doneTitle')}
           </h3>
           <p className="text-sm text-text-muted">
             {confirmedCount} {t(confirmedCount > 1 ? 'crawl.doneSummary_other' : 'crawl.doneSummary_one', { confirmed: confirmedCount, skipped: skippedCount })}
           </p>
-          <Button onClick={() => {
-            if (sessionId) closeSessionMut.mutate(sessionId)
-            restoredRef.current = true
-            setSessionId(null)
-            setStatus('idle')
-            setAdStates([])
-            setCurrentIndex(-1)
-            setProcessedCount(0)
-            setConfirmedCount(0)
-            setSkippedCount(0)
-    setTransition(null)
-    if (transitionTimerRef.current) { clearInterval(transitionTimerRef.current); transitionTimerRef.current = null }
-          }} variant="secondary" className="mt-4 gap-2">
-            <Search className="h-4 w-4" />
-            {t('crawl.newSearch')}
-          </Button>
+          <div className="flex items-center justify-center gap-3 mt-4">
+            <Button onClick={() => {
+              if (sessionId) closeSessionMut.mutate(sessionId)
+              restoredRef.current = true
+              setSessionId(null)
+              setStatus('idle')
+              setAdStates([])
+              setCurrentIndex(-1)
+              setProcessedCount(0)
+              setConfirmedCount(0)
+              setSkippedCount(0)
+              setTransition(null)
+              if (transitionTimerRef.current) { clearInterval(transitionTimerRef.current); transitionTimerRef.current = null }
+            }} variant="secondary" className="gap-2">
+              <Search className="h-4 w-4" />
+              {t('crawl.newSearch')}
+            </Button>
+            <Button
+              onClick={handleCheckPrices}
+              disabled={checkPricesMut.isPending}
+              variant="secondary"
+              className="gap-2"
+            >
+              {checkPricesMut.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t('crawl.checkingPrices')}
+                </>
+              ) : (
+                <>
+                  <DollarSign className="h-4 w-4" />
+                  {t('crawl.checkPrices')}
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       )}
 

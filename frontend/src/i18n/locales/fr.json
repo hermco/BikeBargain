@@ -99,6 +99,7 @@
   },
   "adDetail": {
     "notFound": "Annonce introuvable.",
+    "photoLightbox": "Visionneuse de photos",
     "markSold": "Marquer vendue",
     "markAvailable": "Remettre en vente",
     "markedSold": "Annonce marquée vendue",

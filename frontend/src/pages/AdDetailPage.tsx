@@ -1,4 +1,4 @@
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link, useNavigate, Navigate } from 'react-router-dom'
 import { ArrowLeft, ExternalLink, Trash2, MapPin, Calendar, ChevronLeft, ChevronRight, ChevronDown, Camera, Pencil, X, Check, Plus, RefreshCw, Ban, Wifi, TrendingDown, TrendingUp, History } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
@@ -20,15 +20,16 @@ import { VARIANTS, COLORS, WHEEL_TYPES } from '../lib/constants'
 
 export function AdDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const adId = id ? Number(id) : NaN
   const { t } = useTranslation()
   const { formatPrice, formatKm } = useFormatters()
-  const { data: ad, isLoading, error } = useAd(Number(id))
+  const { data: ad, isLoading, error } = useAd(adId)
   const deleteMut = useDeleteAd()
   const updateMut = useUpdateAd()
   const refreshAccMut = useRefreshAdAccessories()
   const markSoldMut = useMarkAdSold()
   const checkOnlineMut = useCheckAdOnline()
-  const { data: priceHistory } = usePriceHistory(Number(id))
+  const { data: priceHistory } = usePriceHistory(adId)
   const navigate = useNavigate()
   const { toast } = useToast()
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
@@ -57,6 +58,7 @@ export function AdDetailPage() {
     }
   }, [lightboxIdx, handleLightboxKey])
 
+  if (isNaN(adId)) return <Navigate to="/" replace />
   if (isLoading) return <TableSkeleton rows={12} />
   if (error || !ad)
     return (
@@ -176,7 +178,7 @@ export function AdDetailPage() {
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div className="min-w-0">
-            <h1 className="text-xl font-semibold tracking-tight line-clamp-1" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
+            <h1 className="text-xl font-semibold tracking-tight line-clamp-1 font-fraunces">
               {ad.subject ?? t('common.noTitle')}
             </h1>
             <p className="text-sm text-text-muted mt-0.5">{ad.city ?? '?'} — {ad.variant ?? t('common.na')}</p>
@@ -339,8 +341,19 @@ export function AdDetailPage() {
       {lightboxIdx !== null && (
         <div
           className="fixed inset-0 bg-bg/95 backdrop-blur-xl z-50 flex items-center justify-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('adDetail.photoLightbox')}
           onClick={() => setLightboxIdx(null)}
+          onKeyDown={(e) => { if (e.key === 'Escape') setLightboxIdx(null) }}
         >
+          <button
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors z-10"
+            onClick={(e) => { e.stopPropagation(); setLightboxIdx(null) }}
+            aria-label={t('common.close')}
+          >
+            <X className="h-5 w-5" />
+          </button>
           <button
             className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors z-10"
             onClick={(e) => { e.stopPropagation(); setLightboxIdx(Math.max(0, lightboxIdx - 1)) }}
@@ -370,7 +383,7 @@ export function AdDetailPage() {
           <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold">{t('adDetail.characteristics')}</h2>
           <div className="grid grid-cols-2 gap-y-3 text-sm">
             <span className="text-text-muted">{t('common.price')}</span>
-            <span className="font-semibold text-amber-300 text-lg" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>{formatPrice(ad.price)}</span>
+            <span className="font-semibold text-amber-300 text-lg font-fraunces">{formatPrice(ad.price)}</span>
             <span className="text-text-muted">{t('common.year')}</span>
             <span className="text-text-primary">{ad.year ?? t('common.na')}</span>
             <span className="text-text-muted">{t('common.mileage')}</span>
@@ -477,7 +490,7 @@ export function AdDetailPage() {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 flex-wrap">
-                        <span className="text-sm font-semibold tabular-nums text-text-primary" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
+                        <span className="text-sm font-semibold tabular-nums text-text-primary font-fraunces">
                           {formatPrice(entry.price)}
                         </span>
                         {delta !== 0 && (
@@ -694,7 +707,7 @@ export function AdDetailPage() {
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-md z-40" />
           <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-md bg-surface border border-white/[0.08] rounded-2xl p-7 z-50 shadow-2xl shadow-black/50">
-            <Dialog.Title className="text-lg font-semibold text-text-primary" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
+            <Dialog.Title className="text-lg font-semibold text-text-primary font-fraunces">
               {t('adDetail.deleteConfirmTitle')}
             </Dialog.Title>
             <Dialog.Description className="text-sm text-text-muted mt-2">

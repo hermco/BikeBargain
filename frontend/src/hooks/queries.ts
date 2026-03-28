@@ -235,6 +235,7 @@ export function useActiveCrawlSession() {
   return useQuery({
     queryKey: ['crawl-session'],
     queryFn: api.fetchActiveCrawlSession,
+    retry: false,
   })
 }
 
