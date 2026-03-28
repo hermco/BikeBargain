@@ -464,7 +464,7 @@ export function AdDetailPage() {
                   <div key={entry.id} className="relative flex items-start gap-4 py-3">
                     {/* Dot */}
                     <div className={`relative z-10 w-[9px] h-[9px] rounded-full mt-1.5 shrink-0 ring-2 ring-bg ${
-                      isLatest ? 'bg-amber-400' : entry.source === 'repost' ? 'bg-purple-400' : 'bg-white/30'
+                      isLatest ? 'bg-amber-400' : entry.source === 'repost' ? 'bg-purple-400' : entry.source === 'price_update' ? 'bg-emerald-400' : 'bg-white/30'
                     }`} style={{ marginLeft: '14px' }} />
 
                     <div className="flex-1 min-w-0">
@@ -481,10 +481,13 @@ export function AdDetailPage() {
                         <Badge className={`text-[10px] ${
                           entry.source === 'initial' ? 'bg-white/[0.06] text-text-dim' :
                           entry.source === 'repost' ? 'bg-purple-500/15 text-purple-300' :
+                          entry.source === 'price_update' ? 'bg-emerald-500/15 text-emerald-300' :
                           'bg-amber-500/15 text-amber-300'
                         }`}>
                           {entry.source === 'initial' ? t('adDetail.initialPublication') :
-                           entry.source === 'repost' ? t('adDetail.repost') : t('adDetail.manualEntry')}
+                           entry.source === 'repost' ? t('adDetail.repost') :
+                           entry.source === 'price_update' ? t('adDetail.priceUpdate') :
+                           t('adDetail.manualEntry')}
                         </Badge>
                       </div>
                       <div className="flex items-center gap-3 mt-1 text-[11px] text-text-dim flex-wrap">
@@ -514,7 +517,12 @@ export function AdDetailPage() {
                 <span className={`font-semibold tabular-nums ${totalDelta < 0 ? 'text-emerald-400' : totalDelta > 0 ? 'text-red-400' : 'text-text-muted'}`}>
                   {totalDelta < 0 ? '' : '+'}{totalDelta}€ ({totalDelta <= 0 ? '' : '+'}{pct}%)
                 </span>
-                <span className="text-text-dim text-xs">{t('adDetail.repostCount', { count: priceHistory.history.filter(h => h.source === 'repost').length })}</span>
+                <span className="text-text-dim text-xs">
+                  {t('adDetail.repostCount', { count: priceHistory.history.filter(h => h.source === 'repost').length })}
+                  {priceHistory.history.filter(h => h.source === 'price_update').length > 0 && (
+                    <> · {t('adDetail.priceChangeCount', { count: priceHistory.history.filter(h => h.source === 'price_update').length })}</>
+                  )}
+                </span>
               </div>
             )
           })()}
