@@ -42,9 +42,9 @@ class Ad(SQLModel, table=True):
     extracted_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     accessories_manual: int = Field(default=0)
-    sold: int = Field(default=0)
+    sold: int = Field(default=0, index=True)
     previous_ad_id: int | None = Field(default=None, sa_column=Column(BigInteger))
-    superseded_by: int | None = Field(default=None, sa_column=Column(BigInteger))
+    superseded_by: int | None = Field(default=None, sa_column=Column(BigInteger, index=True))
 
     # Relationships
     attributes: list["AdAttribute"] = Relationship(
@@ -85,7 +85,7 @@ class AdImage(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     ad_id: int = Field(
-        sa_column=Column(BigInteger, ForeignKey("ads.id", ondelete="CASCADE"), nullable=False),
+        sa_column=Column(BigInteger, ForeignKey("ads.id", ondelete="CASCADE"), nullable=False, index=True),
     )
     url: str
     position: int = Field(default=0)

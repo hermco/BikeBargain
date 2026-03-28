@@ -7,7 +7,7 @@ PostgreSQL uniquement, via DATABASE_URL (fichier .env ou variable d'environnemen
 from pathlib import Path
 from datetime import datetime
 
-from sqlmodel import SQLModel, Session, create_engine, select
+from sqlmodel import SQLModel, Session, create_engine, select, delete
 from sqlalchemy.orm import selectinload
 
 # Import des modeles pour enregistrer les tables dans SQLModel.metadata
@@ -108,8 +108,7 @@ def upsert_ad(session: Session, ad_data: dict, *, auto_commit: bool = True) -> i
 
 
 def _replace_attributes(session: Session, ad_id: int, attributes: list[dict]) -> None:
-    for attr in session.exec(select(AdAttribute).where(AdAttribute.ad_id == ad_id)).all():
-        session.delete(attr)
+    session.exec(delete(AdAttribute).where(AdAttribute.ad_id == ad_id))
     session.flush()
     for attr in attributes:
         session.add(AdAttribute(
@@ -119,16 +118,14 @@ def _replace_attributes(session: Session, ad_id: int, attributes: list[dict]) ->
 
 
 def _replace_images(session: Session, ad_id: int, images: list[str]) -> None:
-    for img in session.exec(select(AdImage).where(AdImage.ad_id == ad_id)).all():
-        session.delete(img)
+    session.exec(delete(AdImage).where(AdImage.ad_id == ad_id))
     session.flush()
     for i, url in enumerate(images):
         session.add(AdImage(ad_id=ad_id, url=url, position=i))
 
 
 def _replace_accessories(session: Session, ad_id: int, accessories: list[dict]) -> None:
-    for acc in session.exec(select(AdAccessory).where(AdAccessory.ad_id == ad_id)).all():
-        session.delete(acc)
+    session.exec(delete(AdAccessory).where(AdAccessory.ad_id == ad_id))
     session.flush()
     for acc in accessories:
         session.add(AdAccessory(
@@ -193,8 +190,7 @@ def refresh_accessories(
         detected = detect_accessories(ad.body or "", price_overrides=overrides)
 
         # Supprimer les anciens
-        for acc in session.exec(select(AdAccessory).where(AdAccessory.ad_id == ad.id)).all():
-            session.delete(acc)
+        session.exec(delete(AdAccessory).where(AdAccessory.ad_id == ad.id))
         session.flush()
 
         # Inserer les nouveaux
