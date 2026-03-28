@@ -543,50 +543,31 @@ def check_prices(session: Session = Depends(get_session)):
     if not ads:
         return {"price_changes": [], "checked_count": 0, "unchanged_count": 0}
 
-    price_changes = []
-
+    # Un seul appel search au lieu de N appels get_ad individuels
     if settings.lbc_service_url:
         from . import lbc_client
-        results = lbc_client.check_prices([ad.id for ad in ads])
-        ads_by_id = {ad.id: ad for ad in ads}
-        for r in results:
-            if not r["online"] or r["price"] is None:
-                continue
-            ad = ads_by_id[r["ad_id"]]
-            if ad.price is not None and r["price"] != ad.price:
-                price_changes.append({
-                    "id": ad.id,
-                    "subject": ad.subject,
-                    "current_price": ad.price,
-                    "new_price": r["price"],
-                    "price_delta": int(r["price"] - ad.price),
-                    "city": ad.city,
-                    "department": ad.department,
-                    "url": ad.url,
-                })
+        search_results = lbc_client.search()
     else:
-        from .extractor import get_lbc_client
-        client = get_lbc_client()
-        for ad in ads:
-            try:
-                lbc_ad = client.get_ad(ad.id)
-                ad_status = getattr(lbc_ad, "status", None)
-                if ad_status and ad_status not in ("active",):
-                    continue
-                lbc_price = getattr(lbc_ad, "price", None)
-                if lbc_price is not None and ad.price is not None and lbc_price != ad.price:
-                    price_changes.append({
-                        "id": ad.id,
-                        "subject": ad.subject,
-                        "current_price": ad.price,
-                        "new_price": lbc_price,
-                        "price_delta": int(lbc_price - ad.price),
-                        "city": ad.city,
-                        "department": ad.department,
-                        "url": ad.url,
-                    })
-            except Exception:
-                continue
+        from .crawler import search_all_ads
+        search_results = search_all_ads()
+
+    # Indexer les prix LBC par ID
+    lbc_prices = {ad_data["id"]: ad_data.get("price") for ad_data in search_results.get("ads", [])}
+
+    price_changes = []
+    for ad in ads:
+        lbc_price = lbc_prices.get(ad.id)
+        if lbc_price is not None and ad.price is not None and lbc_price != ad.price:
+            price_changes.append({
+                "id": ad.id,
+                "subject": ad.subject,
+                "current_price": ad.price,
+                "new_price": lbc_price,
+                "price_delta": int(lbc_price - ad.price),
+                "city": ad.city,
+                "department": ad.department,
+                "url": ad.url,
+            })
 
     return {
         "price_changes": price_changes,
