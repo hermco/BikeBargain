@@ -28,6 +28,7 @@ from .database import (
 )
 from .analyzer import rank_ads
 from .accessories import estimate_total_accessories_value, ACCESSORY_PATTERNS, DEPRECIATION_RATE
+from .extractor import detect_new_listing_light, detect_new_listing
 from .config import get_settings
 
 settings = get_settings()
@@ -336,6 +337,57 @@ def get_price_history(ad_id: int, session: Session = Depends(get_session)):
     }
 
 
+class ConfirmPriceRequest(BaseModel):
+    new_price: float
+
+
+@app.post("/api/ads/{ad_id}/confirm-price")
+def confirm_price(ad_id: int, req: ConfirmPriceRequest, session: Session = Depends(get_session)):
+    ad = session.get(Ad, ad_id)
+    if not ad:
+        raise HTTPException(status_code=404, detail="Annonce non trouvee")
+
+    old_price = ad.price or 0
+    new_price = req.new_price
+    if old_price == new_price:
+        return {"id": ad_id, "price_delta": 0, "message": "Prix inchange"}
+
+    # Creer l'entree initiale si aucun historique n'existe
+    existing_history = session.exec(
+        select(AdPriceHistory).where(AdPriceHistory.ad_id == ad_id)
+    ).first()
+
+    if not existing_history:
+        session.add(AdPriceHistory(
+            ad_id=ad_id,
+            price=old_price,
+            source="initial",
+            note=f"Annonce #{ad_id}",
+            recorded_at=ad.first_publication_date or ad.extracted_at or "",
+        ))
+
+    # Enregistrer le changement de prix
+    price_delta = int(new_price - old_price)
+    if price_delta < 0:
+        note = f"Baisse de {abs(price_delta)}€"
+    else:
+        note = f"Hausse de {price_delta}€"
+
+    session.add(AdPriceHistory(
+        ad_id=ad_id,
+        price=new_price,
+        source="price_update",
+        note=note,
+        recorded_at=datetime.now().isoformat(),
+    ))
+
+    ad.price = new_price
+    ad.updated_at = datetime.now().isoformat()
+    session.commit()
+
+    return {"id": ad_id, "price_delta": price_delta, "new_price": new_price}
+
+
 @app.get("/api/accessory-catalog")
 def get_accessory_catalog(session: Session = Depends(get_session)):
     overrides = get_accessory_overrides(session)
@@ -566,11 +618,19 @@ def crawl_search(session: Session = Depends(get_session)):
         row for row in session.exec(select(Ad.id)).all()
     }
 
+    # Annonces qui ont ete remplacees par un repost connu (previous_ad_id pointe vers elles)
+    superseded_ids = {
+        row for row in session.exec(
+            select(Ad.previous_ad_id).where(Ad.previous_ad_id.is_not(None))
+        ).all()
+    }
+
     db_ads = session.exec(select(Ad)).all()
     db_ads_data = [
         {"id": a.id, "city": a.city, "department": a.department,
          "price": a.price, "subject": a.subject, "sold": a.sold}
         for a in db_ads
+        if a.id not in superseded_ids
     ]
 
     for ad in results["ads"]:
@@ -622,6 +682,12 @@ def crawl_search(session: Session = Depends(get_session)):
     session.flush()
 
     for i, ad in enumerate(results["ads"]):
+        is_new = detect_new_listing_light(
+            subject=ad.get("subject"),
+            price=ad.get("price"),
+            seller_type=ad.get("seller_type"),
+        )
+        ad["is_new_listing"] = is_new
         session.add(CrawlSessionAd(
             session_id=crawl_session.id, ad_id=ad["id"], url=ad["url"],
             subject=ad.get("subject"), price=ad.get("price"),
@@ -629,6 +695,7 @@ def crawl_search(session: Session = Depends(get_session)):
             thumbnail=ad.get("thumbnail"),
             exists_in_db=1 if ad.get("exists_in_db") else 0,
             position=i,
+            is_new_listing=1 if is_new else 0,
         ))
 
     session.commit()
@@ -666,6 +733,7 @@ def get_active_crawl_session(session: Session = Depends(get_session)):
             "thumbnail": row.thumbnail,
             "exists_in_db": row.ad_id in existing_ids,
             "action": row.action,
+            "is_new_listing": bool(row.is_new_listing),
         })
 
     return {
@@ -755,7 +823,16 @@ def _extract_significant_words(text: str, min_len: int = 4) -> set[str]:
 
 
 def _find_potential_duplicates(session: Session, ad_data: dict, exclude_id: int) -> list[dict]:
-    ads = session.exec(select(Ad).where(Ad.id != exclude_id)).all()
+    # Exclure les annonces remplacees par un repost connu
+    superseded_ids = {
+        row for row in session.exec(
+            select(Ad.previous_ad_id).where(Ad.previous_ad_id.is_not(None))
+        ).all()
+    }
+    ads = [
+        a for a in session.exec(select(Ad).where(Ad.id != exclude_id)).all()
+        if a.id not in superseded_ids
+    ]
 
     all_accs = session.exec(select(AdAccessory)).all()
     acc_by_ad: dict[int, set[str]] = {}
@@ -925,12 +1002,40 @@ def crawl_extract(req: ExtractRequest, session: Session = Depends(get_session)):
 
     potential_duplicates = _find_potential_duplicates(session, ad_data, req.ad_id)
 
+    # Detection complete annonce neuve concessionnaire
+    is_new = detect_new_listing(
+        seller_type=ad_data.get("seller_type"),
+        price=ad_data.get("price"),
+        mileage_km=ad_data.get("mileage_km"),
+        subject=ad_data.get("subject"),
+        body=ad_data.get("body"),
+        variant=ad_data.get("variant"),
+        color=ad_data.get("color"),
+        wheel_type=ad_data.get("wheel_type"),
+    )
+
+    # Mettre a jour le CrawlSessionAd
+    active_cs = session.exec(
+        select(CrawlSession).where(CrawlSession.status == "active")
+        .order_by(CrawlSession.created_at.desc())
+    ).first()
+    if active_cs:
+        crawl_ad = session.exec(
+            select(CrawlSessionAd)
+            .where(CrawlSessionAd.session_id == active_cs.id, CrawlSessionAd.ad_id == req.ad_id)
+        ).first()
+        if crawl_ad:
+            crawl_ad.is_new_listing = 1 if is_new else 0
+            session.add(crawl_ad)
+            session.commit()
+
     return {
         "ad_data": ad_data,
         "exists_in_db": existing is not None,
         "existing": existing_data,
         "diffs": diffs,
         "potential_duplicates": potential_duplicates,
+        "is_new_listing": is_new,
     }
 
 
