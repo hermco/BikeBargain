@@ -82,18 +82,42 @@ def list_ads(
     offset: int = Query(0, ge=0),
     session: Session = Depends(get_session),
 ):
-    ads = get_all_ads(session)
-
+    # Construire les filtres WHERE
+    conditions = [Ad.superseded_by == None]  # noqa: E711
     if variant:
-        ads = [a for a in ads if a.get("variant") == variant]
+        conditions.append(Ad.variant == variant)
     if min_price is not None:
-        ads = [a for a in ads if (a.get("price") or 0) >= min_price]
+        conditions.append(Ad.price >= min_price)
     if max_price is not None:
-        ads = [a for a in ads if (a.get("price") or 0) <= max_price]
+        conditions.append(Ad.price <= max_price)
 
-    total = len(ads)
-    ads = ads[offset:offset + limit]
-    return {"total": total, "ads": ads}
+    # Requete count
+    count_stmt = select(func.count()).select_from(Ad).where(*conditions)
+    total = session.exec(count_stmt).one()
+
+    # Requete paginee avec relations
+    stmt = (
+        select(Ad)
+        .options(selectinload(Ad.accessories), selectinload(Ad.images))
+        .where(*conditions)
+        .order_by(Ad.price)
+        .offset(offset)
+        .limit(limit)
+    )
+    ads = session.exec(stmt).all()
+
+    results = []
+    for ad in ads:
+        d = _ad_to_dict(ad)
+        d["accessories"] = [
+            {"name": a.name, "category": a.category, "source": a.source,
+             "estimated_new_price": a.estimated_new_price, "estimated_used_price": a.estimated_used_price}
+            for a in ad.accessories
+        ]
+        d["images"] = [img.url for img in sorted(ad.images, key=lambda x: x.position)]
+        results.append(d)
+
+    return {"total": total, "ads": results}
 
 
 @app.get("/api/ads/{ad_id}")
@@ -487,54 +511,107 @@ def check_ad_online(ad_id: int, session: Session = Depends(get_session)):
 
 @app.get("/api/stats")
 def get_stats(session: Session = Depends(get_session)):
-    ads = get_all_ads(session)
+    import statistics as stats_mod
 
-    prices = [a["price"] for a in ads if a["price"] is not None]
-    kms = [a["mileage_km"] for a in ads if a["mileage_km"] is not None]
-    years = [a["year"] for a in ads if a["year"] is not None]
+    base_filter = Ad.superseded_by == None  # noqa: E711
 
-    variants = {}
-    for a in ads:
-        v = a.get("variant") or "Non detectee"
-        variants[v] = variants.get(v, 0) + 1
+    # Aggregats prix via SQL
+    price_row = session.exec(
+        select(
+            func.count(Ad.id),
+            func.count(Ad.price),
+            func.min(Ad.price),
+            func.max(Ad.price),
+            func.avg(Ad.price),
+        ).where(base_filter)
+    ).one()
+    total_count, price_count, price_min, price_max, price_avg = price_row
 
-    depts = {}
-    for a in ads:
-        d = a.get("department") or "Inconnu"
-        depts[d] = depts.get(d, 0) + 1
+    # Prix individuels pour median et liste
+    prices = sorted([
+        p for (p,) in session.exec(
+            select(Ad.price).where(base_filter, Ad.price != None)  # noqa: E711
+        ).all()
+    ])
+    price_median = stats_mod.median(prices) if prices else None
 
-    all_acc = {}
-    for a in ads:
-        for acc in a.get("accessories", []):
-            name = acc["name"]
-            all_acc[name] = all_acc.get(name, 0) + 1
+    # Aggregats km via SQL
+    km_row = session.exec(
+        select(
+            func.min(Ad.mileage_km),
+            func.max(Ad.mileage_km),
+            func.avg(Ad.mileage_km),
+        ).where(base_filter, Ad.mileage_km != None)  # noqa: E711
+    ).one()
+    km_min, km_max, km_avg = km_row
+
+    kms = sorted([
+        k for (k,) in session.exec(
+            select(Ad.mileage_km).where(base_filter, Ad.mileage_km != None)  # noqa: E711
+        ).all()
+    ])
+
+    # Annees via SQL
+    year_row = session.exec(
+        select(func.min(Ad.year), func.max(Ad.year))
+        .where(base_filter, Ad.year != None)  # noqa: E711
+    ).one()
+    year_min, year_max = year_row
+
+    # Variants GROUP BY
+    variant_rows = session.exec(
+        select(
+            func.coalesce(Ad.variant, "Non detectee"),
+            func.count(Ad.id),
+        ).where(base_filter)
+        .group_by(func.coalesce(Ad.variant, "Non detectee"))
+    ).all()
+
+    # Departments GROUP BY (top 15)
+    dept_rows = session.exec(
+        select(
+            func.coalesce(Ad.department, "Inconnu"),
+            func.count(Ad.id),
+        ).where(base_filter)
+        .group_by(func.coalesce(Ad.department, "Inconnu"))
+        .order_by(func.count(Ad.id).desc())
+        .limit(15)
+    ).all()
+
+    # Top accessoires GROUP BY
+    acc_rows = session.exec(
+        select(AdAccessory.name, func.count(AdAccessory.id))
+        .join(Ad, AdAccessory.ad_id == Ad.id)
+        .where(base_filter)
+        .group_by(AdAccessory.name)
+        .order_by(func.count(AdAccessory.id).desc())
+        .limit(15)
+    ).all()
 
     top_accessories = [
-        {"name": name, "count": count, "pct": round(count / len(ads) * 100, 1) if ads else 0}
-        for name, count in sorted(all_acc.items(), key=lambda x: -x[1])[:15]
+        {"name": name, "count": count, "pct": round(count / total_count * 100, 1) if total_count else 0}
+        for name, count in acc_rows
     ]
 
-    sorted_prices = sorted(prices) if prices else []
-
     return {
-        "count": len(ads),
+        "count": total_count,
         "price": {
-            "min": min(prices) if prices else None,
-            "max": max(prices) if prices else None,
-            "mean": round(sum(prices) / len(prices), 0) if prices else None,
-            "median": sorted_prices[len(sorted_prices) // 2] if sorted_prices else None,
+            "min": price_min,
+            "max": price_max,
+            "mean": round(float(price_avg), 0) if price_avg is not None else None,
+            "median": price_median,
         },
         "mileage": {
-            "min": min(kms) if kms else None,
-            "max": max(kms) if kms else None,
-            "mean": round(sum(kms) / len(kms), 0) if kms else None,
+            "min": km_min,
+            "max": km_max,
+            "mean": round(float(km_avg), 0) if km_avg is not None else None,
         },
-        "years": {"min": min(years) if years else None, "max": max(years) if years else None},
-        "variants": [{"name": v, "count": c} for v, c in sorted(variants.items(), key=lambda x: -x[1])],
-        "departments": [{"name": d, "count": c} for d, c in sorted(depts.items(), key=lambda x: -x[1])[:15]],
+        "years": {"min": year_min, "max": year_max},
+        "variants": [{"name": v, "count": c} for v, c in sorted(variant_rows, key=lambda x: -x[1])],
+        "departments": [{"name": d, "count": c} for d, c in dept_rows],
         "top_accessories": top_accessories,
-        "prices_list": sorted_prices,
-        "mileages_list": sorted(kms) if kms else [],
+        "prices_list": prices,
+        "mileages_list": kms,
     }
 
 
@@ -755,15 +832,30 @@ def _extract_significant_words(text: str, min_len: int = 4) -> set[str]:
 
 
 def _find_potential_duplicates(session: Session, ad_data: dict, exclude_id: int) -> list[dict]:
-    ads = session.exec(select(Ad).where(Ad.id != exclude_id)).all()
-
-    all_accs = session.exec(select(AdAccessory)).all()
-    acc_by_ad: dict[int, set[str]] = {}
-    for a in all_accs:
-        acc_by_ad.setdefault(a.ad_id, set()).add(a.name)
-
     new_price = ad_data.get("price") or 0
     new_city = (ad_data.get("city") or "").lower().strip()
+
+    if not new_city:
+        return []
+
+    # Pre-filtre SQL : meme ville + prix ±15%
+    city_conditions = [Ad.id != exclude_id, func.lower(Ad.city) == new_city]
+    if new_price:
+        city_conditions.append(Ad.price >= new_price * 0.85)
+        city_conditions.append(Ad.price <= new_price * 1.15)
+    ads = session.exec(select(Ad).where(*city_conditions)).all()
+
+    if not ads:
+        return []
+
+    # Charger les accessoires uniquement pour les candidats
+    candidate_ids = [ad.id for ad in ads]
+    candidate_accs = session.exec(
+        select(AdAccessory).where(AdAccessory.ad_id.in_(candidate_ids))
+    ).all()
+    acc_by_ad: dict[int, set[str]] = {}
+    for a in candidate_accs:
+        acc_by_ad.setdefault(a.ad_id, set()).add(a.name)
     new_color = (ad_data.get("color") or "").lower()
     new_km = ad_data.get("mileage_km") or 0
     new_acc_names = {a["name"] for a in ad_data.get("accessories", [])}
