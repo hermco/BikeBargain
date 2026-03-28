@@ -691,9 +691,24 @@ def crawl_search(session: Session = Depends(get_session)):
         if a.id not in superseded_ids
     ]
 
+    # Index des prix en base pour detecter les changements
+    db_prices = {a.id: a.price for a in db_ads}
+
     for ad in results["ads"]:
         ad["exists_in_db"] = ad["id"] in existing_ids
         ad["possible_repost_of"] = None
+        ad["price_changed"] = False
+        ad["current_db_price"] = None
+        ad["price_delta"] = None
+
+        # Detecter les changements de prix sur les annonces deja en base
+        if ad["id"] in existing_ids:
+            db_price = db_prices.get(ad["id"])
+            ad_price = ad.get("price")
+            if db_price is not None and ad_price is not None and db_price != ad_price:
+                ad["price_changed"] = True
+                ad["current_db_price"] = db_price
+                ad["price_delta"] = int(ad_price - db_price)
 
         if ad["id"] not in existing_ids:
             new_city = (ad.get("city") or "").lower().strip()
