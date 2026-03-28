@@ -266,6 +266,13 @@ export function RankingPage() {
     })
   }
 
+  // Pre-compute rank map for O(1) lookups instead of O(n) indexOf
+  const rankMap = useMemo(() => {
+    const map = new Map<number, number>()
+    rankings?.forEach((r, i) => map.set(r.id, i))
+    return map
+  }, [rankings])
+
   if (isLoading) return <TableSkeleton rows={10} />
   if (!rankings?.length) return <EmptyState title={t('ranking.emptyTitle')} description={t('ranking.emptyDescription')} />
 
@@ -287,7 +294,7 @@ export function RankingPage() {
     setMaxTrajet('')
   }
 
-  const filtered = rankings.filter((r) => {
+  const filtered = useMemo(() => rankings.filter((r) => {
     if (search) {
       const q = search.toLowerCase()
       if (!r.city.toLowerCase().includes(q) && !r.color?.toLowerCase().includes(q) && !r.variant.toLowerCase().includes(q)) return false
@@ -301,11 +308,11 @@ export function RankingPage() {
       if (t == null || t.durationSec > Number(maxTrajet) * 60) return false
     }
     return true
-  })
+  }), [rankings, search, filterColors, filterWheel, maxKm, maxPrice, maxTrajet, travelMap])
 
-  const sorted = [...filtered].sort((a, b) => {
-    const aIdx = rankings.indexOf(a)
-    const bIdx = rankings.indexOf(b)
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
+    const aIdx = rankMap.get(a.id) ?? 0
+    const bIdx = rankMap.get(b.id) ?? 0
     let cmp = 0
     switch (sortKey) {
       case 'rank': cmp = aIdx - bIdx; break
@@ -322,7 +329,7 @@ export function RankingPage() {
       }
     }
     return sortAsc ? cmp : -cmp
-  })
+  }), [filtered, sortKey, sortAsc, rankMap, travelMap, distanceMap])
 
   const hasLocation = userLoc != null
   const colSpan = hasLocation ? 9 : 8
@@ -467,7 +474,7 @@ export function RankingPage() {
       {/* Mobile: card layout */}
       <div className="lg:hidden space-y-3">
         {sorted.map((r) => {
-          const origRank = rankings.indexOf(r) + 1
+          const origRank = (rankMap.get(r.id) ?? 0) + 1
           return (
             <RankingCard
               key={r.id}
@@ -500,7 +507,7 @@ export function RankingPage() {
           </thead>
           <tbody>
             {sorted.map((r) => {
-              const origRank = rankings.indexOf(r) + 1
+              const origRank = (rankMap.get(r.id) ?? 0) + 1
               const isOpen = expanded === r.id
               const colorStr = `${r.color || r.variant}${r.wheel_type === 'tubeless' ? ' TL' : ''}`
 
