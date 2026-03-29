@@ -21,9 +21,9 @@ class BikeModel(SQLModel, table=True):
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
     # Relationships
-    config: "BikeModelConfig | None" = Relationship(
+    config: "BikeModelConfig" = Relationship(
         back_populates="bike_model",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "uselist": False},
     )
     variants: list["BikeVariant"] = Relationship(
         back_populates="bike_model",
