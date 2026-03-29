@@ -9,6 +9,9 @@ from alembic import context
 from src.models import (  # noqa: F401
     Ad, AdAttribute, AdImage, AdAccessory,
     CrawlSession, CrawlSessionAd, AdPriceHistory, AccessoryOverride,
+    BikeModel, BikeModelConfig, BikeVariant, BikeConsumable,
+    BikeAccessoryPattern, BikeVariantPattern, BikeNewListingPattern,
+    BikeExclusionPattern, BikeSearchConfig,
 )
 from src.database import get_database_url
 

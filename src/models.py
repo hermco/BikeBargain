@@ -3,7 +3,177 @@
 from datetime import datetime
 
 from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy import UniqueConstraint, Column, BigInteger, Integer, Float, ForeignKey
+from sqlalchemy import UniqueConstraint, PrimaryKeyConstraint, Column, BigInteger, Integer, Float, ForeignKey, String
+
+
+# ─── Bike Models ─────────────────────────────────────────────────────────────
+
+class BikeModel(SQLModel, table=True):
+    __tablename__ = "bike_models"
+
+    id: int | None = Field(default=None, primary_key=True)
+    slug: str = Field(unique=True, index=True)
+    brand: str
+    name: str
+    engine_cc: int
+    image_url: str | None = None
+    active: bool = Field(default=True)
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+    # Relationships
+    config: "BikeModelConfig | None" = Relationship(
+        back_populates="bike_model",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+    variants: list["BikeVariant"] = Relationship(
+        back_populates="bike_model",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+    consumables: list["BikeConsumable"] = Relationship(
+        back_populates="bike_model",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+    accessory_patterns: list["BikeAccessoryPattern"] = Relationship(
+        back_populates="bike_model",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+    variant_patterns: list["BikeVariantPattern"] = Relationship(
+        back_populates="bike_model",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+    new_listing_patterns: list["BikeNewListingPattern"] = Relationship(
+        back_populates="bike_model",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+    exclusion_patterns: list["BikeExclusionPattern"] = Relationship(
+        back_populates="bike_model",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+    search_configs: list["BikeSearchConfig"] = Relationship(
+        back_populates="bike_model",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+
+
+class BikeModelConfig(SQLModel, table=True):
+    __tablename__ = "bike_model_configs"
+
+    id: int | None = Field(default=None, primary_key=True)
+    bike_model_id: int = Field(
+        sa_column=Column(Integer, ForeignKey("bike_models.id", ondelete="CASCADE"), unique=True, nullable=False),
+    )
+    warranty_years: int
+    warranty_value_per_year: int
+    mechanical_wear_per_km: float
+    condition_risk_per_km: float
+    short_term_km_threshold: int
+
+    bike_model: BikeModel | None = Relationship(back_populates="config")
+
+
+class BikeVariant(SQLModel, table=True):
+    __tablename__ = "bike_variants"
+    __table_args__ = (UniqueConstraint("bike_model_id", "variant_name", "color", "wheel_type"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    bike_model_id: int = Field(
+        sa_column=Column(Integer, ForeignKey("bike_models.id", ondelete="CASCADE"), nullable=False, index=True),
+    )
+    variant_name: str
+    color: str
+    wheel_type: str = Field(default="default")
+    new_price: int
+    color_hex: str | None = None
+
+    bike_model: BikeModel | None = Relationship(back_populates="variants")
+
+
+class BikeConsumable(SQLModel, table=True):
+    __tablename__ = "bike_consumables"
+
+    id: int | None = Field(default=None, primary_key=True)
+    bike_model_id: int = Field(
+        sa_column=Column(Integer, ForeignKey("bike_models.id", ondelete="CASCADE"), nullable=False, index=True),
+    )
+    name: str
+    cost_eur: int
+    life_km: int
+
+    bike_model: BikeModel | None = Relationship(back_populates="consumables")
+
+
+class BikeAccessoryPattern(SQLModel, table=True):
+    __tablename__ = "bike_accessory_patterns"
+
+    id: int | None = Field(default=None, primary_key=True)
+    bike_model_id: int = Field(
+        sa_column=Column(Integer, ForeignKey("bike_models.id", ondelete="CASCADE"), nullable=False, index=True),
+    )
+    regex_pattern: str
+    name: str
+    category: str
+    new_price: int
+    depreciation_rate: float = Field(default=0.65)
+    dedup_group: str | None = None
+    sort_order: int = Field(default=0)
+
+    bike_model: BikeModel | None = Relationship(back_populates="accessory_patterns")
+
+
+class BikeVariantPattern(SQLModel, table=True):
+    __tablename__ = "bike_variant_patterns"
+
+    id: int | None = Field(default=None, primary_key=True)
+    bike_model_id: int = Field(
+        sa_column=Column(Integer, ForeignKey("bike_models.id", ondelete="CASCADE"), nullable=False, index=True),
+    )
+    regex_pattern: str
+    matched_variant: str
+    matched_color: str | None = None
+    matched_wheel_type: str | None = None
+    priority: int = Field(default=0)
+
+    bike_model: BikeModel | None = Relationship(back_populates="variant_patterns")
+
+
+class BikeNewListingPattern(SQLModel, table=True):
+    __tablename__ = "bike_new_listing_patterns"
+
+    id: int | None = Field(default=None, primary_key=True)
+    bike_model_id: int = Field(
+        sa_column=Column(Integer, ForeignKey("bike_models.id", ondelete="CASCADE"), nullable=False, index=True),
+    )
+    regex_pattern: str
+    category: str
+    weight: float = Field(default=1.0)
+
+    bike_model: BikeModel | None = Relationship(back_populates="new_listing_patterns")
+
+
+class BikeExclusionPattern(SQLModel, table=True):
+    __tablename__ = "bike_exclusion_patterns"
+
+    id: int | None = Field(default=None, primary_key=True)
+    bike_model_id: int = Field(
+        sa_column=Column(Integer, ForeignKey("bike_models.id", ondelete="CASCADE"), nullable=False, index=True),
+    )
+    regex_pattern: str
+
+    bike_model: BikeModel | None = Relationship(back_populates="exclusion_patterns")
+
+
+class BikeSearchConfig(SQLModel, table=True):
+    __tablename__ = "bike_search_configs"
+
+    id: int | None = Field(default=None, primary_key=True)
+    bike_model_id: int = Field(
+        sa_column=Column(Integer, ForeignKey("bike_models.id", ondelete="CASCADE"), nullable=False, index=True),
+    )
+    keyword: str
+    min_cc: int | None = None
+    max_cc: int | None = None
+
+    bike_model: BikeModel | None = Relationship(back_populates="search_configs")
 
 
 # ─── Ads ─────────────────────────────────────────────────────────────────────
@@ -45,6 +215,7 @@ class Ad(SQLModel, table=True):
     sold: int = Field(default=0, index=True)
     previous_ad_id: int | None = Field(default=None, sa_column=Column(BigInteger))
     superseded_by: int | None = Field(default=None, sa_column=Column(BigInteger, index=True))
+    bike_model_id: int | None = Field(default=None, sa_column=Column(Integer, ForeignKey("bike_models.id"), index=True))
 
     # Relationships
     attributes: list["AdAttribute"] = Relationship(
@@ -119,6 +290,7 @@ class CrawlSession(SQLModel, table=True):
     status: str = Field(default="active")
     total_ads: int = Field(default=0)
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    bike_model_id: int | None = Field(default=None, sa_column=Column(Integer, ForeignKey("bike_models.id"), index=True))
 
     session_ads: list["CrawlSessionAd"] = Relationship(
         back_populates="session",
@@ -170,6 +342,8 @@ class AdPriceHistory(SQLModel, table=True):
 
 class AccessoryOverride(SQLModel, table=True):
     __tablename__ = "accessory_overrides"
+    __table_args__ = (PrimaryKeyConstraint("bike_model_id", "group_key"),)
 
-    group_key: str = Field(primary_key=True)
+    bike_model_id: int = Field(default=0)
+    group_key: str
     estimated_new_price: int
