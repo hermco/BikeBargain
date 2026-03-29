@@ -19,9 +19,14 @@ def _base_url() -> str:
     return url.rstrip("/")
 
 
-def search() -> dict:
+def search(keyword: str = "Himalayan", min_cc: int | None = None, max_cc: int | None = None) -> dict:
     """Lance la recherche LeBonCoin via le service local."""
-    r = httpx.post(f"{_base_url()}/search", timeout=TIMEOUT)
+    payload: dict = {"keyword": keyword}
+    if min_cc is not None:
+        payload["min_cc"] = min_cc
+    if max_cc is not None:
+        payload["max_cc"] = max_cc
+    r = httpx.post(f"{_base_url()}/search", json=payload, timeout=TIMEOUT)
     r.raise_for_status()
     return r.json()
 
