@@ -127,7 +127,7 @@ export function Sidebar() {
         {ctx && (
           <div className="px-4 mb-2">
             <NavLink
-              to="/"
+              to="/?browse=1"
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] text-text-dim hover:text-text-secondary hover:bg-white/[0.03] transition-all"
             >
               <ArrowLeft className="h-3 w-3" />

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
@@ -11,13 +11,15 @@ export function LandingPage() {
   const { formatPrice } = useFormatters()
   const { data: models, isLoading } = useBikeModels()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const browsing = searchParams.get('browse') === '1'
 
-  // Auto-redirect if only 1 model
+  // Auto-redirect if only 1 model (unless user explicitly navigated here)
   useEffect(() => {
-    if (models && models.length === 1) {
+    if (!browsing && models && models.length === 1) {
       navigate(`/models/${models[0].slug}/rankings`, { replace: true })
     }
-  }, [models, navigate])
+  }, [models, navigate, browsing])
 
   if (isLoading) {
     return (
@@ -35,8 +37,8 @@ export function LandingPage() {
     )
   }
 
-  // If only 1 model, the useEffect above handles redirect
-  if (models.length === 1) return null
+  // If only 1 model and not explicitly browsing, the useEffect handles redirect
+  if (!browsing && models.length === 1) return null
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
