@@ -30,8 +30,7 @@ export interface BikeModelConfig {
   short_term_km_threshold: number
 }
 
-export interface BikeModelDetail {
-  model: BikeModel
+export interface BikeModelDetail extends BikeModel {
   config: BikeModelConfig
 }
 

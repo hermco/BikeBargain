@@ -118,7 +118,7 @@ export function Sidebar() {
             <span className="font-semibold text-sm tracking-tight text-text-primary">BikeBargain</span>
             {ctx && (
               <span className="block text-[10px] text-text-muted tracking-widest uppercase">
-                {ctx.model.model.brand} {ctx.model.model.name}
+                {ctx.model.brand} {ctx.model.name}
               </span>
             )}
           </div>
