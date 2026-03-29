@@ -235,7 +235,15 @@ Pour chaque variante, le compilateur produit une regex en combinant les donnees 
 
 **Regles de compilation par champ :**
 
-- **Expressions** : stockees telles que saisies (pour affichage), normalisees a la compilation (strip accents). Chaque mot recoit un pluriel optionnel `[s]?`. Les mots sont joints par `[\s-]*`. Les `optional_words` sont inseres entre CHAQUE paire de mots consecutifs : `(de\s*|du\s*)?`.
+- **Word boundaries (`\b`)** : CHAQUE mot compile recoit un `\b` en debut et fin. C'est la regle la plus importante — sans elle, "deco" matche dans "deconnectable" et "cartographie" matche dans "cartographique". Validee par l'evaluation sur corpus reel.
+- **Pluralisation francaise** : pas un simple `s?` mais une gestion des cas francais :
+  - Defaut : `mot[sx]?` (couvre "pneu" → "pneus" et "feu" → "feux")
+  - Mots en `-eau`, `-eu`, `-au` : `mot[sx]?` (couvre pluriel en -x ET en -s)
+  - Feminin : `mot` finissant par `-e` → `mot_sans_e` + `e?s?` (couvre "additionnel", "additionnelle", "additionnels", "additionnelles")
+  - Mots finissant deja en `-x` : `(feu|feux)` (alternance explicite singulier/pluriel)
+- **Expressions** : stockees telles que saisies (pour affichage), normalisees a la compilation (strip accents). Les mots sont joints par `[\s-]*`. Les `optional_words` sont inseres entre CHAQUE paire de mots consecutifs : `(de\s*|du\s*)?`.
+- **Qualificatifs et marques en alternation** : compiles dans un SEUL groupe `(qualifier1|qualifier2|brand1|brand2)`, pas en sequence. Permet a une marque de suivre directement l'expression sans qualificatif intercale (ex: "pneus bridgestone" matche directement).
+- **Brands courtes (≤3 chars)** : recoivent un `\b` supplementaire pour eviter les matchs partiels (ex: "re" ne matche pas dans "reglable").
 - **Brands multi-mots** : chaque mot joint par `[\s]*` (ex: "royal enfield" → `royal[\s]*enfield`). Les marques avec tiret utilisent `[\s-]*` (ex: "sw-motech" → `sw[\s-]*motech`).
 - **Qualificatifs** : chaque qualificatif est etendu avec ses equivalences automatiques (ex: "alu" → `(alu|aluminium)`).
 - **Product aliases** : ajoutes comme alternatives autonomes avec `|` a la fin de la regex. Ils matchent independamment des expressions du groupe.
@@ -255,26 +263,23 @@ ETAPES :
      → ["protection radiateur", "protege radiateur", "grille radiateur"]
 
   2. Pour chaque expression, generer un pattern flexible :
-     - Chaque mot : ajouter pluriel optionnel [s]?
+     - Chaque mot : \b + pluralisation francaise + \b
      - Entre chaque paire de mots : [\s-]* + optional_words
-     → protections?[\s-]*(de\s*|du\s*)?radiateurs?
-     → proteges?[\s-]*(de\s*|du\s*)?radiateurs?
-     → grilles?[\s-]*(de\s*|du\s*)?radiateurs?
+     → \bprotection[sx]?\b[\s-]*(de\s*|du\s*)?\bradiateur[sx]?\b
+     → \bprotege[sx]?\b[\s-]*(de\s*|du\s*)?\bradiateur[sx]?\b
+     → \bgrille[sx]?\b[\s-]*(de\s*|du\s*)?\bradiateur[sx]?\b
 
   3. Joindre les expressions avec | :
-     → (protections?[\s-]*(de\s*|du\s*)?radiateurs?|proteges?[\s-]*(de\s*|du\s*)?radiateurs?|grilles?[\s-]*(de\s*|du\s*)?radiateurs?)
+     → (\bprotection[sx]?\b[\s-]*(de\s*|du\s*)?\bradiateur[sx]?\b|...)
 
-  4. Ajouter les qualificatifs avec equivalences auto :
-     → ...\s*(alu|aluminium)
-
-  5. Ajouter les marques :
-     → ...\s*(sw[\s-]*motech|givi)
+  4. Ajouter qualificatifs ET marques en alternation unique :
+     → ...\s*(\balu\b|\baluminium\b|\bsw[\s-]*motech\b|\bgivi\b)
 
   6. Ajouter les product_aliases comme alternatives autonomes (|) :
      → (rien ici)
 
 REGEX FINALE :
-  (protections?[\s-]*(de\s*|du\s*)?radiateurs?|proteges?[\s-]*(de\s*|du\s*)?radiateurs?|grilles?[\s-]*(de\s*|du\s*)?radiateurs?)\s*(alu|aluminium)\s*(sw[\s-]*motech|givi)
+  (\bprotection[sx]?\b[\s-]*(de\s*|du\s*)?\bradiateur[sx]?\b|...)\s*(\balu\b|\baluminium\b|\bsw[\s-]*motech\b|\bgivi\b)
 ```
 
 ### Cas du regex_override
@@ -552,17 +557,55 @@ Quand un groupe est supprime :
 
 ```
 Variante "rally alu" :
-  (pares?[\s-]*mains?|proteges?[\s-]*mains?|handguards?)\s*(rally|renforces?|alu|aluminium)
+  (\bpare[sx]?\b[\s-]*\bmain[sx]?\b|\bprotege[sx]?\b[\s-]*\bmain[sx]?\b|\bhandguard[sx]?\b)\s*(\brally[sx]?\b|\brenforce[sx]?\b|\balu\b|\baluminium\b)
 
 Variante "Royal Enfield" :
-  (pares?[\s-]*mains?|proteges?[\s-]*mains?|handguards?)\s*(royal[\s]*enfield|re\b|genuine|origine)
+  regex_override car "re\b" necessite un word boundary specifique :
+  (pares?[\s-]*mains?|proteges?[\s-]*mains?|hand\s*guards?)\s*(re\b|royal\s*enfield|genuine|origine)
 
 Variante "aftermarket" :
-  (pares?[\s-]*mains?|proteges?[\s-]*mains?|handguards?)\s*(acerbis|barkbusters?|sw[\s-]*motech|givi)
+  (\bpare[sx]?\b[\s-]*\bmain[sx]?\b|...)\s*(\bacerbis\b|\bbarkbuster[sx]?\b|\bsw[\s-]*motech\b|\bgivi\b)
 
 Variante generique :
-  (pares?[\s-]*mains?|proteges?[\s-]*mains?|handguards?)
+  (\bpare[sx]?\b[\s-]*\bmain[sx]?\b|\bprotege[sx]?\b[\s-]*\bmain[sx]?\b|\bhandguard[sx]?\b)
 ```
+
+## Evaluation sur corpus reel
+
+Le compilateur a ete evalue sur les 12 annonces non-sold en base (corpus reel LeBonCoin).
+
+### Resultats
+
+| Metrique | Ancien (hardcode) | Nouveau (catalogue structure) |
+|---|---|---|
+| Groupes detectes identiques | — | 21/25 (84%) |
+| Groupes perdus (regressions) | — | **0** |
+| Groupes gagnes (ameliorations) | — | +2 (HP Corse, retros) |
+| Variante differente (meme groupe) | — | 2 (selection de variante, pas un bug) |
+| Rappel vs DB reference | 65.4% | 62.5% |
+
+### Analyse du gap de rappel
+
+Sur les 11 accessoires "en base mais non detectes par le nouveau" :
+- **9 ne sont pas non plus detectes par l'ancien** → ajouts manuels (accessoires visibles sur photos mais pas mentionnes dans le texte). Limitation acceptee et documentee.
+- **2 sont des differences de variante** (meme groupe detecte, nom de variante different) → pas un vrai manque.
+
+Le nouveau moteur a la **meme couverture effective** que l'ancien, avec 2 detections supplementaires.
+
+### Bugs trouves et corriges
+
+| Bug | Cause | Fix integre dans la spec |
+|---|---|---|
+| "deco" matche dans "deconnectable" | Pas de word boundary | `\b` autour de chaque mot compile |
+| "cartographie" matche "cartographique" | Prefixe matche un mot different | `\b` en fin de mot |
+| "feux additionnelles" non matche | Pluriel `-x` et feminin non geres | Pluralisation francaise complete |
+| "selle reglable" → faux positif "RE" | "re" matche debut de "reglable" | `\b` apres marques courtes (≤3 chars) |
+| "pneus bridgestone" non matche | Qualifiers et brands en sequence | Mis en alternation unique |
+| "bulle haute wrs" → mauvaise variante | Sort_order incorrect | regex_override + sort_order ajuste |
+
+### Conclusion
+
+Le catalogue structure avec regex auto-generees reproduit fidelement le comportement du catalogue hardcode, sans regression. Les bugs identifies pendant l'evaluation ont permis d'affiner les regles de compilation (word boundaries, pluralisation FR, alternation qualifiers/brands) qui sont maintenant integrees dans la spec.
 
 ## Exemple concret : le cas GPS (regex_override)
 
@@ -622,9 +665,12 @@ Ce cas illustre pourquoi le `regex_override` est necessaire : certains patterns 
 
 | Risque | Severite | Mitigation |
 |---|---|---|
-| Regression silencieuse a la migration seed (70+ patterns a convertir) | Haute | Script de comparaison side-by-side : executer l'ancien et le nouveau moteur sur le corpus reel, comparer les resultats |
+| Regression silencieuse a la migration seed (70+ patterns a convertir) | Haute | Script de comparaison side-by-side deja realise : 0 regressions sur corpus reel. A re-executer apres implementation |
 | Double source de verite pendant la transition (code + DB) | Haute | Migration en une seule phase : seed DB puis suppression immediat du hardcode dans le meme PR |
+| Faux positifs par mots courts sans word boundary | Haute | `\b` systematique autour de chaque mot compile. Valide par l'evaluation ("deco"/"re"/"cartographie") |
+| Pluralisation francaise incomplete | Moyenne | Gestion explicite des pluriels en -x, feminins en -e/-es. Valide par l'evaluation ("feux", "additionnelles") |
 | Refresh synchrone bloquant sur HTTP avec gros catalogue | Moyenne | BackgroundTasks FastAPI avec 202 Accepted |
 | Cache catalogue desynchronise apres ecriture | Moyenne | Invalidation explicite a chaque POST/PATCH/DELETE sur le catalogue |
 | Breaking change API frontend (group string → id int) | Moyenne | Garder `group_key` string dans les reponses API pour compatibilite. Adapter le frontend progressivement |
+| Variantes avec regex_override necessaires pour cas complexes | Basse | Identifies : GPS (lookbehind/lookahead), WRS (qualificatifs optionnels avant marque), top case 40L RE, stickers/deco. ~5-6 variantes sur ~88 |
 | Absence de FK `ad_accessories → catalog_variant` | Basse | Dette technique documentee. Les noms (str) restent le lien. A adresser en v2 |
