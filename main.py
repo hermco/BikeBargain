@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Himalayan 450 Analyzer - CLI pour extraire et stocker les annonces LeBonCoin.
+BikeBargain - CLI pour extraire et stocker les annonces LeBonCoin.
 
 Usage:
     python main.py add <url>              Ajouter une annonce depuis un lien LeBonCoin

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Reverse proxy multi-worktree pour le dev Himalayan 450 Analyzer.
+Reverse proxy multi-worktree pour le dev BikeBargain.
 
 Lance sur localhost:3000 (configurable), forward tout vers le frontend Vite
 du worktree actif. Dashboard a /_proxy/.
@@ -17,7 +17,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
-STATE_FILE = Path.home() / ".himalayan-proxy.json"
+STATE_FILE = Path.home() / ".bikebargain-proxy.json"
 
 
 def _load_state() -> dict:
@@ -52,7 +52,7 @@ DASHBOARD_HTML = """\
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dev Proxy — Himalayan 450</title>
+<title>Dev Proxy — BikeBargain</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; padding: 2rem; }

@@ -1,5 +1,5 @@
 """
-Algorithme de scoring et classement des annonces Himalayan 450.
+Algorithme de scoring et classement des annonces BikeBargain.
 
 Calcule un prix effectif reel pour chaque annonce en prenant en compte :
   - Les accessoires detectes (valeur occasion deduite)
@@ -292,7 +292,7 @@ def print_report(results: Optional[list[dict]] = None) -> None:
 
     print()
     print("=" * 100)
-    print("  CLASSEMENT DES ANNONCES HIMALAYAN 450  ".center(100, "="))
+    print("  CLASSEMENT DES ANNONCES BIKEBARGAIN  ".center(100, "="))
     print("=" * 100)
     print()
 

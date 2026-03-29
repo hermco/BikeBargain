@@ -1,4 +1,4 @@
-# Personas — Himalayan 450 Analyzer
+# Personas — BikeBargain
 
 Ce dossier contient des **personas réutilisables comme prompts système** pour un LLM afin de produire des analyses ciblées du projet.
 

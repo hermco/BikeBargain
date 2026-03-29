@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CLI tool + web UI to scrape, store, and analyze second-hand Royal Enfield Himalayan 450 listings from LeBonCoin (French classifieds). Written in French (comments, variable names). Frontend UI is internationalized (FR/EN) via react-i18next.
+BikeBargain — CLI tool + web UI to scrape, store, and analyze second-hand Royal Enfield Himalayan 450 listings from LeBonCoin (French classifieds). Written in French (comments, variable names). Frontend UI is internationalized (FR/EN) via react-i18next.
 
 ## Commands
 

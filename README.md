@@ -1,4 +1,4 @@
-# Himalayan 450 Analyzer
+# BikeBargain
 
 Outil d'analyse des annonces de seconde main pour la **Royal Enfield Himalayan 450** sur LeBonCoin.
 
@@ -24,7 +24,7 @@ Outil d'analyse des annonces de seconde main pour la **Royal Enfield Himalayan 4
 ## Installation
 
 ```bash
-cd ~/Work/himalayan-450-analyzer
+cd ~/Work/bikebargain
 python3 -m venv .venv
 source .venv/bin/activate
 make install
@@ -73,9 +73,9 @@ Fichiers (par ordre de priorité) :
 ```bash
 # .env (racine)
 APP_ENV=production
-DATABASE_URL=postgresql://user:pass@db.example.com:5432/himalayan_450
+DATABASE_URL=postgresql://user:pass@db.example.com:5432/bikebargain
 DEBUG=false
-CORS_ORIGIN_REGEX=https://himalayan\.example\.com
+CORS_ORIGIN_REGEX=https://bikebargain\.example\.com
 
 # frontend/.env.production (ou .env.local)
 VITE_API_BASE_URL=https://api.example.com
@@ -116,7 +116,7 @@ Affiche un rapport détaillé de toutes les annonces classées par décote (meil
 ## Structure du projet
 
 ```
-himalayan-450-analyzer/
+bikebargain/
 ├── main.py                  # CLI principal (add/list/show/stats/export)
 ├── .env.example             # Documentation des variables d'environnement
 ├── src/
@@ -182,7 +182,7 @@ L'ajout d'une annonce se fait en deux temps, en CLI comme en web :
 
 Le système de crawl permet de scanner LeBonCoin et traiter les résultats par lot :
 
-1. **Recherche** → récupère toutes les annonces Himalayan 450 en ligne
+1. **Recherche** → récupère toutes les annonces en ligne
 2. **Pré-check** → identifie celles déjà en base et les reposts potentiels (même ville + prix ±15%)
 3. **Extraction** → pour chaque annonce sélectionnée, extraction complète avec détection de doublons
 4. **Scoring de repost** (seuil 80 pts) : ville (+35), prix ±15% (+20), description similaire Jaccard (+25), accessoires similaires (+20), km proche (+15), annonce vendue (+10), même couleur (+5)
@@ -284,7 +284,7 @@ Le projet est séparé en deux services déployés indépendamment :
 
 | Variable | Valeur |
 |----------|--------|
-| `VITE_API_BASE_URL` | URL du backend Railway (ex: `https://himalayan-450-api.up.railway.app`) |
+| `VITE_API_BASE_URL` | URL du backend Railway (ex: `https://bikebargain-api.up.railway.app`) |
 
 ### Backend → Railway
 
@@ -295,7 +295,7 @@ Le projet est séparé en deux services déployés indépendamment :
 | Variable | Valeur |
 |----------|--------|
 | `APP_ENV` | `production` |
-| `CORS_ORIGIN_REGEX` | Regex du domaine Vercel (ex: `https://himalayan-450.*\.vercel\.app`) |
+| `CORS_ORIGIN_REGEX` | Regex du domaine Vercel (ex: `https://bikebargain.*\.vercel\.app`) |
 | `DATABASE_URL` | Fourni automatiquement par le plugin PostgreSQL |
 | `DEBUG` | `false` |
 

@@ -1,5 +1,5 @@
 """
-API REST FastAPI pour le frontend Himalayan 450 Analyzer.
+API REST FastAPI pour le frontend BikeBargain.
 
 Expose les fonctions existantes (database, extractor, analyzer) via des endpoints JSON.
 """
@@ -36,7 +36,7 @@ from .config import get_settings
 settings = get_settings()
 
 app = FastAPI(
-    title="Himalayan 450 Analyzer API",
+    title="BikeBargain API",
     debug=settings.debug,
 )
 
@@ -657,11 +657,10 @@ def get_stats(session: Session = Depends(get_session)):
     total_count, price_count, price_min, price_max, price_avg = price_row
 
     # Prix individuels pour median et liste
-    prices = sorted([
-        p for (p,) in session.exec(
-            select(Ad.price).where(base_filter, Ad.price != None)  # noqa: E711
-        ).all()
-    ])
+    price_rows = session.exec(
+        select(Ad.price).where(base_filter, Ad.price != None)  # noqa: E711
+    ).all()
+    prices = sorted([p if not isinstance(p, tuple) else p[0] for p in price_rows])
     price_median = stats_mod.median(prices) if prices else None
 
     # Aggregats km via SQL
@@ -674,11 +673,10 @@ def get_stats(session: Session = Depends(get_session)):
     ).one()
     km_min, km_max, km_avg = km_row
 
-    kms = sorted([
-        k for (k,) in session.exec(
-            select(Ad.mileage_km).where(base_filter, Ad.mileage_km != None)  # noqa: E711
-        ).all()
-    ])
+    km_rows = session.exec(
+        select(Ad.mileage_km).where(base_filter, Ad.mileage_km != None)  # noqa: E711
+    ).all()
+    kms = sorted([k if not isinstance(k, tuple) else k[0] for k in km_rows])
 
     # Annees via SQL
     year_row = session.exec(
@@ -882,7 +880,7 @@ def get_active_crawl_session(session: Session = Depends(get_session)):
     if not crawl_session:
         return None
 
-    existing_ids = {ad.id for ad in session.exec(select(Ad.id)).all()}
+    existing_ids = set(session.exec(select(Ad.id)).all())
 
     rows = session.exec(
         select(CrawlSessionAd)

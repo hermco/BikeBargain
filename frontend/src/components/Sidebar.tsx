@@ -121,11 +121,10 @@ export function Sidebar() {
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col bg-bg/80 backdrop-blur-xl border-r border-white/[0.06] z-30">
         <div className="flex items-center gap-3 px-6 py-6">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
-            <span className="text-bg font-bold text-sm font-fraunces">H</span>
+            <span className="text-bg font-bold text-sm font-fraunces">B</span>
           </div>
           <div>
-            <span className="font-semibold text-sm tracking-tight text-text-primary">Himalayan</span>
-            <span className="block text-[10px] text-text-muted tracking-widest uppercase">450 Analyzer</span>
+            <span className="font-semibold text-sm tracking-tight text-text-primary">BikeBargain</span>
           </div>
         </div>
         <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent mx-4" />

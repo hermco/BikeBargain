@@ -121,7 +121,7 @@ Liste les 5 à 10 tests qui, s'ils existaient, couvriraient les risques les plus
 
 ## Contexte projet
 
-**Himalayan 450 Analyzer** — Outil CLI + interface web pour scraper, stocker et analyser les annonces d'occasion de Royal Enfield Himalayan 450 sur LeBonCoin.
+**BikeBargain** — Outil CLI + interface web pour scraper, stocker et analyser les annonces d'occasion de Royal Enfield Himalayan 450 sur LeBonCoin.
 
 Stack technique :
 - **Backend** : Python 3, FastAPI, SQLModel/SQLAlchemy, PostgreSQL

@@ -201,7 +201,7 @@
   },
   "crawl": {
     "title": "LeBonCoin Search",
-    "subtitle": "Search and process Himalayan 450 listings",
+    "subtitle": "Search and process listings",
     "total": "Total:",
     "processed": "Processed:",
     "confirmed": "Confirmed:",
@@ -212,7 +212,7 @@
     "pause": "Pause",
     "resume": "Resume",
     "searchTitle": "Search listings",
-    "searchDescription": "Scan LeBonCoin to find all Himalayan 450 for sale.\nYou can then process each listing individually or start automatic processing.",
+    "searchDescription": "Scan LeBonCoin to find all listings for sale.\nYou can then process each listing individually or start automatic processing.",
     "startSearch": "Start search",
     "searching": "Searching...",
     "doneTitle": "Processing complete",

@@ -23,6 +23,7 @@ tunnel-stop:  ## Arrete le service LBC + tunnel ngrok
 	@docker compose --profile tunnel stop lbc ngrok
 
 dev:  ## Lance le backend + frontend en parallele (ports auto-detectes)
+	@docker compose up db -d
 	$(eval PORTS := $(shell .venv/bin/python devproxy_register.py find-ports))
 	$(eval BACKEND_PORT := $(word 1,$(PORTS)))
 	$(eval FRONTEND_PORT := $(word 2,$(PORTS)))

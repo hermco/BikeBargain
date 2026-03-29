@@ -1,4 +1,4 @@
-"""SQLModel models pour les annonces Himalayan 450."""
+"""SQLModel models pour BikeBargain."""
 
 from datetime import datetime
 
@@ -144,6 +144,7 @@ class CrawlSessionAd(SQLModel, table=True):
     exists_in_db: int = Field(default=0)
     action: str = Field(default="pending")
     position: int = Field(default=0)
+    is_new_listing: int = Field(default=0)
 
     session: CrawlSession | None = Relationship(back_populates="session_ads")
 

@@ -1,5 +1,5 @@
 """
-Extraction des donnees d'une annonce LeBonCoin pour la Royal Enfield Himalayan 450.
+Extraction des donnees d'une annonce LeBonCoin pour BikeBargain.
 
 Utilise la librairie lbc (https://github.com/etienne-hd/lbc) pour interroger l'API LeBonCoin.
 """
@@ -174,6 +174,126 @@ def _estimate_new_price(variant: Optional[str], color: Optional[str], wheel_type
         return min(prices_for_variant)
 
     return None
+
+
+# ─── Detection annonce neuve concessionnaire ────────────────────────────────
+
+# Patterns indiquant une annonce neuve par concessionnaire
+# Utilises avec seller_type == "pro" comme condition necessaire
+NEW_LISTING_PATTERNS = [
+    r"frais\s+de\s+mise\s+[aà]\s+la\s+route",
+    r"frais\s+d['\u2019]immatriculation",
+    r"hors\s+frais",
+    r"remise\s+promo",
+    r"disponible\s+[aà]\s+l['\u2019]essai",
+    r"garantie\s+\d+\s+ans?\s+pi[eè]ces",
+    r"garantie\s+constructeur",
+    r"refroidissement\s+liquide\s+40\s*cv",
+    r"moteur\s+sherpa\s+450",
+    r"monocylindre\s+452",
+    r"40\s*cv.*8000\s*tr",
+    r"ttc\b",
+]
+
+# Patterns forts : suffisent seuls pour flagger sans seller_type == "pro"
+# (seuls les concessionnaires font des promos avec montant ou se declarent)
+STRONG_DEALER_PATTERNS = [
+    r"concessionnaire",
+    r"\d+\s*[€e]\s*de\s*remise",          # "450€ de remise"
+    r"remise\s*(?:de\s*)?\d+\s*[€e]",     # "remise de 450€", "remise 450€"
+    r"promo.*\d+\s*[€e]",                  # "promo ... 450€"
+    r"\d+\s*[€e].*promo",                  # "450€ ... promo"
+]
+
+
+def _has_strong_dealer_signal(text: str) -> bool:
+    """Verifie si le texte contient un signal fort de concessionnaire."""
+    for pattern in STRONG_DEALER_PATTERNS:
+        if re.search(pattern, text):
+            return True
+    return False
+
+
+def detect_new_listing(
+    seller_type: str | None = None,
+    price: float | None = None,
+    mileage_km: int | None = None,
+    subject: str | None = None,
+    body: str | None = None,
+    variant: str | None = None,
+    color: str | None = None,
+    wheel_type: str | None = None,
+) -> bool:
+    """
+    Detecte si une annonce est une moto neuve vendue par concessionnaire.
+
+    Deux chemins de detection :
+    1. seller_type == "pro" + au moins un signal (prix neuf, km ~0, patterns texte)
+    2. Signal fort autonome (promo avec montant, mot "concessionnaire") — bypass seller_type
+    """
+    text = f"{subject or ''} {body or ''}".lower()
+    is_pro = seller_type and seller_type.lower() in ("pro", "professional")
+
+    # Chemin 1 : signal fort dans le texte — flag directement
+    if _has_strong_dealer_signal(text):
+        return True
+
+    # Chemin 2 : seller_type "pro" + signal confirmant
+    if not is_pro:
+        return False
+
+    # Signal : prix proche du neuf
+    if price is not None:
+        estimated_new = _estimate_new_price(variant, color, wheel_type)
+        if estimated_new is not None and abs(price - estimated_new) / estimated_new <= 0.05:
+            return True
+        all_prices = [v["price"] for v in NEW_PRICES.values()]
+        if any(abs(price - p) / p <= 0.05 for p in all_prices):
+            return True
+
+    # Signal : km nul ou quasi-nul
+    if mileage_km is not None and mileage_km < 100:
+        return True
+
+    # Signal : patterns texte standard
+    for pattern in NEW_LISTING_PATTERNS:
+        if re.search(pattern, text):
+            return True
+
+    return False
+
+
+def detect_new_listing_light(
+    subject: str | None = None,
+    price: float | None = None,
+    seller_type: str | None = None,
+) -> bool:
+    """
+    Version legere pour les resultats de recherche (pas de body/km).
+
+    Signal fort dans le subject = flag directement.
+    Sinon : seller_type "pro" + signal (prix neuf ou patterns subject).
+    """
+    text = (subject or "").lower()
+
+    # Signal fort : flag directement
+    if _has_strong_dealer_signal(text):
+        return True
+
+    # Sinon, besoin de seller_type "pro"
+    if not seller_type or seller_type.lower() not in ("pro", "professional"):
+        return False
+
+    if price is not None:
+        all_prices = [v["price"] for v in NEW_PRICES.values()]
+        if any(abs(price - p) / p <= 0.05 for p in all_prices):
+            return True
+
+    for pattern in NEW_LISTING_PATTERNS:
+        if re.search(pattern, text):
+            return True
+
+    return False
 
 
 def _parse_location(ad) -> dict:

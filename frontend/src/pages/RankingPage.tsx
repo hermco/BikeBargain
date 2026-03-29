@@ -277,28 +277,7 @@ export function RankingPage() {
     return map
   }, [rankings])
 
-  if (isLoading) return <TableSkeleton rows={10} />
-  if (!rankings?.length) return <EmptyState title={t('ranking.emptyTitle')} description={t('ranking.emptyDescription')} />
-
-  function handleSort(key: SortKey) {
-    if (key === sortKey) {
-      setSortAsc(!sortAsc)
-    } else {
-      setSortKey(key)
-      setSortAsc(key === 'price' || key === 'km' || key === 'distance')
-    }
-  }
-
-  function clearFilters() {
-    setSearch('')
-    setFilterColors(new Set())
-    setFilterWheel('')
-    setMaxKm('')
-    setMaxPrice('')
-    setMaxTrajet('')
-  }
-
-  const filtered = useMemo(() => rankings.filter((r) => {
+  const filtered = useMemo(() => (rankings ?? []).filter((r) => {
     if (search) {
       const q = search.toLowerCase()
       if (!r.city.toLowerCase().includes(q) && !r.color?.toLowerCase().includes(q) && !r.variant.toLowerCase().includes(q)) return false
@@ -334,6 +313,27 @@ export function RankingPage() {
     }
     return sortAsc ? cmp : -cmp
   }), [filtered, sortKey, sortAsc, rankMap, travelMap, distanceMap])
+
+  if (isLoading) return <TableSkeleton rows={10} />
+  if (!rankings?.length) return <EmptyState title={t('ranking.emptyTitle')} description={t('ranking.emptyDescription')} />
+
+  function handleSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortAsc(!sortAsc)
+    } else {
+      setSortKey(key)
+      setSortAsc(key === 'price' || key === 'km' || key === 'distance')
+    }
+  }
+
+  function clearFilters() {
+    setSearch('')
+    setFilterColors(new Set())
+    setFilterWheel('')
+    setMaxKm('')
+    setMaxPrice('')
+    setMaxTrajet('')
+  }
 
   const hasLocation = userLoc != null
   const colSpan = hasLocation ? 9 : 8

@@ -201,7 +201,7 @@
   },
   "crawl": {
     "title": "Recherche LeBonCoin",
-    "subtitle": "Recherche et traitement des annonces Himalayan 450",
+    "subtitle": "Recherche et traitement des annonces",
     "total": "Total :",
     "processed": "Traitées :",
     "confirmed": "Confirmées :",
@@ -212,7 +212,7 @@
     "pause": "Pause",
     "resume": "Reprendre",
     "searchTitle": "Rechercher les annonces",
-    "searchDescription": "Scanne LeBonCoin pour trouver toutes les Himalayan 450 en vente.\nVous pourrez ensuite traiter chaque annonce individuellement ou lancer le traitement automatique.",
+    "searchDescription": "Scanne LeBonCoin pour trouver toutes les annonces en vente.\nVous pourrez ensuite traiter chaque annonce individuellement ou lancer le traitement automatique.",
     "startSearch": "Lancer la recherche",
     "searching": "Recherche en cours...",
     "doneTitle": "Traitement terminé",

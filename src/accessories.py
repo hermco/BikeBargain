@@ -1,5 +1,5 @@
 """
-Detection et valorisation des accessoires pour la Royal Enfield Himalayan 450.
+Detection et valorisation des accessoires pour BikeBargain.
 
 Chaque accessoire est categorise et valorise (prix neuf estime en EUR) :
   - protection   : crash bars, protege-mains, protections moteur/carter
@@ -90,7 +90,7 @@ ACCESSORY_PATTERNS: list[tuple[str, str, str, int, str]] = [
      "Protege-leviers", "protection", 35, "prot_leviers"),
 
     # Renfort bequille
-    (r"renfort\s*b[eé]quille|[eé]largisseur\s*(de\s*)?b[eé]quille|extension\s*(de\s*)?b[eé]quille|rehausse\s*b[eé]quille|side\s*stand\s*ext",
+    (r"renfort\s*b[eé]quille|[eé]largisseur\s*(de\s*)?b[eé]quille|extension\s*(de\s*)?b[eé]quille|r[eé]hausse(ur)?\s*(de\s*)?b[eé]quille|side\s*stand\s*ext|ryl[\s-]*reo\s*hima",
      "Elargisseur de bequille", "protection", 55, "elargisseur_bequille"),
 
     # Protection echappement / pot
@@ -104,6 +104,8 @@ ACCESSORY_PATTERNS: list[tuple[str, str, str, int, str]] = [
     # Top case
     (r"top[\s-]*case\s*(alu|aluminium)\s*(re\b|royal\s*enfield|40\s*l)",
      "Top case aluminium 40L RE", "bagagerie", 449, "top_case"),
+    (r"(givi\s*)?alaska(\s*trekker)?|top[\s-]*case\s*(monokey\s*)?alaska|giv[\s-]*ala\s*56",
+     "Top case Givi Alaska Trekker ALU 56L", "bagagerie", 330, "top_case"),
     (r"top[\s-]*case\s*(alu|aluminium)\s*(sw[\s-]*motech|givi|shad|hepco)",
      "Top case aluminium aftermarket", "bagagerie", 300, "top_case"),
     (r"top[\s-]*case\s*(plastique|\d{2,3}\s*l)",
@@ -139,6 +141,8 @@ ACCESSORY_PATTERNS: list[tuple[str, str, str, int, str]] = [
      "Porte-bagages", "bagagerie", 140, "porte_bagages"),
 
     # Platine / support top case
+    (r"(givi\s*)?platine\s*monokey\s*(m9a)?|givi\s*m9a|m9a",
+     "Platine Givi Monokey M9A", "bagagerie", 90, "platine_tc"),
     (r"platine\s*top[\s-]*case|support\s*top[\s-]*case|top[\s-]*case\s*(rack|support|plate)",
      "Platine top case", "bagagerie", 110, "platine_tc"),
 
@@ -148,7 +152,13 @@ ACCESSORY_PATTERNS: list[tuple[str, str, str, int, str]] = [
     (r"support[s]?\s*(lat[eé]raux|valise|panier)|pannier\s*(frame|rail|rack)",
      "Supports valises laterales RE", "bagagerie", 140, "porte_bagages"),
 
+    # Support sacoche reservoir
+    (r"support\s*(de\s*)?sacoche[s]?\s*(de\s*)?r[eé]servoir|giv[\s-]*bf\s*92|bf\s*92",
+     "Support sacoche reservoir Givi BF92", "bagagerie", 40, "support_sacoche_reservoir"),
+
     # Sacoches
+    (r"(givi?\s*)?xs[\s-]*307|giv[\s-]*xs\s*307",
+     "Sacoche reservoir Givi XS307 15L", "bagagerie", 115, "sacoche_reservoir"),
     (r"sacoche[s]?\s*(de\s*)?r[eé]servoir|tank\s*bag",
      "Sacoche de reservoir", "bagagerie", 279, "sacoche_reservoir"),
     (r"sacoche[s]?\s*(de\s*)?(selle|cavali[eè]re)|saddle\s*bag",

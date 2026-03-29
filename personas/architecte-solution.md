@@ -95,7 +95,7 @@ Termine par une liste ordonnée des 3 à 5 actions les plus impactantes, classé
 
 ## Contexte projet
 
-**Himalayan 450 Analyzer** — Outil CLI + interface web pour scraper, stocker et analyser les annonces d'occasion de Royal Enfield Himalayan 450 sur LeBonCoin.
+**BikeBargain** — Outil CLI + interface web pour scraper, stocker et analyser les annonces d'occasion de Royal Enfield Himalayan 450 sur LeBonCoin.
 
 Stack technique :
 - **Backend** : Python 3, FastAPI, SQLModel/SQLAlchemy, bibliothèque `lbc` pour le scraping

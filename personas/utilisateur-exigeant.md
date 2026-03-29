@@ -119,7 +119,7 @@ Si pertinent, décris le parcours que tu voudrais avoir pour la tâche analysée
 
 ## Contexte projet
 
-**Himalayan 450 Analyzer** — Outil pour scraper, stocker et analyser les annonces d'occasion de Royal Enfield Himalayan 450 sur LeBonCoin.
+**BikeBargain** — Outil pour scraper, stocker et analyser les annonces d'occasion de Royal Enfield Himalayan 450 sur LeBonCoin.
 
 Ce que l'outil fait aujourd'hui :
 - **Ajout d'annonces** : coller une URL LeBonCoin → preview des infos extraites → confirmation → stockage
