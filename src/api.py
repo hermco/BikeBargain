@@ -869,9 +869,10 @@ def get_stats_scoped(slug: str, session: Session = Depends(get_session)):
     total_count, price_count, price_min, price_max, price_avg = price_row
 
     prices = sorted([
-        p for (p,) in session.exec(
+        p for p in session.exec(
             select(Ad.price).where(*base_conditions, Ad.price != None)  # noqa: E711
         ).all()
+        if p is not None
     ])
     price_median = stats_mod.median(prices) if prices else None
 
@@ -885,7 +886,7 @@ def get_stats_scoped(slug: str, session: Session = Depends(get_session)):
     km_min, km_max, km_avg = km_row
 
     kms = sorted([
-        k for (k,) in session.exec(
+        k for k in session.exec(
             select(Ad.mileage_km).where(*base_conditions, Ad.mileage_km != None)  # noqa: E711
         ).all()
     ])
