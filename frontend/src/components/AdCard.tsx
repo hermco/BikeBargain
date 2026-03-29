@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { MapPin, CircleGauge, Calendar } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
@@ -6,6 +5,8 @@ import type { Ad } from '../types'
 import { Badge } from './ui/Badge'
 import { variantColor } from '../lib/utils'
 import { useFormatters } from '../hooks/useFormatters'
+import { useCurrentModel } from '../hooks/useCurrentModel'
+import { Link } from 'react-router-dom'
 
 interface AdCardProps {
   ad: Ad
@@ -23,6 +24,7 @@ function getDealLevel(ad: Ad, t: (key: string) => string): { label: string; clas
 export function AdCard({ ad, index }: AdCardProps) {
   const { t } = useTranslation()
   const { formatPrice, formatKm, formatDate } = useFormatters()
+  const { modelUrl } = useCurrentModel()
   const heroImage = ad.images?.[0]
   const accCount = ad.accessories?.length ?? 0
   const deal = getDealLevel(ad, t)
@@ -36,7 +38,7 @@ export function AdCard({ ad, index }: AdCardProps) {
       className={isSold ? 'opacity-60' : ''}
     >
       <Link
-        to={`/ads/${ad.id}`}
+        to={modelUrl(`/ads/${ad.id}`)}
         className="group block rounded-2xl border border-white/[0.06] bg-surface/80 backdrop-blur-sm hover:border-amber-500/20 hover:shadow-2xl hover:shadow-amber-500/[0.05] transition-all duration-300 relative"
       >
         {/* Image */}

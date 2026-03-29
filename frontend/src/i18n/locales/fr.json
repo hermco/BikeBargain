@@ -44,12 +44,23 @@
     "select": "Sélectionner...",
     "backToListings": "Retour aux annonces"
   },
+  "landing": {
+    "title": "BikeBargain",
+    "empty": "Aucun modele de moto configure.",
+    "noAds": "Aucune annonce",
+    "ads": "annonces"
+  },
   "nav": {
     "ads": "Annonces",
     "stats": "Statistiques",
     "ranking": "Classement",
     "search": "Recherche",
-    "accessories": "Accessoires"
+    "accessories": "Accessoires",
+    "allModels": "Tous les modeles"
+  },
+  "model": {
+    "noSearchConfig": "Aucune configuration de recherche pour ce modele.",
+    "noVariants": "Aucune variante configuree pour ce modele."
   },
   "sidebar": {
     "summary": "Résumé",

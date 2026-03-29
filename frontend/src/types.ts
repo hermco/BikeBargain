@@ -1,3 +1,42 @@
+// ─── Bike Model ──────────────────────────────────────────────────────────────
+
+export interface BikeModel {
+  id: number
+  slug: string
+  brand: string
+  name: string
+  engine_cc: number
+  image_url: string | null
+  ad_count: number
+  min_price: number | null
+  max_price: number | null
+}
+
+export interface BikeVariant {
+  id: number
+  bike_model_id: number
+  variant_name: string
+  color: string
+  wheel_type: string
+  new_price: number
+  color_hex: string | null
+}
+
+export interface BikeModelConfig {
+  warranty_years: number
+  warranty_value_per_year: number
+  mechanical_wear_per_km: number
+  condition_risk_per_km: number
+  short_term_km_threshold: number
+}
+
+export interface BikeModelDetail {
+  model: BikeModel
+  config: BikeModelConfig
+}
+
+// ─── Ads ─────────────────────────────────────────────────────────────────────
+
 export interface Ad {
   id: number
   url: string

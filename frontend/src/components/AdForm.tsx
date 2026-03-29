@@ -10,7 +10,7 @@ import { variantColor } from '../lib/utils'
 import { useFormatters } from '../hooks/useFormatters'
 import { Badge } from './ui/Badge'
 import type { Accessory, AdDetail } from '../types'
-import { VARIANTS, COLORS, WHEEL_TYPES } from '../lib/constants'
+import { useCurrentModel, useVariantOptions } from '../hooks/useCurrentModel'
 
 interface AdFormProps {
   autoOpen?: boolean
@@ -20,6 +20,8 @@ interface AdFormProps {
 export function AdForm({ autoOpen, onAutoOpened }: AdFormProps) {
   const { t } = useTranslation()
   const { formatPrice } = useFormatters()
+  const { slug } = useCurrentModel()
+  const { variantNames, wheelTypes, colorsForVariant } = useVariantOptions()
   const [open, setOpen] = useState(false)
   const [url, setUrl] = useState('')
   const [previewData, setPreviewData] = useState<AdDetail | null>(null)
@@ -28,9 +30,9 @@ export function AdForm({ autoOpen, onAutoOpened }: AdFormProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [showAddAccessory, setShowAddAccessory] = useState(false)
   const [accessorySearch, setAccessorySearch] = useState('')
-  const previewMut = usePreviewAd()
-  const confirmMut = useConfirmAd()
-  const { data: catalog } = useAccessoryCatalog()
+  const previewMut = usePreviewAd(slug)
+  const confirmMut = useConfirmAd(slug)
+  const { data: catalog } = useAccessoryCatalog(slug)
   const { toast } = useToast()
 
   function handleReset() {
@@ -122,7 +124,7 @@ export function AdForm({ autoOpen, onAutoOpened }: AdFormProps) {
   const accessories = (previewData?.accessories ?? []) as Accessory[]
   const images = (previewData?.images as string[]) ?? []
   const variant = previewData?.variant as string | null
-  const availableColors = variant ? COLORS[variant] ?? [] : Object.values(COLORS).flat()
+  const availableColors = colorsForVariant(variant)
   const catalogFiltered = (catalog ?? []).filter((c) => {
     if (accessories.some((a) => a.name === c.name)) return false
     if (!accessorySearch) return true
@@ -308,7 +310,7 @@ export function AdForm({ autoOpen, onAutoOpened }: AdFormProps) {
                   <span className="text-text-muted">{t('common.variant')}</span>
                   {editingField === 'variant' ? (
                     <div className="flex flex-wrap gap-1.5">
-                      {VARIANTS.map((v) => (
+                      {variantNames.map((v) => (
                         <button key={v} onClick={() => updateField('variant', v)}
                           className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${v === variant ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40' : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'}`}>
                           {v}
@@ -344,7 +346,7 @@ export function AdForm({ autoOpen, onAutoOpened }: AdFormProps) {
                   <span className="text-text-muted">{t('common.wheels')}</span>
                   {editingField === 'wheel_type' ? (
                     <div className="flex gap-1.5">
-                      {WHEEL_TYPES.map((w) => (
+                      {wheelTypes.map((w) => (
                         <button key={w} onClick={() => updateField('wheel_type', w)}
                           className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${w === previewData.wheel_type ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40' : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'}`}>
                           {w}

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Card } from '../components/ui/Card'
 import { CategoryBadge } from '../components/AccessoryBadge'
 import { useAccessoryCatalog, useUpdateCatalogPrice, useResetCatalogPrice, useRefreshAllAccessories } from '../hooks/queries'
+import { useCurrentModel } from '../hooks/useCurrentModel'
 import { useToast } from '../components/Toast'
 import { useFormatters } from '../hooks/useFormatters'
 import { Button } from '../components/ui/Button'
@@ -18,8 +19,9 @@ function EditablePrice({ item }: { item: CatalogAccessory }) {
   const { toast } = useToast()
   const { t } = useTranslation()
   const { formatPrice } = useFormatters()
-  const updatePrice = useUpdateCatalogPrice()
-  const resetPrice = useResetCatalogPrice()
+  const { slug } = useCurrentModel()
+  const updatePrice = useUpdateCatalogPrice(slug)
+  const resetPrice = useResetCatalogPrice(slug)
 
   const handleSave = () => {
     const parsed = parseInt(value, 10)
@@ -148,8 +150,9 @@ function CategorySection({ category, items }: { category: string; items: Catalog
 }
 
 export function CatalogPage() {
-  const { data: catalog, isLoading } = useAccessoryCatalog()
-  const refreshAll = useRefreshAllAccessories()
+  const { slug } = useCurrentModel()
+  const { data: catalog, isLoading } = useAccessoryCatalog(slug)
+  const refreshAll = useRefreshAllAccessories(slug)
   const { toast } = useToast()
   const { t } = useTranslation()
 

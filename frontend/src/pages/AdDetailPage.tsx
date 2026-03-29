@@ -3,6 +3,7 @@ import { ArrowLeft, ExternalLink, Trash2, MapPin, Calendar, ChevronLeft, Chevron
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { useAd, useDeleteAd, useUpdateAd, useAccessoryCatalog, useRefreshAdAccessories, useMarkAdSold, useCheckAdOnline, usePriceHistory } from '../hooks/queries'
+import { useCurrentModel, useVariantOptions } from '../hooks/useCurrentModel'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
@@ -16,20 +17,21 @@ import { useState, useEffect, useCallback } from 'react'
 import * as Accordion from '@radix-ui/react-accordion'
 import * as Dialog from '@radix-ui/react-dialog'
 import type { Accessory } from '../types'
-import { VARIANTS, COLORS, WHEEL_TYPES } from '../lib/constants'
 
 export function AdDetailPage() {
   const { id } = useParams<{ id: string }>()
   const adId = id ? Number(id) : NaN
   const { t } = useTranslation()
   const { formatPrice, formatKm } = useFormatters()
-  const { data: ad, isLoading, error } = useAd(adId)
-  const deleteMut = useDeleteAd()
-  const updateMut = useUpdateAd()
-  const refreshAccMut = useRefreshAdAccessories()
-  const markSoldMut = useMarkAdSold()
-  const checkOnlineMut = useCheckAdOnline()
-  const { data: priceHistory } = usePriceHistory(adId)
+  const { slug, modelUrl } = useCurrentModel()
+  const { variantNames, wheelTypes, colorsForVariant } = useVariantOptions()
+  const { data: ad, isLoading, error } = useAd(slug, adId)
+  const deleteMut = useDeleteAd(slug)
+  const updateMut = useUpdateAd(slug)
+  const refreshAccMut = useRefreshAdAccessories(slug)
+  const markSoldMut = useMarkAdSold(slug)
+  const checkOnlineMut = useCheckAdOnline(slug)
+  const { data: priceHistory } = usePriceHistory(slug, adId)
   const navigate = useNavigate()
   const { toast } = useToast()
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
@@ -41,7 +43,7 @@ export function AdDetailPage() {
   const [showAddAccessory, setShowAddAccessory] = useState(false)
   const [accessorySearch, setAccessorySearch] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const { data: catalog } = useAccessoryCatalog()
+  const { data: catalog } = useAccessoryCatalog(slug)
 
   // Keyboard navigation for lightbox
   const handleLightboxKey = useCallback((e: KeyboardEvent) => {
@@ -58,7 +60,7 @@ export function AdDetailPage() {
     }
   }, [lightboxIdx, handleLightboxKey])
 
-  if (isNaN(adId)) return <Navigate to="/" replace />
+  if (isNaN(adId)) return <Navigate to={modelUrl('/rankings')} replace />
   if (isLoading) return <TableSkeleton rows={12} />
   if (error || !ad)
     return (
@@ -66,7 +68,7 @@ export function AdDetailPage() {
         title={t('adDetail.notFound')}
         action={
           <Link
-            to="/"
+            to={modelUrl('/rankings')}
             className="inline-flex items-center gap-2 rounded-xl bg-amber-500/15 text-amber-300 px-4 py-2 text-sm font-medium hover:bg-amber-500/25 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -140,14 +142,14 @@ export function AdDetailPage() {
     deleteMut.mutate(ad!.id, {
       onSuccess: () => {
         toast(t('adDetail.adDeleted'), 'success')
-        navigate('/')
+        navigate(modelUrl('/rankings'))
       },
     })
   }
 
   const currentVariant = editing ? editVariant : ad.variant
   const currentAccessories = editing ? (editAccessories ?? []) : (ad.accessories ?? [])
-  const availableColors = currentVariant ? COLORS[currentVariant] ?? [] : Object.values(COLORS).flat()
+  const availableColors = colorsForVariant(currentVariant)
 
   const accByCategory = currentAccessories.reduce(
     (acc, a) => {
@@ -174,7 +176,7 @@ export function AdDetailPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="flex items-center gap-4 flex-1 min-w-0">
-          <Link to="/" className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-white/[0.08] transition-all shrink-0">
+          <Link to={modelUrl('/rankings')} className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-white/[0.08] transition-all shrink-0">
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div className="min-w-0">
@@ -252,7 +254,7 @@ export function AdDetailPage() {
         <div className="rounded-xl bg-purple-500/10 border border-purple-500/20 px-4 py-3 text-sm text-purple-300 flex items-center gap-2">
           <History className="h-4 w-4 shrink-0" />
           <span>{t('adDetail.supersededBy')} </span>
-          <Link to={`/ads/${ad.superseded_by}`} className="font-medium underline hover:text-purple-200 transition-colors">
+          <Link to={modelUrl(`/ads/${ad.superseded_by}`)} className="font-medium underline hover:text-purple-200 transition-colors">
             {t('adDetail.supersededByLink', { id: ad.superseded_by })}
           </Link>
           <span className="text-purple-300/60">{t('adDetail.supersededSuffix')}</span>
@@ -272,7 +274,7 @@ export function AdDetailPage() {
         <div className="rounded-xl bg-purple-500/10 border border-purple-500/20 px-4 py-3 text-sm text-purple-300 flex items-center gap-2">
           <History className="h-4 w-4 shrink-0" />
           <span>{t('adDetail.repostOf')} </span>
-          <Link to={`/ads/${ad.previous_ad_id}`} className="font-medium underline hover:text-purple-200 transition-colors">
+          <Link to={modelUrl(`/ads/${ad.previous_ad_id}`)} className="font-medium underline hover:text-purple-200 transition-colors">
             {t('adDetail.see', { id: ad.previous_ad_id })}
           </Link>
           {priceHistory && priceHistory.history.length >= 2 && (() => {
@@ -393,7 +395,7 @@ export function AdDetailPage() {
             <span className="text-text-muted">{t('common.variant')}</span>
             {editing ? (
               <div className="flex flex-wrap gap-1.5">
-                {VARIANTS.map((v) => (
+                {variantNames.map((v) => (
                   <button key={v} onClick={() => setEditVariant(v)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${v === editVariant ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40' : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'}`}>
                     {v}
@@ -423,7 +425,7 @@ export function AdDetailPage() {
             <span className="text-text-muted">{t('common.wheels')}</span>
             {editing ? (
               <div className="flex gap-1.5">
-                {WHEEL_TYPES.map((w) => (
+                {wheelTypes.map((w) => (
                   <button key={w} onClick={() => setEditWheelType(w)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${w === editWheelType ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40' : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'}`}>
                     {w}
@@ -515,7 +517,7 @@ export function AdDetailPage() {
                         <span>{new Date(entry.recorded_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                         {entry.note && <span className="text-text-dim/70 truncate max-w-xs">{entry.note}</span>}
                         {entry.previous_ad_id && (
-                          <Link to={`/ads/${entry.previous_ad_id}`} className="text-purple-300/70 hover:text-purple-300 transition-colors shrink-0">
+                          <Link to={modelUrl(`/ads/${entry.previous_ad_id}`)} className="text-purple-300/70 hover:text-purple-300 transition-colors shrink-0">
                             {t('adDetail.see', { id: entry.previous_ad_id })}
                           </Link>
                         )}

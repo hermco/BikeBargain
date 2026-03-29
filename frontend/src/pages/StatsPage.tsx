@@ -9,6 +9,7 @@ import { Card } from '../components/ui/Card'
 import { StatCardSkeleton } from '../components/LoadingSkeleton'
 import { variantChartColor } from '../lib/utils'
 import { useFormatters } from '../hooks/useFormatters'
+import { useCurrentModel } from '../hooks/useCurrentModel'
 import { Package, TrendingUp, ArrowUpDown, Gauge } from 'lucide-react'
 
 const TOOLTIP_STYLE = {
@@ -52,7 +53,8 @@ function buildHistogram(values: number[], bins: number): { label: string; count:
 }
 
 export function StatsPage() {
-  const { data: stats, isLoading } = useStats()
+  const { slug } = useCurrentModel()
+  const { data: stats, isLoading } = useStats(slug)
   const { t } = useTranslation()
   const { formatPrice, formatKm } = useFormatters()
 
