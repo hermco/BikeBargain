@@ -1,7 +1,9 @@
 """
-Extraction des donnees d'une annonce LeBonCoin pour la Royal Enfield Himalayan 450.
+Extraction des donnees d'une annonce LeBonCoin.
 
 Utilise la librairie lbc (https://github.com/etienne-hd/lbc) pour interroger l'API LeBonCoin.
+Les patterns de detection (variante, couleur, type de jantes) et les prix de reference
+sont charges depuis la base de donnees en fonction du modele de moto.
 """
 
 import re
@@ -30,28 +32,6 @@ def get_lbc_client() -> lbc.Client:
         scheme=parsed.scheme or "http",
     )
     return lbc.Client(proxy=proxy)
-
-# ─── Prix neuf de reference (France, mars 2026) ────────────────────────────────
-
-NEW_PRICES: dict[str, dict] = {
-    "base_kaza_brown":          {"variant": "Base",       "color": "Kaza Brown",              "wheel_type": "standard", "price": 5890},
-    "pass_salt":                {"variant": "Pass",       "color": "Slate Himalayan Salt",    "wheel_type": "standard", "price": 5990},
-    "pass_poppy":               {"variant": "Pass",       "color": "Slate Poppy Blue",        "wheel_type": "standard", "price": 5990},
-    "summit_hanle_standard":    {"variant": "Summit",     "color": "Hanle Black",             "wheel_type": "standard", "price": 6190},
-    "summit_kamet_tubeless":    {"variant": "Summit",     "color": "Kamet White",             "wheel_type": "tubeless", "price": 6440},
-    "summit_hanle_tubeless":    {"variant": "Summit",     "color": "Hanle Black",             "wheel_type": "tubeless", "price": 6490},
-    "mana_black":               {"variant": "Mana Black", "color": "Mana Black",              "wheel_type": "tubeless", "price": 6590},
-}
-
-# Patterns pour detecter la variante/couleur dans le titre ou le body
-VARIANT_PATTERNS = [
-    (r"mana\s*black",                           "Mana Black", "Mana Black",           "tubeless"),
-    (r"kamet\s*white|kamet|blanc\s*kamet",      "Summit",     "Kamet White",          "tubeless"),
-    (r"hanle\s*black|hanle|noir\s*hanle",       "Summit",     "Hanle Black",          None),       # standard ou tubeless
-    (r"himalayan\s*salt|salt|gris.*rouge",       "Pass",       "Slate Himalayan Salt", "standard"),
-    (r"poppy\s*blue|poppy|gris.*bleu",           "Pass",       "Slate Poppy Blue",     "standard"),
-    (r"kaza\s*brown|kaza|marron",               "Base",       "Kaza Brown",           "standard"),
-]
 
 
 def extract_ad_id_from_url(url: str) -> Optional[int]:
@@ -103,73 +83,78 @@ def _raw_attributes(ad) -> list[dict]:
     return result
 
 
-def _detect_variant(subject: str, body: str, version_attr: str = "", color_attr: str = "") -> tuple[Optional[str], Optional[str], Optional[str]]:
+def _detect_variant(subject: str, body: str, attributes, bike_model_id: int, session) -> tuple[Optional[str], Optional[str], Optional[str]]:
     """
     Detecte la variante, la couleur et le type de jantes.
 
-    Cherche dans (par ordre de priorite) :
-      1. L'attribut LBC u_moto_version (ex: "Himalayan 450 Kamet White (Tubeless)")
-      2. Le titre (subject)
-      3. Le body
+    Charge les patterns de detection depuis la DB (table bike_variant_patterns)
+    et les applique dans l'ordre de priorite decroissante.
+
+    Le texte combine : version LBC + titre + body.
+    Les fallbacks couleur LBC sont integres comme patterns de basse priorite en DB.
+
+    Args:
+        subject: Titre de l'annonce.
+        body: Corps de l'annonce.
+        attributes: Attributs bruts LBC (objet ad).
+        bike_model_id: ID du modele de moto.
+        session: SQLModel session.
 
     Returns:
         (variant, color, wheel_type) ou (None, None, None) si non detecte.
     """
-    # On cherche d'abord dans version_attr (le plus fiable), puis subject, puis body
-    text = f"{version_attr or ''} {subject or ''} {body or ''}".lower()
+    from .database import get_variant_patterns
 
-    for pattern, variant, color, wheel_type in VARIANT_PATTERNS:
-        if re.search(pattern, text):
-            # Pour Hanle Black, on essaie de detecter tubeless
-            if variant == "Summit" and color == "Hanle Black" and wheel_type is None:
-                if re.search(r"tubeless|tube[\s-]*less", text):
+    patterns = get_variant_patterns(session, bike_model_id)
+
+    # Recuperer les attributs LBC pertinents
+    version_attr = ""
+    color_attr = ""
+    if hasattr(attributes, "attributes") and attributes.attributes:
+        # L'objet ad complet est passe
+        version_attr = _get_attr(attributes, "u_moto_version") or ""
+        color_attr = _get_attr_label(attributes, "vehicule_color") or _get_attr(attributes, "vehicule_color") or ""
+    elif isinstance(attributes, str):
+        # Ancien format : version_attr en string directement
+        version_attr = attributes
+
+    combined = f"{version_attr} {subject or ''} {body or ''} {color_attr}".lower()
+
+    for p in patterns:  # Deja trie par priorite desc
+        if re.search(p.regex_pattern, combined, re.IGNORECASE):
+            wheel_type = p.matched_wheel_type
+            # Pour les patterns sans wheel_type explicite, detecter tubeless dans le texte
+            if wheel_type is None:
+                if re.search(r"tubeless|tube[\s-]*less", combined):
                     wheel_type = "tubeless"
                 else:
                     wheel_type = "standard"
-            return variant, color, wheel_type
+            return (p.matched_variant, p.matched_color, wheel_type)
 
-    # Fallback : essayer de deviner depuis la couleur LBC
-    if color_attr:
-        color_lower = color_attr.lower()
-        color_map = {
-            "blanc": ("Summit", "Kamet White", "tubeless"),
-            "white": ("Summit", "Kamet White", "tubeless"),
-            "noir":  ("Summit", "Hanle Black", None),
-            "black": ("Summit", "Hanle Black", None),
-            "marron": ("Base", "Kaza Brown", "standard"),
-            "brown": ("Base", "Kaza Brown", "standard"),
-            "gris":  ("Pass", None, "standard"),  # Salt ou Poppy, impossible a distinguer
-            "grey":  ("Pass", None, "standard"),
-            "bleu":  ("Pass", "Slate Poppy Blue", "standard"),
-            "blue":  ("Pass", "Slate Poppy Blue", "standard"),
-            "rouge": ("Pass", "Slate Himalayan Salt", "standard"),
-            "red":   ("Pass", "Slate Himalayan Salt", "standard"),
-        }
-        for keyword, (variant, color, wheel_type) in color_map.items():
-            if keyword in color_lower:
-                # Detecter tubeless dans tout le texte
-                if variant == "Summit" and color == "Hanle Black" and wheel_type is None:
-                    if re.search(r"tubeless|tube[\s-]*less", text):
-                        wheel_type = "tubeless"
-                    else:
-                        wheel_type = "standard"
-                return variant, color, wheel_type
-
-    return None, None, None
+    return (None, None, None)
 
 
-def _estimate_new_price(variant: Optional[str], color: Optional[str], wheel_type: Optional[str]) -> Optional[float]:
-    """Estime le prix neuf de reference en fonction de la variante detectee."""
+def _estimate_new_price(bike_model_id: int, variant: Optional[str], color: Optional[str],
+                        wheel_type: Optional[str], session) -> Optional[float]:
+    """Estime le prix neuf de reference en fonction de la variante detectee.
+
+    Charge les variantes depuis la DB (table bike_variants).
+    """
     if not variant:
         return None
 
-    for _key, info in NEW_PRICES.items():
-        if info["variant"] == variant and info["color"] == color:
-            if info["wheel_type"] == wheel_type:
-                return info["price"]
+    from .database import get_bike_variants
+    variants = get_bike_variants(session, bike_model_id)
 
-    # Fallback : match sur variant seul
-    prices_for_variant = [v["price"] for v in NEW_PRICES.values() if v["variant"] == variant]
+    wt = wheel_type or "default"
+
+    # Match exact : variant + color + wheel_type
+    for v in variants:
+        if v.variant_name == variant and v.color == color and v.wheel_type == wt:
+            return v.new_price
+
+    # Fallback : match sur variant seul (prix min)
+    prices_for_variant = [v.new_price for v in variants if v.variant_name == variant]
     if prices_for_variant:
         return min(prices_for_variant)
 
@@ -213,12 +198,115 @@ def _safe_int(val) -> Optional[int]:
         return None
 
 
-def fetch_ad(url: str, client: Optional[lbc.Client] = None, price_overrides: Optional[dict] = None) -> dict:
+def detect_new_listing(*, seller_type, price, mileage_km, subject, body,
+                       variant, color, wheel_type, bike_model_id, session) -> bool:
+    """
+    Detection complete d'une annonce neuve de concessionnaire.
+
+    Combine plusieurs signaux :
+      - Type de vendeur (pro)
+      - Kilometrage bas (< 100 km)
+      - Prix proche du neuf
+      - Patterns textuels (model_spec, generic, dealer)
+
+    Args:
+        seller_type: Type vendeur LBC (pro/private).
+        price: Prix affiche.
+        mileage_km: Kilometrage.
+        subject: Titre de l'annonce.
+        body: Corps de l'annonce.
+        variant: Variante detectee.
+        color: Couleur detectee.
+        wheel_type: Type de jantes.
+        bike_model_id: ID du modele.
+        session: SQLModel session.
+
+    Returns:
+        True si l'annonce est probablement une moto neuve de concessionnaire.
+    """
+    from .database import get_new_listing_patterns, get_bike_variants
+
+    score = 0.0
+
+    # Signal vendeur pro
+    if seller_type and seller_type.lower() == "pro":
+        score += 2.0
+
+    # Signal kilometrage quasi-neuf
+    if mileage_km is not None and mileage_km <= 100:
+        score += 2.0
+    elif mileage_km is not None and mileage_km <= 500:
+        score += 1.0
+
+    # Signal prix proche du neuf (dans les 5% du prix catalogue)
+    if price and variant:
+        variants = get_bike_variants(session, bike_model_id)
+        catalog_prices = [v.new_price for v in variants]
+        if catalog_prices:
+            min_catalog = min(catalog_prices)
+            max_catalog = max(catalog_prices)
+            if min_catalog * 0.95 <= price <= max_catalog * 1.05:
+                score += 1.5
+
+    # Patterns textuels
+    combined_text = f"{subject or ''} {body or ''}".lower()
+    nl_patterns = get_new_listing_patterns(session, bike_model_id)
+    for p in nl_patterns:
+        if re.search(p.regex_pattern, combined_text, re.IGNORECASE):
+            score += p.weight
+
+    # Seuil de decision
+    return score >= 3.0
+
+
+def detect_new_listing_light(subject, price, seller_type, catalog_prices: list[int] | None = None) -> bool:
+    """
+    Detection legere d'une annonce neuve (pour la page de crawl, sans body).
+
+    Utilise uniquement le titre, le prix et le type de vendeur.
+
+    Args:
+        subject: Titre de l'annonce.
+        price: Prix affiche.
+        seller_type: Type vendeur LBC.
+        catalog_prices: Liste des prix catalogue. Si None, pas de check prix.
+
+    Returns:
+        True si l'annonce est probablement neuve.
+    """
+    score = 0.0
+
+    # Vendeur pro
+    if seller_type and str(seller_type).lower() == "pro":
+        score += 2.0
+
+    # Prix dans la fourchette neuf
+    if price and catalog_prices:
+        min_catalog = min(catalog_prices)
+        max_catalog = max(catalog_prices)
+        if min_catalog * 0.95 <= price <= max_catalog * 1.05:
+            score += 1.5
+
+    # Patterns titre generiques
+    title_lower = (subject or "").lower()
+    if re.search(r"\b0\s*km\b|\bzero\s*km\b", title_lower):
+        score += 1.5
+    if re.search(r"neuf[^t]|flambant\s*neuf", title_lower):
+        score += 1.0
+
+    return score >= 3.0
+
+
+def fetch_ad(url: str, bike_model_id: int, session, *,
+             client: Optional[lbc.Client] = None,
+             price_overrides: Optional[dict] = None) -> dict:
     """
     Recupere une annonce LeBonCoin et la transforme en dict pret pour la BDD.
 
     Args:
         url: URL LeBonCoin de l'annonce.
+        bike_model_id: ID du modele de moto.
+        session: SQLModel session.
         client: Client lbc optionnel (en cree un par defaut).
         price_overrides: Surcharges de prix accessoires {group: prix_neuf}.
 
@@ -240,22 +328,21 @@ def fetch_ad(url: str, client: Optional[lbc.Client] = None, price_overrides: Opt
     subject = getattr(ad, "subject", None) or ""
     body = getattr(ad, "body", None) or ""
 
-    # Attributs LBC enrichis
-    version_attr = _get_attr(ad, "u_moto_version") or ""
-    color_attr = _get_attr_label(ad, "vehicule_color") or _get_attr(ad, "vehicule_color") or ""
-    cubic_attr = _get_attr(ad, "cubic_capacity") or ""
-
-    # Detection de la variante Himalayan (priorite: version > titre > body > couleur)
-    variant, color, wheel_type = _detect_variant(subject, body, version_attr, color_attr)
+    # Detection de la variante (priorite: version > titre > body > couleur)
+    variant, color, wheel_type = _detect_variant(subject, body, ad, bike_model_id, session)
 
     # Prix neuf estime
-    estimated_new_price = _estimate_new_price(variant, color, wheel_type)
+    estimated_new_price = _estimate_new_price(bike_model_id, variant, color, wheel_type, session)
 
     # Detection des accessoires depuis le body
-    accessories = detect_accessories(body, price_overrides=price_overrides)
+    accessories = detect_accessories(body, bike_model_id, session, price_overrides=price_overrides)
 
     # Localisation
     location = _parse_location(ad)
+
+    # Attributs LBC enrichis
+    color_attr = _get_attr_label(ad, "vehicule_color") or _get_attr(ad, "vehicule_color") or ""
+    cubic_attr = _get_attr(ad, "cubic_capacity") or ""
 
     # Cylindree : depuis cubic_capacity ou engine_size
     engine_cc = _safe_int(cubic_attr) or _safe_int(_get_attr(ad, "engine_size"))
@@ -285,10 +372,11 @@ def fetch_ad(url: str, client: Optional[lbc.Client] = None, price_overrides: Opt
         # Dates
         "first_publication_date": getattr(ad, "first_publication_date", None),
         "expiration_date": getattr(ad, "expiration_date", None),
-        # Analyse Himalayan
+        # Analyse
         "variant": variant,
         "wheel_type": wheel_type,
         "estimated_new_price": estimated_new_price,
+        "bike_model_id": bike_model_id,
         # Listes
         "attributes": _raw_attributes(ad),
         "images": _parse_images(ad),

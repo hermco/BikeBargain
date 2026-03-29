@@ -170,16 +170,21 @@ def _ad_to_dict(ad: Ad) -> dict:
 
 def refresh_accessories(
     session: Session,
+    bike_model_id: int,
     *,
     skip_manual: bool = False,
     ad_ids: list[int] | None = None,
 ) -> list[dict]:
-    """Re-detecte les accessoires en base."""
+    """Re-detecte les accessoires en base pour un modele donne."""
     from .accessories import detect_accessories
 
-    overrides = get_accessory_overrides(session)
+    overrides = get_accessory_overrides(session, bike_model_id)
 
-    statement = select(Ad)
+    # Pre-charger les patterns une seule fois pour toutes les annonces
+    patterns = get_accessory_patterns(session, bike_model_id)
+    exclusions = get_exclusion_patterns(session, bike_model_id)
+
+    statement = select(Ad).where(Ad.bike_model_id == bike_model_id)
     if skip_manual:
         statement = statement.where(Ad.accessories_manual == 0)
     if ad_ids is not None:
@@ -190,7 +195,11 @@ def refresh_accessories(
 
     for ad in ads:
         before = len(ad.accessories)
-        detected = detect_accessories(ad.body or "", price_overrides=overrides)
+        detected = detect_accessories(
+            ad.body or "", bike_model_id, session,
+            patterns=patterns, exclusions=exclusions,
+            price_overrides=overrides,
+        )
 
         # Supprimer les anciens
         session.exec(delete(AdAccessory).where(AdAccessory.ad_id == ad.id))

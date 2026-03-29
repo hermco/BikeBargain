@@ -1,10 +1,15 @@
 """
-Algorithme de scoring et classement des annonces Himalayan 450.
+Algorithme de scoring et classement des annonces.
 
 Calcule un prix effectif reel pour chaque annonce en prenant en compte :
   - Les accessoires detectes (valeur occasion deduite)
   - L'usure des consommables au tarif garage (cout ajoute)
-  - La garantie constructeur restante (3 ans depuis mise en circulation)
+  - La garantie constructeur restante
+  - L'usure mecanique generale
+  - Le risque d'etat / incertitude
+
+Les parametres de calcul (consommables, garantie, usure, seuils) sont charges
+depuis la base de donnees en fonction du modele de moto.
 
 Usage :
     python -m src.analyzer
@@ -13,52 +18,8 @@ Usage :
 from datetime import date, datetime
 from typing import Optional
 
-from sqlmodel import Session
-from .database import get_all_ads
-
-# ─── CONSOMMABLES (tarif garage : pieces + main d'oeuvre) ─────────────────────
-
-CONSUMABLES: list[tuple[str, int, int]] = [
-    # (nom, coût garage EUR, durée de vie km)
-    ("Pneus (AV+AR)",          270, 12_000),
-    ("Kit chaîne",             254, 20_000),
-    ("Plaquettes (AV+AR)",     145, 15_000),
-    ("Vidange (huile+filtre)", 140, 10_000),
-]
-
-# ─── GARANTIE ─────────────────────────────────────────────────────────────────
-
-WARRANTY_DURATION_YEARS = 3
-# Valeur estimee d'un an de garantie constructeur restant.
-# Basee sur le cout moyen d'une extension de garantie moto / risque de panne.
-WARRANTY_VALUE_PER_YEAR = 200  # EUR
-
-
-# ─── USURE MECANIQUE GENERALE ─────────────────────────────────────────────────
-# Cout au km pour les pieces non-consommables qui s'usent progressivement :
-#   - Revision suspension (fourche + amortisseur) : ~400 EUR / 25 000 km
-#   - Disques de frein (AV+AR)                    : ~200 EUR / 30 000 km
-#   - Embrayage                                   : ~250 EUR / 40 000 km
-#   - Roulements (roues, direction, bras osc.)    : ~200 EUR / 35 000 km
-#   - Cables, durites, joints divers              : ~100 EUR / 30 000 km
-# Total : ~0.03 EUR/km
-MECHANICAL_WEAR_PER_KM = 0.03  # EUR/km
-
-# ─── RISQUE D'ETAT / INCERTITUDE ────────────────────────────────────────────
-# Cout au km refletant l'incertitude sur l'etat reel du vehicule.
-# Plus le kilometrage est eleve, plus le risque de problemes caches augmente :
-#   - Qualite d'entretien inconnue (vidanges sautees, huile bas de gamme)
-#   - Chutes / degats non declares
-#   - Usure anormale liee au style de conduite
-#   - Stockage / conditions d'utilisation inconnues
-# Un vehicule quasi-neuf (< 100 km) n'a quasiment aucun risque.
-CONDITION_RISK_PER_KM = 0.04  # EUR/km
-
-# ─── SEUILS D'ALERTE CONSOMMABLES ────────────────────────────────────────────
-
-# En dessous de ce seuil en km, le consommable est considere comme
-# "a prevoir a court terme" et apparait dans les depenses imminentes.
-SHORT_TERM_KM_THRESHOLD = 3_000
+from sqlmodel import Session, select
+from .models import Ad
 
 
 def _parse_date(date_str: Optional[str]) -> Optional[date]:
@@ -93,9 +54,13 @@ def _estimate_circulation_date(year: Optional[int], pub_date_str: Optional[str])
     return None
 
 
-def compute_consumable_wear(km: int) -> dict:
+def compute_consumable_wear(km: int, consumables: list) -> dict:
     """
     Calcule l'usure des consommables pour un kilometrage donne.
+
+    Args:
+        km: Kilometrage du vehicule.
+        consumables: Liste d'objets BikeConsumable avec .name, .cost_eur, .life_km.
 
     Returns:
         {
@@ -116,11 +81,14 @@ def compute_consumable_wear(km: int) -> dict:
     details = []
     total_wear = 0
 
-    for name, cost, life in CONSUMABLES:
+    for c in consumables:
+        name = c.name
+        cost = c.cost_eur
+        life = c.life_km
+
         pct = min(km / life, 1.0)
         consumed = int(cost * pct)
         remaining = max(life - (km % life), 0)
-        short_term = remaining <= SHORT_TERM_KM_THRESHOLD
 
         details.append({
             "name": name,
@@ -129,7 +97,7 @@ def compute_consumable_wear(km: int) -> dict:
             "wear_pct": round(pct * 100, 1),
             "cost_consumed": consumed,
             "remaining_km": remaining,
-            "short_term": short_term,
+            "short_term": False,  # Sera mis a jour par rank_ads avec le seuil du config
         })
         total_wear += consumed
 
@@ -137,9 +105,15 @@ def compute_consumable_wear(km: int) -> dict:
 
 
 def compute_warranty(year: Optional[int], pub_date_str: Optional[str],
-                     today: Optional[date] = None) -> dict:
+                     config, today: Optional[date] = None) -> dict:
     """
     Calcule la garantie restante et sa valeur.
+
+    Args:
+        year: Annee du vehicule.
+        pub_date_str: Date de premiere publication (ISO).
+        config: Objet BikeModelConfig avec .warranty_years, .warranty_value_per_year.
+        today: Date de reference (defaut: aujourd'hui).
 
     Returns:
         {
@@ -162,10 +136,13 @@ def compute_warranty(year: Optional[int], pub_date_str: Optional[str],
             "value": 0,
         }
 
-    expiry = date(circ.year + WARRANTY_DURATION_YEARS, circ.month, circ.day)
+    warranty_years = config.warranty_years
+    warranty_value_per_year = config.warranty_value_per_year
+
+    expiry = date(circ.year + warranty_years, circ.month, circ.day)
     remaining_days = max((expiry - today).days, 0)
     remaining_years = round(remaining_days / 365.25, 1)
-    value = int(remaining_years * WARRANTY_VALUE_PER_YEAR)
+    value = int(remaining_years * warranty_value_per_year)
 
     return {
         "circulation_date": circ.isoformat(),
@@ -176,22 +153,38 @@ def compute_warranty(year: Optional[int], pub_date_str: Optional[str],
     }
 
 
-def rank_ads(session: Session, today: Optional[date] = None) -> list[dict]:
+def rank_ads(bike_model_id: int, session: Session, today: Optional[date] = None) -> list[dict]:
     """
-    Analyse et classe toutes les annonces en base.
+    Analyse et classe toutes les annonces d'un modele en base.
 
-    Prix effectif = prix_affiche - accessoires_occasion + usure_consommables - valeur_garantie
+    Prix effectif = prix_affiche - accessoires_occasion + usure_consommables
+                    + usure_mecanique + risque_etat - valeur_garantie
 
     Plus la decote est grande, meilleur est le deal.
 
     Args:
+        bike_model_id: ID du modele de moto.
         session: SQLModel session (injectee par FastAPI Depends ou fournie manuellement).
         today: Date de reference pour le calcul de garantie (defaut: aujourd'hui).
 
     Returns:
         Liste de dicts tries par decote decroissante (meilleur deal en premier).
     """
-    ads = get_all_ads(session)
+    from .database import get_bike_model_config, get_bike_consumables, get_all_ads
+
+    config = get_bike_model_config(session, bike_model_id)
+    if not config:
+        return []
+
+    consumables = get_bike_consumables(session, bike_model_id)
+
+    # Charger les annonces de ce modele
+    all_ads = get_all_ads(session)
+    ads = [a for a in all_ads if a.get("bike_model_id") == bike_model_id]
+
+    mechanical_wear_per_km = config.mechanical_wear_per_km
+    condition_risk_per_km = config.condition_risk_per_km
+    short_term_km_threshold = config.short_term_km_threshold
 
     results = []
 
@@ -205,18 +198,23 @@ def rank_ads(session: Session, today: Optional[date] = None) -> list[dict]:
         price = ad.get("price") or 0
 
         # Usure consommables
-        wear = compute_consumable_wear(km)
+        wear = compute_consumable_wear(km, consumables)
+
+        # Mettre a jour le flag short_term avec le seuil du config
+        for detail in wear["details"]:
+            detail["short_term"] = detail["remaining_km"] <= short_term_km_threshold
 
         # Usure mecanique generale
-        mechanical_wear = int(km * MECHANICAL_WEAR_PER_KM)
+        mechanical_wear = int(km * mechanical_wear_per_km)
 
         # Risque d'etat / incertitude
-        condition_risk = int(km * CONDITION_RISK_PER_KM)
+        condition_risk = int(km * condition_risk_per_km)
 
         # Garantie
         warranty = compute_warranty(
             ad.get("year"),
             ad.get("first_publication_date"),
+            config,
             today,
         )
 
@@ -277,22 +275,34 @@ def rank_ads(session: Session, today: Optional[date] = None) -> list[dict]:
     return results
 
 
-def print_report(results: Optional[list[dict]] = None) -> None:
+def print_report(bike_model_id: int = None, results: Optional[list[dict]] = None) -> None:
     """Affiche le rapport comparatif dans le terminal."""
     if results is None:
-        from .database import engine
+        from .database import engine, get_bike_models
         with Session(engine) as session:
-            results = rank_ads(session)
+            if bike_model_id is None:
+                # Utiliser le premier modele actif
+                models = get_bike_models(session)
+                if not models:
+                    print("Aucun modele de moto en base.")
+                    return
+                bike_model_id = models[0].id
+            results = rank_ads(bike_model_id, session)
 
     if not results:
         print("Aucune annonce en base.")
         return
 
+    # Charger le config pour afficher les parametres
+    from .database import engine, get_bike_model_config
+    with Session(engine) as session:
+        config = get_bike_model_config(session, bike_model_id)
+
     # ─── Tableau comparatif ───────────────────────────────────────────────
 
     print()
     print("=" * 100)
-    print("  CLASSEMENT DES ANNONCES HIMALAYAN 450  ".center(100, "="))
+    print("  CLASSEMENT DES ANNONCES  ".center(100, "="))
     print("=" * 100)
     print()
 
@@ -323,10 +333,11 @@ def print_report(results: Optional[list[dict]] = None) -> None:
     print("─" * 120)
     print()
     print("Formule : Effectif = Affiché - Accessoires(occasion) + Consommables(garage) + Mécanique(usure) + Risque état - Garantie restante")
-    print(f"Usure mécanique générale : {MECHANICAL_WEAR_PER_KM} EUR/km (suspension, disques, embrayage, roulements)")
-    print(f"Risque d'état : {CONDITION_RISK_PER_KM} EUR/km (incertitude entretien, chutes, usure cachée)")
-    print(f"Garantie constructeur : {WARRANTY_DURATION_YEARS} ans | Valeur : {WARRANTY_VALUE_PER_YEAR} EUR/an restant")
-    print(f"Seuil court terme : consommable à remplacer dans < {SHORT_TERM_KM_THRESHOLD} km")
+    if config:
+        print(f"Usure mécanique générale : {config.mechanical_wear_per_km} EUR/km (suspension, disques, embrayage, roulements)")
+        print(f"Risque d'état : {config.condition_risk_per_km} EUR/km (incertitude entretien, chutes, usure cachée)")
+        print(f"Garantie constructeur : {config.warranty_years} ans | Valeur : {config.warranty_value_per_year} EUR/an restant")
+        print(f"Seuil court terme : consommable à remplacer dans < {config.short_term_km_threshold} km")
     print()
 
     # ─── Detail par annonce ───────────────────────────────────────────────
@@ -362,10 +373,9 @@ def print_report(results: Optional[list[dict]] = None) -> None:
                   f"{c['remaining_km']:>8} km {c['garage_cost']:>10}€{alert}")
 
         # Usure mecanique
-        print(f"\n  Usure mécanique générale — +{r['mechanical_wear']} EUR ({r['km']} km × {MECHANICAL_WEAR_PER_KM} EUR/km)")
-
-        # Risque d'etat
-        print(f"  Risque d'état — +{r['condition_risk']} EUR ({r['km']} km × {CONDITION_RISK_PER_KM} EUR/km)")
+        if config:
+            print(f"\n  Usure mécanique générale — +{r['mechanical_wear']} EUR ({r['km']} km × {config.mechanical_wear_per_km} EUR/km)")
+            print(f"  Risque d'état — +{r['condition_risk']} EUR ({r['km']} km × {config.condition_risk_per_km} EUR/km)")
 
         # Garantie
         w = r["warranty"]
