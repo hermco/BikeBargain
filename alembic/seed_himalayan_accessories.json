@@ -1,0 +1,776 @@
+[
+  {
+    "regex_pattern": "crash\\s*bar(re)?[s]?\\s*(sw[\\s-]*motech|givi|hepco|h&b)",
+    "name": "Crash bars SW-Motech/Givi/Hepco",
+    "category": "protection",
+    "new_price": 200,
+    "depreciation_rate": 0.65,
+    "dedup_group": "crash_bars",
+    "sort_order": 0
+  },
+  {
+    "regex_pattern": "(prot[eè]ge[s]?|pare)[\\s-]*main[s]?\\s*(rally|renforc|alu)",
+    "name": "Pare-mains rally aluminium",
+    "category": "protection",
+    "new_price": 120,
+    "depreciation_rate": 0.65,
+    "dedup_group": "pare_mains",
+    "sort_order": 1
+  },
+  {
+    "regex_pattern": "(prot[eè]ge[s]?|pare)[\\s-]*main[s]?\\s*(re\\b|royal\\s*enfield|genuine|origine)",
+    "name": "Pare-mains Royal Enfield",
+    "category": "protection",
+    "new_price": 120,
+    "depreciation_rate": 0.65,
+    "dedup_group": "pare_mains",
+    "sort_order": 2
+  },
+  {
+    "regex_pattern": "(prot[eè]ge[s]?|pare)[\\s-]*main[s]?\\s*(acerbis|barkbuster|sw[\\s-]*motech|givi)",
+    "name": "Pare-mains aftermarket",
+    "category": "protection",
+    "new_price": 140,
+    "depreciation_rate": 0.65,
+    "dedup_group": "pare_mains",
+    "sort_order": 3
+  },
+  {
+    "regex_pattern": "(prot[eè]ge[s]?|pare)[\\s-]*main|hand\\s*guard",
+    "name": "Pare-mains",
+    "category": "protection",
+    "new_price": 120,
+    "depreciation_rate": 0.65,
+    "dedup_group": "pare_mains",
+    "sort_order": 4
+  },
+  {
+    "regex_pattern": "sabot\\s*(moteur\\s*)?(rally|renfoc[eé]|alu)\\s*(re\\b|royal\\s*enfield)?",
+    "name": "Sabot rally Royal Enfield",
+    "category": "protection",
+    "new_price": 279,
+    "depreciation_rate": 0.65,
+    "dedup_group": "sabot",
+    "sort_order": 5
+  },
+  {
+    "regex_pattern": "sabot\\s*(moteur\\s*)?(sw[\\s-]*motech|givi|acerbis|hepco)",
+    "name": "Sabot moteur aftermarket",
+    "category": "protection",
+    "new_price": 200,
+    "depreciation_rate": 0.65,
+    "dedup_group": "sabot",
+    "sort_order": 6
+  },
+  {
+    "regex_pattern": "sabot\\s*(moteur|rally)|skid\\s*plate|engine\\s*guard|prot(ection|[eè]ge)[\\s-]*moteur",
+    "name": "Sabot moteur",
+    "category": "protection",
+    "new_price": 200,
+    "depreciation_rate": 0.65,
+    "dedup_group": "sabot",
+    "sort_order": 7
+  },
+  {
+    "regex_pattern": "prot[eè]ge[\\s-]*carter|carter\\s*prot",
+    "name": "Protege-carter",
+    "category": "protection",
+    "new_price": 75,
+    "depreciation_rate": 0.65,
+    "dedup_group": "carter",
+    "sort_order": 8
+  },
+  {
+    "regex_pattern": "prot(ection|[eè]ge)[\\s-]*(de\\s*)?r[eé]servoir|tank\\s*pad",
+    "name": "Protection reservoir",
+    "category": "protection",
+    "new_price": 45,
+    "depreciation_rate": 0.65,
+    "dedup_group": "prot_reservoir",
+    "sort_order": 9
+  },
+  {
+    "regex_pattern": "prot(ection|[eè]ge)[\\s-]*(de\\s*)?radiateur|grille\\s*(alu\\s*)?(de\\s*)?radiateur|radiator\\s*guard",
+    "name": "Protection radiateur",
+    "category": "protection",
+    "new_price": 69,
+    "depreciation_rate": 0.65,
+    "dedup_group": "prot_radiateur",
+    "sort_order": 10
+  },
+  {
+    "regex_pattern": "grille\\s*(de\\s*)?phare|prot[eè]ge[s]?[\\s-]*phare|headl(amp|ight)\\s*(cover|grille|guard)",
+    "name": "Grille de phare",
+    "category": "protection",
+    "new_price": 80,
+    "depreciation_rate": 0.65,
+    "dedup_group": "grille_phare",
+    "sort_order": 11
+  },
+  {
+    "regex_pattern": "slider[s]?|tampon[s]?\\s*(de\\s*)?prot",
+    "name": "Sliders/tampons de protection",
+    "category": "protection",
+    "new_price": 60,
+    "depreciation_rate": 0.65,
+    "dedup_group": "sliders",
+    "sort_order": 12
+  },
+  {
+    "regex_pattern": "prot[eè]ge[\\s-]*levier",
+    "name": "Protege-leviers",
+    "category": "protection",
+    "new_price": 35,
+    "depreciation_rate": 0.65,
+    "dedup_group": "prot_leviers",
+    "sort_order": 13
+  },
+  {
+    "regex_pattern": "renfort\\s*b[eé]quille|[eé]largisseur\\s*(de\\s*)?b[eé]quille|extension\\s*(de\\s*)?b[eé]quille|rehausse\\s*b[eé]quille|side\\s*stand\\s*ext",
+    "name": "Elargisseur de bequille",
+    "category": "protection",
+    "new_price": 55,
+    "depreciation_rate": 0.65,
+    "dedup_group": "elargisseur_bequille",
+    "sort_order": 14
+  },
+  {
+    "regex_pattern": "prot(ection|[eè]ge)[\\s-]*(de\\s*)?(pot|[eé]chappement|silencieux)|muffler\\s*prot",
+    "name": "Protection echappement",
+    "category": "protection",
+    "new_price": 45,
+    "depreciation_rate": 0.65,
+    "dedup_group": "prot_echappement",
+    "sort_order": 15
+  },
+  {
+    "regex_pattern": "top[\\s-]*case\\s*(alu|aluminium)\\s*(re\\b|royal\\s*enfield|40\\s*l)",
+    "name": "Top case aluminium 40L RE",
+    "category": "bagagerie",
+    "new_price": 449,
+    "depreciation_rate": 0.65,
+    "dedup_group": "top_case",
+    "sort_order": 16
+  },
+  {
+    "regex_pattern": "top[\\s-]*case\\s*(alu|aluminium)\\s*(sw[\\s-]*motech|givi|shad|hepco)",
+    "name": "Top case aluminium aftermarket",
+    "category": "bagagerie",
+    "new_price": 300,
+    "depreciation_rate": 0.65,
+    "dedup_group": "top_case",
+    "sort_order": 17
+  },
+  {
+    "regex_pattern": "top[\\s-]*case\\s*(plastique|\\d{2,3}\\s*l)",
+    "name": "Top case plastique",
+    "category": "bagagerie",
+    "new_price": 191,
+    "depreciation_rate": 0.65,
+    "dedup_group": "top_case",
+    "sort_order": 18
+  },
+  {
+    "regex_pattern": "top[\\s-]*case\\s*(shad|givi|kappa)",
+    "name": "Top case aftermarket",
+    "category": "bagagerie",
+    "new_price": 200,
+    "depreciation_rate": 0.65,
+    "dedup_group": "top_case",
+    "sort_order": 19
+  },
+  {
+    "regex_pattern": "top[\\s-]*case",
+    "name": "Top case",
+    "category": "bagagerie",
+    "new_price": 250,
+    "depreciation_rate": 0.65,
+    "dedup_group": "top_case",
+    "sort_order": 20
+  },
+  {
+    "regex_pattern": "shad\\s*tr\\s*\\d+|sacoche[s]?\\s*shad\\s*tr\\s*\\d+",
+    "name": "Sacoches laterales SHAD TR (paire + support)",
+    "category": "bagagerie",
+    "new_price": 400,
+    "depreciation_rate": 0.65,
+    "dedup_group": "paniers",
+    "sort_order": 21
+  },
+  {
+    "regex_pattern": "(sacoche|valise)[s]?\\s*(lat[eé]ral[es]*\\s*)?(shad|givi|sw[\\s-]*motech|hepco|kappa)",
+    "name": "Sacoches laterales aftermarket",
+    "category": "bagagerie",
+    "new_price": 400,
+    "depreciation_rate": 0.65,
+    "dedup_group": "paniers",
+    "sort_order": 22
+  },
+  {
+    "regex_pattern": "(sacoche|valise)[s]?\\s*(shad|givi|sw[\\s-]*motech|hepco|kappa)",
+    "name": "Sacoches laterales aftermarket",
+    "category": "bagagerie",
+    "new_price": 400,
+    "depreciation_rate": 0.65,
+    "dedup_group": "paniers",
+    "sort_order": 23
+  },
+  {
+    "regex_pattern": "(panier|valise)[s]?\\s*(alu|aluminium)\\s*(re\\b|royal\\s*enfield)",
+    "name": "Paniers aluminium Royal Enfield",
+    "category": "bagagerie",
+    "new_price": 600,
+    "depreciation_rate": 0.65,
+    "dedup_group": "paniers",
+    "sort_order": 24
+  },
+  {
+    "regex_pattern": "(panier|valise)[s]?\\s*(alu|aluminium)\\s*(sw[\\s-]*motech|givi|shad|hepco|trax)",
+    "name": "Paniers aluminium aftermarket",
+    "category": "bagagerie",
+    "new_price": 500,
+    "depreciation_rate": 0.65,
+    "dedup_group": "paniers",
+    "sort_order": 25
+  },
+  {
+    "regex_pattern": "(panier|valise)[s]?\\s*(alu|aluminium|lat[eé]ral)",
+    "name": "Paniers aluminium",
+    "category": "bagagerie",
+    "new_price": 500,
+    "depreciation_rate": 0.65,
+    "dedup_group": "paniers",
+    "sort_order": 26
+  },
+  {
+    "regex_pattern": "valise[s]?\\s*(lat[eé]ral|rigide)|bagagerie\\s*lat[eé]ral",
+    "name": "Valises laterales",
+    "category": "bagagerie",
+    "new_price": 450,
+    "depreciation_rate": 0.65,
+    "dedup_group": "paniers",
+    "sort_order": 27
+  },
+  {
+    "regex_pattern": "porte[\\s-]*bagage[s]?\\s*(alu|aluminium)\\s*(re\\b|royal\\s*enfield)",
+    "name": "Porte-bagages aluminium RE",
+    "category": "bagagerie",
+    "new_price": 140,
+    "depreciation_rate": 0.65,
+    "dedup_group": "porte_bagages",
+    "sort_order": 28
+  },
+  {
+    "regex_pattern": "porte[\\s-]*bagage|support\\s*bagage|luggage\\s*rack",
+    "name": "Porte-bagages",
+    "category": "bagagerie",
+    "new_price": 140,
+    "depreciation_rate": 0.65,
+    "dedup_group": "porte_bagages",
+    "sort_order": 29
+  },
+  {
+    "regex_pattern": "platine\\s*top[\\s-]*case|support\\s*top[\\s-]*case|top[\\s-]*case\\s*(rack|support|plate)",
+    "name": "Platine top case",
+    "category": "bagagerie",
+    "new_price": 110,
+    "depreciation_rate": 0.65,
+    "dedup_group": "platine_tc",
+    "sort_order": 30
+  },
+  {
+    "regex_pattern": "support[s]?\\s*(lat[eé]raux|valise|panier)\\s*(re\\b|royal\\s*enfield|genuine|origine)",
+    "name": "Supports valises laterales RE",
+    "category": "bagagerie",
+    "new_price": 140,
+    "depreciation_rate": 0.65,
+    "dedup_group": "porte_bagages",
+    "sort_order": 31
+  },
+  {
+    "regex_pattern": "support[s]?\\s*(lat[eé]raux|valise|panier)|pannier\\s*(frame|rail|rack)",
+    "name": "Supports valises laterales RE",
+    "category": "bagagerie",
+    "new_price": 140,
+    "depreciation_rate": 0.65,
+    "dedup_group": "porte_bagages",
+    "sort_order": 32
+  },
+  {
+    "regex_pattern": "sacoche[s]?\\s*(de\\s*)?r[eé]servoir|tank\\s*bag",
+    "name": "Sacoche de reservoir",
+    "category": "bagagerie",
+    "new_price": 279,
+    "depreciation_rate": 0.65,
+    "dedup_group": "sacoche_reservoir",
+    "sort_order": 33
+  },
+  {
+    "regex_pattern": "sacoche[s]?\\s*(de\\s*)?(selle|cavali[eè]re)|saddle\\s*bag",
+    "name": "Sacoches de selle",
+    "category": "bagagerie",
+    "new_price": 149,
+    "depreciation_rate": 0.65,
+    "dedup_group": "sacoche_selle",
+    "sort_order": 34
+  },
+  {
+    "regex_pattern": "sacoche[s]?\\s*(souple|[eé]tanche|waterproof|soft\\s*bag)",
+    "name": "Sacoches souples",
+    "category": "bagagerie",
+    "new_price": 149,
+    "depreciation_rate": 0.65,
+    "dedup_group": "sacoche_souple",
+    "sort_order": 35
+  },
+  {
+    "regex_pattern": "sac[s]?\\s*([eé]tanche|waterproof|dry\\s*bag)",
+    "name": "Sac etanche",
+    "category": "bagagerie",
+    "new_price": 69,
+    "depreciation_rate": 0.65,
+    "dedup_group": "sac_etanche",
+    "sort_order": 36
+  },
+  {
+    "regex_pattern": "bulle\\s*(haute|touring|adventure|haute\\s*prot)\\s*(re\\b|royal\\s*enfield)",
+    "name": "Bulle touring Royal Enfield",
+    "category": "confort",
+    "new_price": 119,
+    "depreciation_rate": 0.65,
+    "dedup_group": "bulle",
+    "sort_order": 37
+  },
+  {
+    "regex_pattern": "bulle\\s*(haute|touring|adventure)?\\s*wrs|wrs|pare[\\s-]*brise\\s*wrs",
+    "name": "Bulle/pare-brise WRS",
+    "category": "confort",
+    "new_price": 115,
+    "depreciation_rate": 0.65,
+    "dedup_group": "bulle",
+    "sort_order": 38
+  },
+  {
+    "regex_pattern": "bulle\\s*(haute|touring|adventure)\\s*(givi|puig|ermax|isotta|mra)",
+    "name": "Bulle touring aftermarket",
+    "category": "confort",
+    "new_price": 130,
+    "depreciation_rate": 0.65,
+    "dedup_group": "bulle",
+    "sort_order": 39
+  },
+  {
+    "regex_pattern": "bulle\\s*(haute|touring|adventure|haute\\s*prot)",
+    "name": "Bulle haute/touring",
+    "category": "confort",
+    "new_price": 119,
+    "depreciation_rate": 0.65,
+    "dedup_group": "bulle",
+    "sort_order": 40
+  },
+  {
+    "regex_pattern": "bulle|pare[\\s-]*brise|windscreen|windshield",
+    "name": "Bulle/pare-brise",
+    "category": "confort",
+    "new_price": 100,
+    "depreciation_rate": 0.65,
+    "dedup_group": "bulle",
+    "sort_order": 41
+  },
+  {
+    "regex_pattern": "selle\\s*(rally|confort)\\s*(re\\b|royal\\s*enfield|genuine|origine)",
+    "name": "Selle rally/confort Royal Enfield",
+    "category": "confort",
+    "new_price": 119,
+    "depreciation_rate": 0.65,
+    "dedup_group": "selle",
+    "sort_order": 42
+  },
+  {
+    "regex_pattern": "selle\\s*(basse|low\\s*rider)\\s*(re\\b|royal\\s*enfield)?",
+    "name": "Selle basse (-11mm) RE",
+    "category": "confort",
+    "new_price": 119,
+    "depreciation_rate": 0.65,
+    "dedup_group": "selle",
+    "sort_order": 43
+  },
+  {
+    "regex_pattern": "selle[s]?\\s*(rally|confort|basse|chauffante|gel)",
+    "name": "Selle confort/rally",
+    "category": "confort",
+    "new_price": 119,
+    "depreciation_rate": 0.65,
+    "dedup_group": "selle",
+    "sort_order": 44
+  },
+  {
+    "regex_pattern": "selle[s]?\\s*(passager|touring|duo)\\s*confort",
+    "name": "Selle passager touring RE",
+    "category": "confort",
+    "new_price": 99,
+    "depreciation_rate": 0.65,
+    "dedup_group": "selle_passager",
+    "sort_order": 45
+  },
+  {
+    "regex_pattern": "poign[eé]e[s]?\\s*chauffante",
+    "name": "Poignees chauffantes",
+    "category": "confort",
+    "new_price": 130,
+    "depreciation_rate": 0.65,
+    "dedup_group": "poignees_chauffantes",
+    "sort_order": 46
+  },
+  {
+    "regex_pattern": "repose[\\s-]*pied[s]?\\s*(rally|r[eé]glable|large|off[\\s-]*road|alu)",
+    "name": "Repose-pieds rally",
+    "category": "confort",
+    "new_price": 90,
+    "depreciation_rate": 0.65,
+    "dedup_group": "repose_pieds",
+    "sort_order": 47
+  },
+  {
+    "regex_pattern": "rehausse[s]?\\s*(pontet|guidon)|pontet[s]?\\s*(rehausse|surelev)|handlebar\\s*(riser|ext)",
+    "name": "Rehausse pontet guidon",
+    "category": "confort",
+    "new_price": 59,
+    "depreciation_rate": 0.65,
+    "dedup_group": "rehausse",
+    "sort_order": 48
+  },
+  {
+    "regex_pattern": "b[eé]quille\\s*(centrale|atelier)|l[eè]ve[\\s-]*moto|center\\s*stand",
+    "name": "Bequille centrale/atelier",
+    "category": "confort",
+    "new_price": 180,
+    "depreciation_rate": 0.65,
+    "dedup_group": "bequille_centrale",
+    "sort_order": 49
+  },
+  {
+    "regex_pattern": "guidon\\s*(rehausse|brace|fatbar)",
+    "name": "Guidon rehausse/brace",
+    "category": "confort",
+    "new_price": 80,
+    "depreciation_rate": 0.65,
+    "dedup_group": "guidon",
+    "sort_order": 50
+  },
+  {
+    "regex_pattern": "mousse\\s*(de\\s*)?guidon|guidon\\s*foam|bar\\s*pad",
+    "name": "Mousse guidon rally",
+    "category": "confort",
+    "new_price": 35,
+    "depreciation_rate": 0.65,
+    "dedup_group": "mousse_guidon",
+    "sort_order": 51
+  },
+  {
+    "regex_pattern": "gps\\s*(garmin|zumo|tomtom)",
+    "name": "GPS Garmin/TomTom",
+    "category": "navigation",
+    "new_price": 350,
+    "depreciation_rate": 0.65,
+    "dedup_group": "gps",
+    "sort_order": 52
+  },
+  {
+    "regex_pattern": "(?<!support\\s)(?<!suport\\s)\\bgps\\b(?!\\s*/\\s*t[eé]l[eé]phone)(?!\\s*/\\s*smartphone)",
+    "name": "GPS",
+    "category": "navigation",
+    "new_price": 350,
+    "depreciation_rate": 0.65,
+    "dedup_group": "gps",
+    "sort_order": 53
+  },
+  {
+    "regex_pattern": "support\\s*(t[eé]l[eé]phone|smartphone|gps)\\s*(re\\b|royal\\s*enfield)",
+    "name": "Support telephone/GPS RE",
+    "category": "navigation",
+    "new_price": 49,
+    "depreciation_rate": 0.65,
+    "dedup_group": "support_tel",
+    "sort_order": 54
+  },
+  {
+    "regex_pattern": "quad\\s*lock",
+    "name": "Support Quad Lock",
+    "category": "navigation",
+    "new_price": 80,
+    "depreciation_rate": 0.65,
+    "dedup_group": "support_tel",
+    "sort_order": 55
+  },
+  {
+    "regex_pattern": "support\\s*(t[eé]l[eé]phone|smartphone|gps)",
+    "name": "Support telephone/GPS",
+    "category": "navigation",
+    "new_price": 49,
+    "depreciation_rate": 0.65,
+    "dedup_group": "support_tel",
+    "sort_order": 56
+  },
+  {
+    "regex_pattern": "chargeur\\s*(usb|sans[\\s-]*fil|induction)",
+    "name": "Chargeur USB/induction",
+    "category": "navigation",
+    "new_price": 30,
+    "depreciation_rate": 0.65,
+    "dedup_group": "chargeur",
+    "sort_order": 57
+  },
+  {
+    "regex_pattern": "(phare[s]?|feux?)\\s*(additionnel[s]?|auxiliaire[s]?|anti[\\s-]*brouillard|longue[\\s-]*port[eé]e)[s]?\\s*(denali|sw[\\s-]*motech)",
+    "name": "Phares additionnels Denali/SW-Motech",
+    "category": "eclairage",
+    "new_price": 380,
+    "depreciation_rate": 0.65,
+    "dedup_group": "phares_add",
+    "sort_order": 58
+  },
+  {
+    "regex_pattern": "(phare[s]?|feux?)\\s*(additionnel[s]?|auxiliaire[s]?|anti[\\s-]*brouillard|longue[\\s-]*port[eé]e)[s]?\\s*givi",
+    "name": "Phares additionnels Givi",
+    "category": "eclairage",
+    "new_price": 170,
+    "depreciation_rate": 0.65,
+    "dedup_group": "phares_add",
+    "sort_order": 59
+  },
+  {
+    "regex_pattern": "(phare[s]?|feux?)\\s*(additionnel[s]?|auxiliaire[s]?|anti[\\s-]*brouillard|longue[\\s-]*port[eé]e)|fog\\s*light|aux(iliary)?\\s*light",
+    "name": "Phares additionnels",
+    "category": "eclairage",
+    "new_price": 120,
+    "depreciation_rate": 0.65,
+    "dedup_group": "phares_add",
+    "sort_order": 60
+  },
+  {
+    "regex_pattern": "rampe\\s*(led|lumineuse)|light\\s*bar",
+    "name": "Rampe LED",
+    "category": "eclairage",
+    "new_price": 150,
+    "depreciation_rate": 0.65,
+    "dedup_group": "rampe_led",
+    "sort_order": 61
+  },
+  {
+    "regex_pattern": "r[eé]tro(viseur)?[s]?\\s*(bar[\\s-]*end|embout|alu|touring)\\s*(re\\b|royal\\s*enfield)",
+    "name": "Retros touring RE",
+    "category": "esthetique",
+    "new_price": 69,
+    "depreciation_rate": 0.65,
+    "dedup_group": "retros",
+    "sort_order": 62
+  },
+  {
+    "regex_pattern": "r[eé]tro(viseur)?[s]?\\s*(bar[\\s-]*end|embout|alu|touring)",
+    "name": "Retros bar-end",
+    "category": "esthetique",
+    "new_price": 60,
+    "depreciation_rate": 0.65,
+    "dedup_group": "retros",
+    "sort_order": 63
+  },
+  {
+    "regex_pattern": "r[eé]tro(viseur)?[s]?\\s*alu",
+    "name": "Retros alu",
+    "category": "esthetique",
+    "new_price": 60,
+    "depreciation_rate": 0.65,
+    "dedup_group": "retros",
+    "sort_order": 64
+  },
+  {
+    "regex_pattern": "garde[\\s-]*boue\\s*(rally|avant\\s*haut|haut|court)\\s*(re\\b|royal\\s*enfield)?",
+    "name": "Kit garde-boue rally RE",
+    "category": "esthetique",
+    "new_price": 219,
+    "depreciation_rate": 0.65,
+    "dedup_group": "garde_boue",
+    "sort_order": 65
+  },
+  {
+    "regex_pattern": "garde[\\s-]*boue\\s*(avant|arri[eè]re|rally|haut|additionnel)",
+    "name": "Garde-boue additionnel",
+    "category": "esthetique",
+    "new_price": 80,
+    "depreciation_rate": 0.65,
+    "dedup_group": "garde_boue",
+    "sort_order": 66
+  },
+  {
+    "regex_pattern": "clignotant[s]?\\s*(led|s[eé]quentiel)",
+    "name": "Clignotants LED",
+    "category": "esthetique",
+    "new_price": 60,
+    "depreciation_rate": 0.65,
+    "dedup_group": "clignotants",
+    "sort_order": 67
+  },
+  {
+    "regex_pattern": "saute[\\s-]*vent",
+    "name": "Saute-vent",
+    "category": "esthetique",
+    "new_price": 40,
+    "depreciation_rate": 0.65,
+    "dedup_group": "saute_vent",
+    "sort_order": 68
+  },
+  {
+    "regex_pattern": "sticker[s]?|autocollant|d[eé]co\\s*(r[eé]servoir)?",
+    "name": "Stickers/deco",
+    "category": "esthetique",
+    "new_price": 30,
+    "depreciation_rate": 0.65,
+    "dedup_group": "stickers",
+    "sort_order": 69
+  },
+  {
+    "regex_pattern": "bouchon\\s*(huile|r[eé]servoir)\\s*(alu|cnc)",
+    "name": "Bouchon alu CNC",
+    "category": "esthetique",
+    "new_price": 65,
+    "depreciation_rate": 0.65,
+    "dedup_group": "bouchon_alu",
+    "sort_order": 70
+  },
+  {
+    "regex_pattern": "(ligne|[eé]chappement)\\s*(compl[eè]te\\s*)?hp\\s*corse|hp\\s*corse",
+    "name": "Echappement HP Corse",
+    "category": "performance",
+    "new_price": 400,
+    "depreciation_rate": 0.65,
+    "dedup_group": "echappement",
+    "sort_order": 71
+  },
+  {
+    "regex_pattern": "(ligne|[eé]chappement)\\s*(compl[eè]te\\s*)?(akrapovic|arrow|sc[\\s-]*project|leo\\s*vince)",
+    "name": "Echappement premium",
+    "category": "performance",
+    "new_price": 500,
+    "depreciation_rate": 0.65,
+    "dedup_group": "echappement",
+    "sort_order": 72
+  },
+  {
+    "regex_pattern": "(ligne|[eé]chappement)\\s*(compl[eè]te\\s*)?(ixil|giannelli|mivv|cobra)",
+    "name": "Echappement aftermarket",
+    "category": "performance",
+    "new_price": 350,
+    "depreciation_rate": 0.65,
+    "dedup_group": "echappement",
+    "sort_order": 73
+  },
+  {
+    "regex_pattern": "[eé]chappement|silencieux|pot\\s*(d\\s*[eé]chappement|sport|racing)",
+    "name": "Echappement aftermarket",
+    "category": "performance",
+    "new_price": 350,
+    "depreciation_rate": 0.65,
+    "dedup_group": "echappement",
+    "sort_order": 74
+  },
+  {
+    "regex_pattern": "filtre\\s*[aà]\\s*air\\s*(sport|kn|dna|bmc|stage)",
+    "name": "Filtre a air sport",
+    "category": "performance",
+    "new_price": 90,
+    "depreciation_rate": 0.65,
+    "dedup_group": "filtre_air",
+    "sort_order": 75
+  },
+  {
+    "regex_pattern": "cartographie|flash\\s*ecu|power\\s*commander|rapid\\s*bike|fuel\\s*x",
+    "name": "Reprogrammation/cartographie",
+    "category": "performance",
+    "new_price": 300,
+    "depreciation_rate": 0.65,
+    "dedup_group": "reprog",
+    "sort_order": 76
+  },
+  {
+    "regex_pattern": "levier[s]?\\s*(court[s]?|r[eé]glable[s]?|cnc|alu|racing)",
+    "name": "Leviers reglables",
+    "category": "performance",
+    "new_price": 60,
+    "depreciation_rate": 0.65,
+    "dedup_group": "leviers",
+    "sort_order": 77
+  },
+  {
+    "regex_pattern": "kit\\s*cha[iî]ne|couronne\\s*(alu|renforc)|pignon",
+    "name": "Kit chaine",
+    "category": "performance",
+    "new_price": 174,
+    "depreciation_rate": 0.65,
+    "dedup_group": "kit_chaine",
+    "sort_order": 78
+  },
+  {
+    "regex_pattern": "pneu[s]?\\s*(neuf|route|trail|offroad|mixte|karoo|anakee|tkc|heidenau|mitas|pirelli|continental|michelin|dunlop|bridgestone)",
+    "name": "Pneus specifiques",
+    "category": "performance",
+    "new_price": 200,
+    "depreciation_rate": 0.65,
+    "dedup_group": "pneus",
+    "sort_order": 79
+  },
+  {
+    "regex_pattern": "antivol|bloque[\\s-]*disque|u[\\s-]*lock",
+    "name": "Antivol",
+    "category": "autre",
+    "new_price": 50,
+    "depreciation_rate": 0.65,
+    "dedup_group": "antivol",
+    "sort_order": 80
+  },
+  {
+    "regex_pattern": "alarme",
+    "name": "Alarme",
+    "category": "autre",
+    "new_price": 100,
+    "depreciation_rate": 0.65,
+    "dedup_group": "alarme",
+    "sort_order": 81
+  },
+  {
+    "regex_pattern": "housse\\s*(de\\s*)?(moto|prot)",
+    "name": "Housse de protection",
+    "category": "autre",
+    "new_price": 45,
+    "depreciation_rate": 0.65,
+    "dedup_group": "housse",
+    "sort_order": 82
+  },
+  {
+    "regex_pattern": "traceur\\s*(gps|moto)|airtag|monimoto",
+    "name": "Traceur GPS/antivol",
+    "category": "autre",
+    "new_price": 150,
+    "depreciation_rate": 0.65,
+    "dedup_group": "traceur",
+    "sort_order": 83
+  },
+  {
+    "regex_pattern": "kit\\s*(rally|aventure|baroudeur|touring)",
+    "name": "Kit rally/aventure",
+    "category": "autre",
+    "new_price": 400,
+    "depreciation_rate": 0.65,
+    "dedup_group": "kit_rally",
+    "sort_order": 84
+  },
+  {
+    "regex_pattern": "b[eé]quille\\s*lat[eé]rale\\s*(r[eé]glable)?",
+    "name": "Bequille laterale",
+    "category": "autre",
+    "new_price": 30,
+    "depreciation_rate": 0.65,
+    "dedup_group": "bequille_lat",
+    "sort_order": 85
+  }
+]
