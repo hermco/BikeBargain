@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CLI tool + web UI to scrape, store, and analyze second-hand Royal Enfield Himalayan 450 listings from LeBonCoin (French classifieds). Written in French (comments, variable names). Frontend UI is internationalized (FR/EN) via react-i18next.
+BikeBargain — CLI tool + web UI to scrape, store, and analyze second-hand motorcycle listings from LeBonCoin (French classifieds). Supports multiple bike models (multi-brand marketplace). Written in French (comments, variable names). Frontend UI is internationalized (FR/EN) via react-i18next.
 
 ## Commands
 
@@ -19,12 +19,14 @@ source .venv/bin/activate && make dev
 # Dev proxy multi-worktree (une seule fois)
 make proxy
 
-# CLI commands
-python main.py add <url> [<url2> ...]   # Scrape and store listings
-python main.py list                      # List all stored listings
-python main.py show <id>                 # Show listing detail
-python main.py stats                     # Aggregate statistics
-python main.py export                    # Export to CSV (export_annonces.csv)
+# CLI commands (--model / -m flag; auto-selected when only 1 model)
+python main.py add <url> [<url2> ...]            # Scrape and store listings
+python main.py add -m himalayan-450 <url>        # Explicit model selection
+python main.py list                               # List all stored listings
+python main.py show <id>                          # Show listing detail
+python main.py stats                              # Aggregate statistics
+python main.py export                             # Export to CSV (export_annonces.csv)
+python main.py import-model <file.json>           # Import a bike model config from JSON
 
 # Run the analyzer/ranking report
 python -m src.analyzer
@@ -53,26 +55,31 @@ No test suite exists.
 ## Architecture
 
 **Data flow (CLI):** LeBonCoin URL → `extractor.fetch_ad()` → confirmation interactive → `database.upsert_ad()` → PostgreSQL
-**Data flow (Web):** LeBonCoin URL → `POST /api/ads/preview` → user review/edit → `POST /api/ads/confirm` → PostgreSQL
+**Data flow (Web):** LeBonCoin URL → `POST /api/bike-models/{slug}/ads/preview` → user review/edit → `POST /api/bike-models/{slug}/ads/confirm` → PostgreSQL
 
-- `main.py` — CLI dispatcher (add/list/show/stats/export commands)
+- `main.py` — CLI dispatcher (add/list/show/stats/export/import-model commands). `--model`/`-m` flag selects the bike model; auto-selects when only 1 model exists
 - `src/config.py` — Centralized configuration via `pydantic-settings`. `Settings` class loaded from env vars + `.env` file. Cached via `@lru_cache`. Exposes `APP_ENV`, `DATABASE_URL`, `DEBUG`, `CORS_ORIGIN_REGEX`, `LBC_PROXY_URL`
-- `src/extractor.py` — Fetches ads via the `lbc` library, detects variant/color/wheel type using regex patterns against `VARIANT_PATTERNS`, estimates new price from `NEW_PRICES` catalog. `get_lbc_client()` factory creates `lbc.Client` with optional residential proxy (from `LBC_PROXY_URL` env var) to bypass Datadome on datacenter IPs
-- `src/models.py` — SQLModel table models (ORM). 8 tables: `Ad`, `AdAttribute`, `AdImage`, `AdAccessory`, `CrawlSession`, `CrawlSessionAd`, `AdPriceHistory`, `AccessoryOverride`. Relationships with cascade delete. All models use SQLModel (SQLAlchemy + Pydantic)
+- `src/extractor.py` — Fetches ads via the `lbc` library. Variant/color/wheel detection and new price estimation now driven by per-model DB config (`bike_variant_patterns`, `bike_model_configs`). `get_lbc_client()` factory creates `lbc.Client` with optional residential proxy
+- `src/models.py` — SQLModel table models (ORM). Core ad tables: `Ad`, `AdAttribute`, `AdImage`, `AdAccessory`, `CrawlSession`, `CrawlSessionAd`, `AdPriceHistory`, `AccessoryOverride`. Bike model tables: `BikeModel`, `BikeModelConfig`, `BikeVariant`, `BikeConsumable`, `BikeAccessoryPattern`, `BikeVariantPattern`, `BikeNewListingPattern`, `BikeExclusionPattern`, `BikeSearchConfig`. All models use SQLModel (SQLAlchemy + Pydantic)
 - `src/database.py` — Engine creation (PostgreSQL via `Settings.database_url`), session management (`get_session()` for FastAPI Depends), Alembic migration runner (`run_migrations()`), CRUD functions (`upsert_ad`, `get_all_ads`, `refresh_accessories`, etc.)
-- `src/accessories.py` — Regex-based accessory detection with deduplication groups. Patterns are ordered specific-before-generic within each group. `EXCLUSION_PATTERNS` strips garage service text before detection. Each accessory has a new price estimate and a 65% depreciation rate for used value
-- `src/analyzer.py` — Ranking algorithm: `effective_price = listed_price - accessories(used) + consumable_wear + mechanical_wear - warranty_value`. Run standalone via `python -m src.analyzer`
-- `src/api.py` — FastAPI REST API with SQLModel sessions via `Depends(get_session)`. Runs `alembic upgrade head` at startup. Exposes ads CRUD, stats, rankings, CSV export. CORS regex from `Settings.cors_origin_regex`. Includes preview/confirm workflow, ad editing, accessory catalog, sold status check, crawl system. If `LBC_SERVICE_URL` is set, delegates LBC calls to the local service
+- `src/accessories.py` — Regex-based accessory detection with deduplication groups. Patterns loaded from `bike_accessory_patterns` DB table per model. `bike_exclusion_patterns` strips garage service text before detection. Each accessory has a new price estimate and a 65% depreciation rate for used value
+- `src/analyzer.py` — Ranking algorithm: `effective_price = listed_price - accessories(used) + consumable_wear + mechanical_wear - warranty_value`. Analyzer constants (wear rates, warranty value) loaded from `bike_model_configs`. Run standalone via `python -m src.analyzer`
+- `src/api.py` — FastAPI REST API with SQLModel sessions via `Depends(get_session)`. Runs `alembic upgrade head` at startup. All bike-scoped endpoints live under `/api/bike-models/{slug}/...`. New endpoints: `GET /api/bike-models` and `GET /api/bike-models/{slug}`. Old flat endpoints (`/api/ads`, `/api/stats`, etc.) kept as backward-compatible aliases (single-model only). CORS regex from `Settings.cors_origin_regex`. If `LBC_SERVICE_URL` is set, delegates LBC calls to the local service
 - `src/lbc_service.py` — Micro-service FastAPI local pour le scraping LeBonCoin. Tourne sur la machine de l'utilisateur (IP residentielle). Expose `/search`, `/fetch-ad`, `/check-ad`, `/check-ads`
 - `src/lbc_client.py` — Client HTTP (httpx) pour appeler le service LBC depuis l'API principale
 - `devproxy.py` — Reverse proxy multi-worktree (stdlib only). Sert le frontend Vite du worktree actif sur localhost:3000. Dashboard à `/_proxy/`, API de contrôle à `/_proxy/api/`
 - `devproxy_register.py` — Helper CLI : `find-ports` (détecte ports libres), `register`/`unregister` (s'enregistre auprès du proxy)
 - `frontend/` — React 19 + TypeScript + Vite + Tailwind CSS v4 + TanStack Query v5 + Recharts + framer-motion. Proxies `/api` to backend via Vite config. Environment config via Vite `.env` files and `src/config.ts`
 - `frontend/src/i18n/` — Internationalization via react-i18next. Translation files in `locales/fr.json` and `locales/en.json`. All UI strings use `t()` calls — never hardcode French text in components
+- `frontend/src/pages/` — Landing page at `/` shows a model card grid. Model-scoped pages live under `/models/:slug/...`. `ModelLayout` wrapper provides model context to all child routes. Auto-redirect when only one model is configured
 
 ## Key Design Patterns
 
-- **Accessory deduplication**: `ACCESSORY_PATTERNS` uses a `groupe_dedup` field. Specific patterns (e.g., "Crash bars SW-Motech") must appear before generic ones ("Crash bars") in the same group — first match wins
+- **Multi-bike model**: all bike-specific configuration (accessories, variants, consumables, analyzer constants, search config, exclusion patterns, new-listing patterns) is stored in DB tables (`bike_*`) rather than hardcoded Python constants. A `BikeModel` row identified by a `slug` (e.g., `himalayan-450`) is the root anchor for all model-scoped data
+- **Model routing (API)**: primary endpoints are `/api/bike-models/{slug}/ads`, `/api/bike-models/{slug}/stats`, etc. Legacy flat endpoints (`/api/ads`, `/api/stats`) remain as aliases for single-model backward compatibility
+- **Model routing (frontend)**: landing page at `/` lists model cards. All feature pages are nested under `/models/:slug/`. `ModelLayout` fetches and injects the active `BikeModel` into context. When only one model exists, the app auto-redirects from `/` to `/models/{slug}/`
+- **CLI model flag**: `--model` / `-m` accepts a slug. Omitting it auto-selects the single model or errors when multiple exist. `import-model` subcommand bootstraps a new model from a JSON config file
+- **Accessory deduplication**: patterns stored in `bike_accessory_patterns` table use a `groupe_dedup` field. Specific patterns (e.g., "Crash bars SW-Motech") must appear before generic ones ("Crash bars") in the same group — first match wins
 - **Variant detection priority**: version LBC attribute > title > body > color attribute fallback
 - **Upsert logic**: ads are identified by LeBonCoin ID; re-adding an URL updates the existing record
 - **Preview/confirm flow**: extraction is separated from persistence — user reviews and can modify variant, color, wheel type, and accessories before saving (both CLI and web UI)
@@ -86,13 +93,13 @@ No test suite exists.
 - **Deployment**: Frontend on Vercel (root directory `frontend/`, SPA rewrites via `vercel.json`). Backend on Railway (Python auto-detected via `requirements.txt`, started via `Procfile`/`railway.json`). Railway provides `DATABASE_URL` via PostgreSQL plugin. `VITE_API_BASE_URL` set in Vercel env vars points to Railway backend URL. CORS configured on Railway via `CORS_ORIGIN_REGEX` to accept Vercel domain
 - **Database**: PostgreSQL everywhere (local via Docker, production via Railway PostgreSQL plugin). Local container managed by `docker-compose.yml`, connection string in `.env`
 - **Migrations**: Alembic for schema versioning. `alembic upgrade head` runs automatically at app startup (API and CLI). Migrations in `alembic/versions/`. Generate new migrations with `alembic revision --autogenerate -m "description"`
-- **Seed data**: default data loaded via Alembic migration (`alembic/seed_data.json`), idempotent — skips if ads already exist
+- **Seed data**: default data loaded via Alembic migration (`alembic/seed_data.json`), idempotent — skips if ads already exist. Bike model seed data (variants, accessories, consumables, etc.) is included in the same seed file under the `bike_models` key
 
 ## Reference Data
 
-- `modeles-prix-neuf.md` — Full catalog of new prices (France, March 2026) with all variants, colors, and wheel types
-- `NEW_PRICES` dict in `extractor.py` — Simplified version used for programmatic price lookup
-- Price reference: Base 5890€ → Mana Black 6590€
+- `modeles-prix-neuf.md` — Full catalog of new prices (France, March 2026) with all variants, colors, and wheel types for the Himalayan 450 (used as seed data source)
+- `BikeVariant` rows in DB — Authoritative programmatic source for new prices per model/variant/color/wheel combination
+- Price reference (Himalayan 450): Base 5890€ → Mana Black 6590€
 
 ## LBC Service (mode split production)
 
