@@ -58,9 +58,10 @@ No test suite exists.
 - `main.py` — CLI dispatcher (add/list/show/stats/export commands)
 - `src/config.py` — Centralized configuration via `pydantic-settings`. `Settings` class loaded from env vars + `.env` file. Cached via `@lru_cache`. Exposes `APP_ENV`, `DATABASE_URL`, `DEBUG`, `CORS_ORIGIN_REGEX`, `LBC_PROXY_URL`
 - `src/extractor.py` — Fetches ads via the `lbc` library, detects variant/color/wheel type using regex patterns against `VARIANT_PATTERNS`, estimates new price from `NEW_PRICES` catalog. `get_lbc_client()` factory creates `lbc.Client` with optional residential proxy (from `LBC_PROXY_URL` env var) to bypass Datadome on datacenter IPs
-- `src/models.py` — SQLModel table models (ORM). 8 tables: `Ad`, `AdAttribute`, `AdImage`, `AdAccessory`, `CrawlSession`, `CrawlSessionAd`, `AdPriceHistory`, `AccessoryOverride`. Relationships with cascade delete. All models use SQLModel (SQLAlchemy + Pydantic)
+- `src/models.py` — SQLModel table models (ORM). 10 tables: `Ad`, `AdAttribute`, `AdImage`, `AdAccessory`, `CrawlSession`, `CrawlSessionAd`, `AdPriceHistory`, `AccessoryOverride`, `AccessoryCatalogGroup`, `AccessoryCatalogVariant`. Relationships with cascade delete. All models use SQLModel (SQLAlchemy + Pydantic)
 - `src/database.py` — Engine creation (PostgreSQL via `Settings.database_url`), session management (`get_session()` for FastAPI Depends), Alembic migration runner (`run_migrations()`), CRUD functions (`upsert_ad`, `get_all_ads`, `refresh_accessories`, etc.)
-- `src/accessories.py` — Regex-based accessory detection with deduplication groups. Patterns are ordered specific-before-generic within each group. `EXCLUSION_PATTERNS` strips garage service text before detection. Each accessory has a new price estimate and a 65% depreciation rate for used value
+- `src/accessories.py` — Accessory detection and valuation. `detect_accessories()` takes patterns from `catalog.py` (built from DB catalog). `DEPRECIATION_RATE = 0.65`. `EXCLUSION_PATTERNS` strips garage service text. Unicode normalization (strip accents) applied before matching
+- `src/catalog.py` — Regex compiler and synonym engine. Pure domain logic (no DB dependency). Compiles structured catalog data (expressions, qualifiers, brands, aliases) into regex patterns. Provides synonym suggestions via prefix rules and domain equivalences. `build_patterns_from_catalog()` outputs the same format as the old `ACCESSORY_PATTERNS`
 - `src/analyzer.py` — Ranking algorithm: `effective_price = listed_price - accessories(used) + consumable_wear + mechanical_wear - warranty_value`. Run standalone via `python -m src.analyzer`
 - `src/api.py` — FastAPI REST API with SQLModel sessions via `Depends(get_session)`. Runs `alembic upgrade head` at startup. Exposes ads CRUD, stats, rankings, CSV export. CORS regex from `Settings.cors_origin_regex`. Includes preview/confirm workflow, ad editing, accessory catalog, sold status check, crawl system. If `LBC_SERVICE_URL` is set, delegates LBC calls to the local service
 - `src/lbc_service.py` — Micro-service FastAPI local pour le scraping LeBonCoin. Tourne sur la machine de l'utilisateur (IP residentielle). Expose `/search`, `/fetch-ad`, `/check-ad`, `/check-ads`
@@ -87,6 +88,9 @@ No test suite exists.
 - **Database**: PostgreSQL everywhere (local via Docker, production via Railway PostgreSQL plugin). Local container managed by `docker-compose.yml`, connection string in `.env`
 - **Migrations**: Alembic for schema versioning. `alembic upgrade head` runs automatically at app startup (API and CLI). Migrations in `alembic/versions/`. Generate new migrations with `alembic revision --autogenerate -m "description"`
 - **Seed data**: default data loaded via Alembic migration (`alembic/seed_data.json`), idempotent — skips if ads already exist
+- **Editable catalog**: Accessory patterns stored in DB tables (`accessory_catalog_groups`, `accessory_catalog_variants`). A regex compiler in `catalog.py` generates patterns from structured fields. Seed data in `alembic/seed_accessory_catalog.json` provides default catalog with "Reset" button
+- **Catalog cache**: In-memory dict cache (`_catalog_cache`) invalidated on every catalog write. Single-worker deployment required (no shared cache)
+- **Crosscheck workflow**: Ads flagged `needs_crosscheck=1` when few accessories detected despite long description — can be analyzed manually to discover uncovered accessories
 
 ## Reference Data
 

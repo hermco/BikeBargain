@@ -6,10 +6,11 @@ Expose les fonctions existantes (database, extractor, analyzer) via des endpoint
 
 import csv
 import io
+import threading
 from datetime import datetime
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Query, Depends
+from fastapi import FastAPI, HTTPException, Query, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -19,17 +20,26 @@ from sqlalchemy.orm import selectinload
 
 from .models import (
     Ad, AdAttribute, AdImage, AdAccessory,
-    CrawlSession, CrawlSessionAd, AdPriceHistory, AccessoryOverride,
+    CrawlSession, CrawlSessionAd, AdPriceHistory,
+    AccessoryCatalogGroup, AccessoryCatalogVariant,
 )
 from .database import (
     get_session, run_migrations, upsert_ad, get_all_ads, get_ad_count,
-    get_accessory_overrides, set_accessory_override, delete_accessory_override,
     refresh_accessories, _ad_to_dict, _replace_accessories,
+    get_catalog_groups, create_catalog_group, update_catalog_group,
+    delete_catalog_group, create_catalog_variant, update_catalog_variant,
+    delete_catalog_variant, reset_catalog_to_seed, export_catalog,
+    invalidate_catalog_cache,
 )
+from .database import engine
 from lbc.exceptions import NotFoundError
 
 from .analyzer import rank_ads
-from .accessories import estimate_total_accessories_value, ACCESSORY_PATTERNS, DEPRECIATION_RATE
+from .accessories import estimate_total_accessories_value, detect_accessories, DEPRECIATION_RATE
+from .catalog import (
+    suggest_synonyms, compile_variant_regex, build_patterns_from_catalog,
+    normalize_text,
+)
 from .extractor import detect_new_listing_light, detect_new_listing
 from .config import get_settings
 
@@ -54,6 +64,41 @@ def on_startup():
     # avant uvicorn. En dev local, on les lance au startup.
     if settings.app_env != "production":
         run_migrations()
+
+
+_refresh_lock = threading.Lock()
+_refresh_pending = False
+_refresh_status: dict = {"status": "idle", "updated_ads_count": 0, "last_refresh": None}
+
+
+def _background_refresh(*, skip_manual: bool = True):
+    """Execute un refresh avec coalesce."""
+    global _refresh_pending, _refresh_status
+
+    if not _refresh_lock.acquire(blocking=False):
+        _refresh_pending = True
+        return
+
+    try:
+        while True:
+            _refresh_pending = False
+            _refresh_status = {"status": "running", "updated_ads_count": 0, "last_refresh": None}
+            try:
+                with Session(engine) as session:
+                    results = refresh_accessories(session, skip_manual=skip_manual)
+                    _refresh_status = {
+                        "status": "idle",
+                        "updated_ads_count": len(results),
+                        "last_refresh": datetime.now().isoformat(),
+                    }
+            except Exception:
+                _refresh_status = {"status": "error", "updated_ads_count": 0, "last_refresh": datetime.now().isoformat()}
+                raise
+
+            if not _refresh_pending:
+                break
+    finally:
+        _refresh_lock.release()
 
 
 # ─── Schemas ─────────────────────────────────────────────────────────────────
@@ -96,6 +141,90 @@ class AdPayload(BaseModel):
     attributes: list[dict] | None = None
     images: list[str] | None = None
     accessories: list[dict] | None = None
+
+
+# ─── Catalog Schemas ────────────────────────────────────────────────────────
+
+class CreateGroupRequest(BaseModel):
+    name: str
+    category: str
+    expressions: list[str] = []
+    default_price: int
+    model_id: int | None = None
+
+class UpdateGroupRequest(BaseModel):
+    name: str | None = None
+    category: str | None = None
+    expressions: list[str] | None = None
+    default_price: int | None = None
+
+class CreateVariantRequest(BaseModel):
+    name: str
+    qualifiers: list[str] = []
+    brands: list[str] = []
+    product_aliases: list[str] = []
+    optional_words: list[str] = []
+    regex_override: str | None = None
+    estimated_new_price: int
+    sort_order: int | None = None
+    notes: str | None = None
+
+class UpdateVariantRequest(BaseModel):
+    name: str | None = None
+    qualifiers: list[str] | None = None
+    brands: list[str] | None = None
+    product_aliases: list[str] | None = None
+    optional_words: list[str] | None = None
+    regex_override: str | None = None
+    estimated_new_price: int | None = None
+    sort_order: int | None = None
+    notes: str | None = None
+
+class SuggestSynonymsRequest(BaseModel):
+    expression: str
+
+class PreviewRegexRequest(BaseModel):
+    group_expressions: list[str]
+    qualifiers: list[str] = []
+    brands: list[str] = []
+    product_aliases: list[str] = []
+    optional_words: list[str] = []
+    regex_override: str | None = None
+
+class PreviewDiffRequest(BaseModel):
+    variant_id: int
+    group_expressions: list[str]
+    qualifiers: list[str] = []
+    brands: list[str] = []
+    product_aliases: list[str] = []
+    optional_words: list[str] = []
+    regex_override: str | None = None
+
+class TestOnAdRequest(BaseModel):
+    ad_id: int | None = None
+    text: str | None = None
+
+class ImportVariantData(BaseModel):
+    name: str
+    qualifiers: list[str] = []
+    brands: list[str] = []
+    product_aliases: list[str] = []
+    optional_words: list[str] = []
+    regex_override: str | None = None
+    estimated_new_price: int
+    sort_order: int = 0
+    notes: str | None = None
+
+class ImportGroupData(BaseModel):
+    group_key: str
+    name: str
+    category: str
+    expressions: list[str] = []
+    default_price: int
+    variants: list[ImportVariantData] = []
+
+class ImportCatalogRequest(BaseModel):
+    groups: list[ImportGroupData]
 
 
 class ConfirmAdRequest(BaseModel):
@@ -193,16 +322,14 @@ def get_ad(ad_id: int, session: Session = Depends(get_session)):
 
 @app.post("/api/ads/preview")
 def preview_ad(req: AddAdRequest, session: Session = Depends(get_session)):
-    overrides = get_accessory_overrides(session)
-
     try:
         if settings.lbc_service_url:
             from . import lbc_client
-            ad_data = lbc_client.fetch_ad(req.url, price_overrides=overrides)
+            ad_data = lbc_client.fetch_ad(req.url)
         else:
             from .extractor import fetch_ad, get_lbc_client
             client = get_lbc_client()
-            ad_data = fetch_ad(req.url, client=client, price_overrides=overrides)
+            ad_data = fetch_ad(req.url, client=client)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erreur extraction : {e}")
 
@@ -227,16 +354,14 @@ def confirm_ad(req: ConfirmAdRequest, session: Session = Depends(get_session)):
 
 @app.post("/api/ads")
 def add_ad(req: AddAdRequest, session: Session = Depends(get_session)):
-    overrides = get_accessory_overrides(session)
-
     try:
         if settings.lbc_service_url:
             from . import lbc_client
-            ad_data = lbc_client.fetch_ad(req.url, price_overrides=overrides)
+            ad_data = lbc_client.fetch_ad(req.url)
         else:
             from .extractor import fetch_ad, get_lbc_client
             client = get_lbc_client()
-            ad_data = fetch_ad(req.url, client=client, price_overrides=overrides)
+            ad_data = fetch_ad(req.url, client=client)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erreur extraction : {e}")
 
@@ -447,25 +572,9 @@ def confirm_price(ad_id: int, req: ConfirmPriceRequest, session: Session = Depen
 
 
 @app.get("/api/accessory-catalog")
-def get_accessory_catalog(session: Session = Depends(get_session)):
-    overrides = get_accessory_overrides(session)
-
-    seen_groups: set[str] = set()
-    catalog = []
-    for _pattern, name, category, price_new, group in ACCESSORY_PATTERNS:
-        if group not in seen_groups:
-            seen_groups.add(group)
-            effective_price = overrides.get(group, price_new)
-            catalog.append({
-                "name": name,
-                "category": category,
-                "estimated_new_price": effective_price,
-                "default_new_price": price_new,
-                "estimated_used_price": int(effective_price * DEPRECIATION_RATE),
-                "group": group,
-                "has_override": group in overrides,
-            })
-    return catalog
+def get_accessory_catalog_deprecated(session: Session = Depends(get_session)):
+    """Deprecated — use GET /api/catalog/groups instead."""
+    return list_catalog_groups(session)
 
 
 class UpdateCatalogPriceRequest(BaseModel):
@@ -473,37 +582,27 @@ class UpdateCatalogPriceRequest(BaseModel):
 
 
 @app.patch("/api/accessory-catalog/{group}")
-def update_catalog_price(group: str, req: UpdateCatalogPriceRequest, session: Session = Depends(get_session)):
-    valid_groups = {g for _, _, _, _, g in ACCESSORY_PATTERNS}
-    if group not in valid_groups:
-        raise HTTPException(status_code=404, detail=f"Groupe '{group}' inconnu")
-
-    set_accessory_override(session, group, req.estimated_new_price)
-    results = refresh_accessories(session)
-    return {"group": group, "estimated_new_price": req.estimated_new_price, "ads_refreshed": len(results)}
+def update_catalog_price_deprecated(group: str, req: UpdateCatalogPriceRequest, session: Session = Depends(get_session)):
+    raise HTTPException(status_code=410, detail="Deprecated. Use PATCH /api/catalog/variants/{id}")
 
 
 @app.delete("/api/accessory-catalog/{group}/override")
-def reset_catalog_price(group: str, session: Session = Depends(get_session)):
-    valid_groups = {g for _, _, _, _, g in ACCESSORY_PATTERNS}
-    if group not in valid_groups:
-        raise HTTPException(status_code=404, detail=f"Groupe '{group}' inconnu")
-
-    delete_accessory_override(session, group)
-    results = refresh_accessories(session)
-    return {"group": group, "reset": True, "ads_refreshed": len(results)}
+def reset_catalog_price_deprecated(group: str, session: Session = Depends(get_session)):
+    raise HTTPException(status_code=410, detail="Deprecated. Use PATCH /api/catalog/variants/{id}")
 
 
 @app.post("/api/accessories/refresh")
-def refresh_all_accessories(session: Session = Depends(get_session)):
+def refresh_all_accessories(
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
+):
     skipped = session.exec(
         select(func.count()).select_from(Ad).where(Ad.accessories_manual == 1)
     ).one()
-    results = refresh_accessories(session, skip_manual=True)
+    background_tasks.add_task(_background_refresh, skip_manual=True)
     return {
-        "ads_refreshed": len(results),
         "ads_skipped_manual": skipped,
-        "details": results,
+        "status": "refresh_scheduled",
     }
 
 
@@ -745,6 +844,313 @@ def get_stats(session: Session = Depends(get_session)):
 @app.get("/api/rankings")
 def get_rankings(session: Session = Depends(get_session)):
     return rank_ads(session)
+
+
+# ─── Catalog API ────────────────────────────────────────────────────────────
+
+@app.get("/api/catalog/groups")
+def list_catalog_groups(session: Session = Depends(get_session)):
+    return get_catalog_groups(session)
+
+
+@app.post("/api/catalog/groups", status_code=201)
+def create_group(req: CreateGroupRequest, session: Session = Depends(get_session)):
+    try:
+        group = create_catalog_group(session, req.model_dump())
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    return get_catalog_groups(session)
+
+
+@app.get("/api/catalog/groups/{group_id}")
+def get_group(group_id: int, session: Session = Depends(get_session)):
+    groups = get_catalog_groups(session)
+    for g in groups:
+        if g["id"] == group_id:
+            return g
+    raise HTTPException(status_code=404, detail="Groupe non trouve")
+
+
+@app.patch("/api/catalog/groups/{group_id}")
+def patch_group(
+    group_id: int,
+    req: UpdateGroupRequest,
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
+):
+    data = req.model_dump(exclude_unset=True)
+    group = update_catalog_group(session, group_id, data)
+    background_tasks.add_task(_background_refresh, skip_manual=True)
+    return {"id": group.id, "name": group.name, "status": "refresh_scheduled"}
+
+
+@app.delete("/api/catalog/groups/{group_id}")
+def remove_group(
+    group_id: int,
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
+):
+    delete_catalog_group(session, group_id)
+    background_tasks.add_task(_background_refresh, skip_manual=True)
+    return {"deleted": group_id, "status": "refresh_scheduled"}
+
+
+@app.post("/api/catalog/groups/{group_id}/variants", status_code=201)
+def create_variant(
+    group_id: int,
+    req: CreateVariantRequest,
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
+):
+    variant = create_catalog_variant(session, group_id, req.model_dump())
+    background_tasks.add_task(_background_refresh, skip_manual=True)
+    return {"id": variant.id, "name": variant.name, "status": "refresh_scheduled"}
+
+
+@app.patch("/api/catalog/variants/{variant_id}")
+def patch_variant(
+    variant_id: int,
+    req: UpdateVariantRequest,
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
+):
+    data = req.model_dump(exclude_unset=True)
+    try:
+        variant = update_catalog_variant(session, variant_id, data)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    background_tasks.add_task(_background_refresh, skip_manual=True)
+    return {"id": variant.id, "name": variant.name, "status": "refresh_scheduled"}
+
+
+@app.delete("/api/catalog/variants/{variant_id}")
+def remove_variant(
+    variant_id: int,
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
+):
+    refs = delete_catalog_variant(session, variant_id)
+    background_tasks.add_task(_background_refresh, skip_manual=True)
+    result = {"deleted": variant_id, "status": "refresh_scheduled"}
+    if refs > 0:
+        result["warning"] = f"{refs} annonce(s) referencaient cette variante. Elles seront mises a jour au prochain refresh."
+    return result
+
+
+@app.post("/api/catalog/suggest-synonyms")
+def suggest(req: SuggestSynonymsRequest):
+    normalized = normalize_text(req.expression)
+    suggestions = suggest_synonyms(req.expression)
+    return {"normalized": normalized, "suggestions": suggestions}
+
+
+@app.post("/api/catalog/preview-regex")
+def preview_regex_endpoint(req: PreviewRegexRequest, session: Session = Depends(get_session)):
+    import re as re_module
+
+    variant_data = {
+        "qualifiers": req.qualifiers,
+        "brands": req.brands,
+        "product_aliases": req.product_aliases,
+        "optional_words": req.optional_words,
+        "regex_override": req.regex_override,
+    }
+    generated_regex = compile_variant_regex(req.group_expressions, variant_data)
+
+    try:
+        compiled = re_module.compile(generated_regex)
+    except re_module.error as e:
+        raise HTTPException(status_code=422, detail=f"Regex invalide: {e}")
+
+    ads = session.exec(select(Ad).where(Ad.superseded_by == None).limit(500)).all()  # noqa: E711
+    matches = []
+    for ad in ads:
+        text = normalize_text(ad.body or "")
+        m = compiled.search(text)
+        if m:
+            start = max(0, m.start() - 30)
+            end = min(len(text), m.end() + 30)
+            matches.append({
+                "id": ad.id,
+                "title": ad.subject,
+                "matched_text": f"...{text[start:end]}...",
+            })
+
+    return {
+        "generated_regex": generated_regex,
+        "matching_ads_count": len(matches),
+        "matching_ads_sample": matches[:10],
+    }
+
+
+@app.post("/api/catalog/preview-diff")
+def preview_diff_endpoint(req: PreviewDiffRequest, session: Session = Depends(get_session)):
+    import re as re_module
+
+    variant = session.get(AccessoryCatalogVariant, req.variant_id)
+    if not variant:
+        raise HTTPException(status_code=404, detail="Variante non trouvee")
+
+    group = session.get(AccessoryCatalogGroup, variant.group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Groupe non trouve")
+
+    current_variant_data = {
+        "qualifiers": variant.qualifiers or [],
+        "brands": variant.brands or [],
+        "product_aliases": variant.product_aliases or [],
+        "optional_words": variant.optional_words or [],
+        "regex_override": variant.regex_override,
+    }
+    current_regex = compile_variant_regex(group.expressions or [], current_variant_data)
+
+    new_variant_data = {
+        "qualifiers": req.qualifiers,
+        "brands": req.brands,
+        "product_aliases": req.product_aliases,
+        "optional_words": req.optional_words,
+        "regex_override": req.regex_override,
+    }
+    new_regex = compile_variant_regex(req.group_expressions, new_variant_data)
+
+    for label, rx in [("courante", current_regex), ("nouvelle", new_regex)]:
+        if rx:
+            try:
+                re_module.compile(rx)
+            except re_module.error as e:
+                raise HTTPException(status_code=422, detail=f"Regex {label} invalide: {e}")
+
+    ads = session.exec(select(Ad).where(Ad.superseded_by == None).limit(500)).all()  # noqa: E711
+    before_ids = set()
+    after_ids = set()
+
+    for ad in ads:
+        text = normalize_text(ad.body or "")
+        if current_regex and re_module.search(current_regex, text):
+            before_ids.add(ad.id)
+        if new_regex and re_module.search(new_regex, text):
+            after_ids.add(ad.id)
+
+    gained = after_ids - before_ids
+    lost = before_ids - after_ids
+
+    ads_by_id = {ad.id: ad for ad in ads}
+    return {
+        "before": {"matching_ads_count": len(before_ids)},
+        "after": {"matching_ads_count": len(after_ids)},
+        "gained": [{"id": aid, "title": ads_by_id[aid].subject} for aid in gained],
+        "lost": [{"id": aid, "title": ads_by_id[aid].subject} for aid in lost],
+    }
+
+
+@app.post("/api/catalog/test-on-ad")
+def test_on_ad_endpoint(req: TestOnAdRequest, session: Session = Depends(get_session)):
+    import re as re_module
+
+    if req.ad_id:
+        ad = session.get(Ad, req.ad_id)
+        if not ad:
+            raise HTTPException(status_code=404, detail="Annonce non trouvee")
+        text = ad.body or ""
+    elif req.text:
+        text = req.text
+    else:
+        raise HTTPException(status_code=400, detail="ad_id ou text requis")
+
+    normalized = normalize_text(text)
+    catalog_groups = get_catalog_groups(session)
+    patterns = build_patterns_from_catalog(catalog_groups)
+
+    matches = []
+    matched_groups_set: set[str] = set()
+    for pattern, name, category, price, group_key in patterns:
+        if group_key in matched_groups_set:
+            continue
+        m = re_module.search(pattern, normalized)
+        if m:
+            matched_groups_set.add(group_key)
+            group_name = group_key
+            for g in catalog_groups:
+                if g["group_key"] == group_key:
+                    group_name = g["name"]
+                    break
+            matches.append({
+                "group": group_name,
+                "group_key": group_key,
+                "variant": name,
+                "matched_text": normalized[max(0, m.start()-20):m.end()+20],
+            })
+
+    return {"matches": matches}
+
+
+@app.post("/api/catalog/reset")
+def reset_catalog_endpoint(
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
+):
+    reset_catalog_to_seed(session)
+    background_tasks.add_task(_background_refresh, skip_manual=True)
+    return {"status": "reset_complete", "refresh_scheduled": True}
+
+
+@app.get("/api/catalog/export")
+def export_catalog_endpoint(session: Session = Depends(get_session)):
+    return export_catalog(session)
+
+
+@app.post("/api/catalog/import")
+def import_catalog_endpoint(
+    data: ImportCatalogRequest,
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
+):
+    """Importe un catalogue depuis un JSON exporte."""
+    from sqlmodel import delete as sql_delete
+
+    session.exec(sql_delete(AccessoryCatalogVariant))
+    session.exec(sql_delete(AccessoryCatalogGroup))
+    session.flush()
+
+    now = datetime.now().isoformat()
+    for gd in data.groups:
+        group = AccessoryCatalogGroup(
+            group_key=gd.group_key,
+            name=gd.name,
+            category=gd.category,
+            expressions=gd.expressions,
+            default_price=gd.default_price,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(group)
+        session.flush()
+
+        for v in gd.variants:
+            session.add(AccessoryCatalogVariant(
+                group_id=group.id,
+                name=v.name,
+                qualifiers=v.qualifiers,
+                brands=v.brands,
+                product_aliases=v.product_aliases,
+                optional_words=v.optional_words,
+                regex_override=v.regex_override,
+                estimated_new_price=v.estimated_new_price,
+                sort_order=v.sort_order,
+                notes=v.notes,
+                created_at=now,
+                updated_at=now,
+            ))
+
+    session.commit()
+    invalidate_catalog_cache()
+    background_tasks.add_task(_background_refresh, skip_manual=True)
+    return {"status": "import_complete", "refresh_scheduled": True}
+
+
+@app.get("/api/catalog/refresh-status")
+def get_refresh_status():
+    return _refresh_status
 
 
 # ─── Crawl ──────────────────────────────────────────────────────────────────
@@ -1120,16 +1526,14 @@ def _find_potential_duplicates(session: Session, ad_data: dict, exclude_id: int)
 
 @app.post("/api/crawl/extract")
 def crawl_extract(req: ExtractRequest, session: Session = Depends(get_session)):
-    overrides = get_accessory_overrides(session)
-
     try:
         if settings.lbc_service_url:
             from . import lbc_client
-            ad_data = lbc_client.fetch_ad(req.url, price_overrides=overrides)
+            ad_data = lbc_client.fetch_ad(req.url)
         else:
             from .extractor import fetch_ad, get_lbc_client
             client = get_lbc_client()
-            ad_data = fetch_ad(req.url, client=client, price_overrides=overrides)
+            ad_data = fetch_ad(req.url, client=client)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erreur extraction : {e}")
 

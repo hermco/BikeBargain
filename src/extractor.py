@@ -11,6 +11,7 @@ import lbc
 from typing import Optional
 
 from .accessories import detect_accessories
+from .catalog import build_patterns_from_catalog
 from .config import get_settings
 
 
@@ -333,14 +334,23 @@ def _safe_int(val) -> Optional[int]:
         return None
 
 
-def fetch_ad(url: str, client: Optional[lbc.Client] = None, price_overrides: Optional[dict] = None) -> dict:
+def _get_catalog_patterns() -> list[tuple]:
+    """Charge les patterns du catalogue DB pour la detection hors-API."""
+    from .database import get_catalog_groups
+    from sqlmodel import Session
+    from .database import engine
+    with Session(engine) as session:
+        groups = get_catalog_groups(session)
+    return build_patterns_from_catalog(groups)
+
+
+def fetch_ad(url: str, client: Optional[lbc.Client] = None) -> dict:
     """
     Recupere une annonce LeBonCoin et la transforme en dict pret pour la BDD.
 
     Args:
         url: URL LeBonCoin de l'annonce.
         client: Client lbc optionnel (en cree un par defaut).
-        price_overrides: Surcharges de prix accessoires {group: prix_neuf}.
 
     Returns:
         Dict avec toutes les donnees extraites, pret pour upsert_ad().
@@ -372,7 +382,8 @@ def fetch_ad(url: str, client: Optional[lbc.Client] = None, price_overrides: Opt
     estimated_new_price = _estimate_new_price(variant, color, wheel_type)
 
     # Detection des accessoires depuis le body
-    accessories = detect_accessories(body, price_overrides=price_overrides)
+    catalog_patterns = _get_catalog_patterns()
+    accessories = detect_accessories(body, patterns=catalog_patterns)
 
     # Localisation
     location = _parse_location(ad)

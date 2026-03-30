@@ -26,9 +26,9 @@ def search() -> dict:
     return r.json()
 
 
-def fetch_ad(url: str, price_overrides: dict | None = None) -> dict:
+def fetch_ad(url: str) -> dict:
     """Extrait une annonce via le service local."""
-    payload = {"url": url, "price_overrides": price_overrides}
+    payload = {"url": url}
     r = httpx.post(f"{_base_url()}/fetch-ad", json=payload, timeout=TIMEOUT)
     r.raise_for_status()
     return r.json()

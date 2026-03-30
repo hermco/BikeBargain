@@ -3,7 +3,7 @@
 from datetime import datetime
 
 from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy import UniqueConstraint, Column, BigInteger, Integer, Float, ForeignKey
+from sqlalchemy import UniqueConstraint, Column, BigInteger, Integer, Float, ForeignKey, JSON, Text
 
 
 # ─── Ads ─────────────────────────────────────────────────────────────────────
@@ -45,6 +45,7 @@ class Ad(SQLModel, table=True):
     sold: int = Field(default=0, index=True)
     previous_ad_id: int | None = Field(default=None, sa_column=Column(BigInteger))
     superseded_by: int | None = Field(default=None, sa_column=Column(BigInteger, index=True))
+    needs_crosscheck: int = Field(default=0)
 
     # Relationships
     attributes: list["AdAttribute"] = Relationship(
@@ -167,10 +168,48 @@ class AdPriceHistory(SQLModel, table=True):
     ad: Ad | None = Relationship(back_populates="price_history")
 
 
-# ─── Accessory Overrides ────────────────────────────────────────────────────
 
-class AccessoryOverride(SQLModel, table=True):
-    __tablename__ = "accessory_overrides"
+# ─── Accessory Catalog ──────────────────────────────────────────────────────
 
-    group_key: str = Field(primary_key=True)
-    estimated_new_price: int
+class AccessoryCatalogGroup(SQLModel, table=True):
+    __tablename__ = "accessory_catalog_groups"
+
+    id: int | None = Field(default=None, primary_key=True)
+    group_key: str = Field(unique=True, nullable=False)
+    model_id: int | None = Field(default=None)  # FK future vers bike_models
+    name: str = Field(nullable=False)
+    category: str = Field(nullable=False)  # protection, bagagerie, confort, navigation, eclairage, esthetique, performance, autre
+    expressions: list[str] = Field(default=[], sa_column=Column(JSON, nullable=False, server_default="[]"))
+    default_price: int = Field(nullable=False)
+    last_match_count: int = Field(default=0)
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+    variants: list["AccessoryCatalogVariant"] = Relationship(
+        back_populates="group",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "AccessoryCatalogVariant.sort_order"},
+    )
+
+
+class AccessoryCatalogVariant(SQLModel, table=True):
+    __tablename__ = "accessory_catalog_variants"
+    __table_args__ = (UniqueConstraint("group_id", "name"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    group_id: int = Field(
+        sa_column=Column(Integer, ForeignKey("accessory_catalog_groups.id", ondelete="CASCADE"), nullable=False, index=True),
+    )
+    name: str = Field(nullable=False)
+    qualifiers: list[str] = Field(default=[], sa_column=Column(JSON, nullable=False, server_default="[]"))
+    brands: list[str] = Field(default=[], sa_column=Column(JSON, nullable=False, server_default="[]"))
+    product_aliases: list[str] = Field(default=[], sa_column=Column(JSON, nullable=False, server_default="[]"))
+    optional_words: list[str] = Field(default=[], sa_column=Column(JSON, nullable=False, server_default="[]"))
+    regex_override: str | None = Field(default=None, sa_column=Column(Text))
+    estimated_new_price: int = Field(nullable=False)
+    sort_order: int = Field(default=0)
+    sort_order_manual: int = Field(default=0)  # 1 if user overrode sort_order
+    notes: str | None = Field(default=None, sa_column=Column(Text))
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+    group: AccessoryCatalogGroup | None = Relationship(back_populates="variants")

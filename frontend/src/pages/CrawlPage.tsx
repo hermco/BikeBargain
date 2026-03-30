@@ -4,7 +4,7 @@ import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { CategoryBadge } from '../components/AccessoryBadge'
 import { useToast } from '../components/Toast'
-import { useCrawlSearch, useCrawlExtract, useCrawlConfirm, useMergeAd, useAccessoryCatalog, useActiveCrawlSession, useUpdateCrawlAdAction, useCloseCrawlSession, useRemoveCrawlSessionAd, useCheckPrices, useConfirmPrice } from '../hooks/queries'
+import { useCrawlSearch, useCrawlExtract, useCrawlConfirm, useMergeAd, useCatalogGroups, useActiveCrawlSession, useUpdateCrawlAdAction, useCloseCrawlSession, useRemoveCrawlSessionAd, useCheckPrices, useConfirmPrice } from '../hooks/queries'
 import { variantColor } from '../lib/utils'
 import { useFormatters } from '../hooks/useFormatters'
 import type { CrawlAdSummary, CrawlDiff, Accessory, PotentialDuplicate, PriceChangeEntry } from '../types'
@@ -72,7 +72,18 @@ export function CrawlPage() {
   const updateActionMut = useUpdateCrawlAdAction()
   const closeSessionMut = useCloseCrawlSession()
   const removeAdMut = useRemoveCrawlSessionAd()
-  const { data: catalog } = useAccessoryCatalog()
+  const { data: catalogGroups } = useCatalogGroups()
+  const catalog = catalogGroups?.flatMap(g =>
+    g.variants.map(v => ({
+      name: v.name,
+      category: g.category,
+      estimated_new_price: v.estimated_new_price,
+      default_new_price: v.estimated_new_price,
+      estimated_used_price: Math.round(v.estimated_new_price * 0.65),
+      group: g.group_key,
+      has_override: false,
+    }))
+  ) ?? []
   const { data: activeSession, isLoading: isLoadingSession } = useActiveCrawlSession()
   const { toast } = useToast()
   const checkPricesMut = useCheckPrices()

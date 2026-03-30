@@ -2,7 +2,7 @@ import { useParams, Link, useNavigate, Navigate } from 'react-router-dom'
 import { ArrowLeft, ExternalLink, Trash2, MapPin, Calendar, ChevronLeft, ChevronRight, ChevronDown, Camera, Pencil, X, Check, Plus, RefreshCw, Ban, Wifi, TrendingDown, TrendingUp, History } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { useAd, useDeleteAd, useUpdateAd, useAccessoryCatalog, useRefreshAdAccessories, useMarkAdSold, useCheckAdOnline, usePriceHistory } from '../hooks/queries'
+import { useAd, useDeleteAd, useUpdateAd, useCatalogGroups, useRefreshAdAccessories, useMarkAdSold, useCheckAdOnline, usePriceHistory } from '../hooks/queries'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
@@ -41,7 +41,18 @@ export function AdDetailPage() {
   const [showAddAccessory, setShowAddAccessory] = useState(false)
   const [accessorySearch, setAccessorySearch] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const { data: catalog } = useAccessoryCatalog()
+  const { data: catalogGroups } = useCatalogGroups()
+  const catalog = catalogGroups?.flatMap(g =>
+    g.variants.map(v => ({
+      name: v.name,
+      category: g.category,
+      estimated_new_price: v.estimated_new_price,
+      default_new_price: v.estimated_new_price,
+      estimated_used_price: Math.round(v.estimated_new_price * 0.65),
+      group: g.group_key,
+      has_override: false,
+    }))
+  ) ?? []
 
   // Keyboard navigation for lightbox
   const handleLightboxKey = useCallback((e: KeyboardEvent) => {

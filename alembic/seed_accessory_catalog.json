@@ -1,0 +1,1980 @@
+{
+  "groups": [
+    {
+      "group_key": "crash_bars",
+      "name": "Crash bars",
+      "category": "protection",
+      "expressions": [
+        "crash bars",
+        "crash barres"
+      ],
+      "default_price": 200,
+      "variants": [
+        {
+          "name": "Crash bars SW-Motech/Givi/Hepco",
+          "qualifiers": [],
+          "brands": [
+            "sw-motech",
+            "givi",
+            "hepco",
+            "h&b"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 200,
+          "sort_order": -4,
+          "notes": "Les crash bars sont de serie sur la Himalayan 450. Seuls les aftermarket avec marque explicite comptent comme accessoire."
+        }
+      ]
+    },
+    {
+      "group_key": "pare_mains",
+      "name": "Pare-mains",
+      "category": "protection",
+      "expressions": [
+        "protege-mains",
+        "pare-mains",
+        "handguard"
+      ],
+      "default_price": 120,
+      "variants": [
+        {
+          "name": "Pare-mains rally aluminium",
+          "qualifiers": [
+            "rally",
+            "renforce",
+            "alu"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 120,
+          "sort_order": -3,
+          "notes": null
+        },
+        {
+          "name": "Pare-mains Royal Enfield",
+          "qualifiers": [],
+          "brands": [
+            "royal enfield",
+            "re",
+            "genuine",
+            "origine"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 120,
+          "sort_order": -4,
+          "notes": null
+        },
+        {
+          "name": "Pare-mains aftermarket",
+          "qualifiers": [],
+          "brands": [
+            "acerbis",
+            "barkbuster",
+            "sw-motech",
+            "givi"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 140,
+          "sort_order": -4,
+          "notes": null
+        },
+        {
+          "name": "Pare-mains",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 120,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "sabot",
+      "name": "Sabot moteur",
+      "category": "protection",
+      "expressions": [
+        "sabot moteur",
+        "sabot rally",
+        "skid plate",
+        "engine guard",
+        "protection moteur",
+        "protege-moteur"
+      ],
+      "default_price": 200,
+      "variants": [
+        {
+          "name": "Sabot rally Royal Enfield",
+          "qualifiers": [
+            "rally",
+            "renforce",
+            "alu"
+          ],
+          "brands": [
+            "royal enfield",
+            "re"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 279,
+          "sort_order": -5,
+          "notes": null
+        },
+        {
+          "name": "Sabot moteur aftermarket",
+          "qualifiers": [],
+          "brands": [
+            "sw-motech",
+            "givi",
+            "acerbis",
+            "hepco"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 200,
+          "sort_order": -4,
+          "notes": null
+        },
+        {
+          "name": "Sabot moteur",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 200,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "carter",
+      "name": "Protege-carter",
+      "category": "protection",
+      "expressions": [
+        "protege-carter",
+        "carter protection"
+      ],
+      "default_price": 75,
+      "variants": [
+        {
+          "name": "Protege-carter",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 75,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "prot_reservoir",
+      "name": "Protection reservoir",
+      "category": "protection",
+      "expressions": [
+        "protection reservoir",
+        "protege-reservoir",
+        "tank pad"
+      ],
+      "default_price": 45,
+      "variants": [
+        {
+          "name": "Protection reservoir",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [
+            "de"
+          ],
+          "regex_override": null,
+          "estimated_new_price": 45,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "prot_radiateur",
+      "name": "Protection radiateur",
+      "category": "protection",
+      "expressions": [
+        "protection radiateur",
+        "protege-radiateur",
+        "grille radiateur",
+        "grille alu radiateur",
+        "radiator guard"
+      ],
+      "default_price": 69,
+      "variants": [
+        {
+          "name": "Protection radiateur",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [
+            "de"
+          ],
+          "regex_override": null,
+          "estimated_new_price": 69,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "grille_phare",
+      "name": "Grille de phare",
+      "category": "protection",
+      "expressions": [
+        "grille de phare",
+        "protege-phare",
+        "headlamp cover",
+        "headlight grille",
+        "headlight guard"
+      ],
+      "default_price": 80,
+      "variants": [
+        {
+          "name": "Grille de phare",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [
+            "de"
+          ],
+          "regex_override": null,
+          "estimated_new_price": 80,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "sliders",
+      "name": "Sliders/tampons de protection",
+      "category": "protection",
+      "expressions": [
+        "sliders",
+        "tampons de protection"
+      ],
+      "default_price": 60,
+      "variants": [
+        {
+          "name": "Sliders/tampons de protection",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [
+            "de"
+          ],
+          "regex_override": null,
+          "estimated_new_price": 60,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "prot_leviers",
+      "name": "Protege-leviers",
+      "category": "protection",
+      "expressions": [
+        "protege-leviers"
+      ],
+      "default_price": 35,
+      "variants": [
+        {
+          "name": "Protege-leviers",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 35,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "elargisseur_bequille",
+      "name": "Elargisseur de bequille",
+      "category": "protection",
+      "expressions": [
+        "renfort bequille",
+        "elargisseur de bequille",
+        "extension de bequille",
+        "rehausse de bequille",
+        "side stand extension"
+      ],
+      "default_price": 55,
+      "variants": [
+        {
+          "name": "Elargisseur de bequille",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [
+            "ryl-reo hima"
+          ],
+          "optional_words": [
+            "de"
+          ],
+          "regex_override": null,
+          "estimated_new_price": 55,
+          "sort_order": -1,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "prot_echappement",
+      "name": "Protection echappement",
+      "category": "protection",
+      "expressions": [
+        "protection echappement",
+        "protege-pot",
+        "protection silencieux",
+        "muffler protection"
+      ],
+      "default_price": 45,
+      "variants": [
+        {
+          "name": "Protection echappement",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [
+            "de"
+          ],
+          "regex_override": null,
+          "estimated_new_price": 45,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "top_case",
+      "name": "Top case",
+      "category": "bagagerie",
+      "expressions": [
+        "top case"
+      ],
+      "default_price": 250,
+      "variants": [
+        {
+          "name": "Top case aluminium 40L RE",
+          "qualifiers": [
+            "alu",
+            "aluminium"
+          ],
+          "brands": [
+            "royal enfield",
+            "re"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 449,
+          "sort_order": -4,
+          "notes": null
+        },
+        {
+          "name": "Top case Givi Alaska Trekker ALU 56L",
+          "qualifiers": [],
+          "brands": [
+            "givi"
+          ],
+          "product_aliases": [
+            "alaska",
+            "alaska trekker"
+          ],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 330,
+          "sort_order": -3,
+          "notes": null
+        },
+        {
+          "name": "Top case aluminium aftermarket",
+          "qualifiers": [
+            "alu",
+            "aluminium"
+          ],
+          "brands": [
+            "sw-motech",
+            "givi",
+            "shad",
+            "hepco"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 300,
+          "sort_order": -6,
+          "notes": null
+        },
+        {
+          "name": "Top case plastique",
+          "qualifiers": [
+            "plastique"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 191,
+          "sort_order": -1,
+          "notes": null
+        },
+        {
+          "name": "Top case aftermarket",
+          "qualifiers": [],
+          "brands": [
+            "shad",
+            "givi",
+            "kappa"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 200,
+          "sort_order": -3,
+          "notes": null
+        },
+        {
+          "name": "Top case",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 250,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "paniers",
+      "name": "Paniers/valises laterales",
+      "category": "bagagerie",
+      "expressions": [
+        "sacoches laterales",
+        "valises laterales",
+        "paniers aluminium",
+        "bagagerie laterale"
+      ],
+      "default_price": 450,
+      "variants": [
+        {
+          "name": "Sacoches laterales SHAD TR (paire + support)",
+          "qualifiers": [],
+          "brands": [
+            "shad"
+          ],
+          "product_aliases": [
+            "shad tr"
+          ],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 400,
+          "sort_order": -2,
+          "notes": "SHAD TR series (TR30, TR40...) = sacoches laterales semi-rigides + support integre"
+        },
+        {
+          "name": "Sacoches laterales aftermarket",
+          "qualifiers": [
+            "laterales"
+          ],
+          "brands": [
+            "shad",
+            "givi",
+            "sw-motech",
+            "hepco",
+            "kappa"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 400,
+          "sort_order": -6,
+          "notes": null
+        },
+        {
+          "name": "Paniers aluminium Royal Enfield",
+          "qualifiers": [
+            "alu",
+            "aluminium"
+          ],
+          "brands": [
+            "royal enfield",
+            "re"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 600,
+          "sort_order": -4,
+          "notes": null
+        },
+        {
+          "name": "Paniers aluminium aftermarket",
+          "qualifiers": [
+            "alu",
+            "aluminium"
+          ],
+          "brands": [
+            "sw-motech",
+            "givi",
+            "shad",
+            "hepco"
+          ],
+          "product_aliases": [
+            "trax"
+          ],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 500,
+          "sort_order": -7,
+          "notes": null
+        },
+        {
+          "name": "Paniers aluminium",
+          "qualifiers": [
+            "alu",
+            "aluminium",
+            "lateral"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 500,
+          "sort_order": -3,
+          "notes": null
+        },
+        {
+          "name": "Valises laterales",
+          "qualifiers": [
+            "lateral",
+            "rigide"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 450,
+          "sort_order": -2,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "porte_bagages",
+      "name": "Porte-bagages",
+      "category": "bagagerie",
+      "expressions": [
+        "porte-bagages",
+        "support bagages",
+        "luggage rack",
+        "supports valises laterales",
+        "pannier frame",
+        "pannier rail",
+        "pannier rack"
+      ],
+      "default_price": 140,
+      "variants": [
+        {
+          "name": "Porte-bagages aluminium RE",
+          "qualifiers": [
+            "alu",
+            "aluminium"
+          ],
+          "brands": [
+            "royal enfield",
+            "re"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 140,
+          "sort_order": -4,
+          "notes": null
+        },
+        {
+          "name": "Porte-bagages",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 140,
+          "sort_order": 0,
+          "notes": null
+        },
+        {
+          "name": "Supports valises laterales RE",
+          "qualifiers": [
+            "lateraux"
+          ],
+          "brands": [
+            "royal enfield",
+            "re",
+            "genuine",
+            "origine"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 140,
+          "sort_order": -5,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "platine_tc",
+      "name": "Platine top case",
+      "category": "bagagerie",
+      "expressions": [
+        "platine top case",
+        "support top case",
+        "platine monokey",
+        "top case rack",
+        "top case support",
+        "top case plate"
+      ],
+      "default_price": 110,
+      "variants": [
+        {
+          "name": "Platine Givi Monokey M9A",
+          "qualifiers": [
+            "monokey"
+          ],
+          "brands": [
+            "givi"
+          ],
+          "product_aliases": [
+            "m9a"
+          ],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 90,
+          "sort_order": -3,
+          "notes": null
+        },
+        {
+          "name": "Platine top case",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 110,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "support_sacoche_reservoir",
+      "name": "Support sacoche reservoir",
+      "category": "bagagerie",
+      "expressions": [
+        "support sacoche reservoir"
+      ],
+      "default_price": 40,
+      "variants": [
+        {
+          "name": "Support sacoche reservoir Givi BF92",
+          "qualifiers": [],
+          "brands": [
+            "givi"
+          ],
+          "product_aliases": [
+            "bf92"
+          ],
+          "optional_words": [
+            "de"
+          ],
+          "regex_override": null,
+          "estimated_new_price": 40,
+          "sort_order": -2,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "sacoche_reservoir",
+      "name": "Sacoche de reservoir",
+      "category": "bagagerie",
+      "expressions": [
+        "sacoche de reservoir",
+        "tank bag"
+      ],
+      "default_price": 279,
+      "variants": [
+        {
+          "name": "Sacoche reservoir Givi XS307 15L",
+          "qualifiers": [],
+          "brands": [
+            "givi"
+          ],
+          "product_aliases": [
+            "xs307"
+          ],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 115,
+          "sort_order": -2,
+          "notes": null
+        },
+        {
+          "name": "Sacoche de reservoir",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [
+            "de"
+          ],
+          "regex_override": null,
+          "estimated_new_price": 279,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "sacoche_selle",
+      "name": "Sacoches de selle",
+      "category": "bagagerie",
+      "expressions": [
+        "sacoches de selle",
+        "sacoches cavaliere",
+        "saddle bag"
+      ],
+      "default_price": 149,
+      "variants": [
+        {
+          "name": "Sacoches de selle",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [
+            "de"
+          ],
+          "regex_override": null,
+          "estimated_new_price": 149,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "sacoche_souple",
+      "name": "Sacoches souples",
+      "category": "bagagerie",
+      "expressions": [
+        "sacoches souples",
+        "sacoches etanches",
+        "sacoches waterproof",
+        "soft bag"
+      ],
+      "default_price": 149,
+      "variants": [
+        {
+          "name": "Sacoches souples",
+          "qualifiers": [
+            "souple",
+            "etanche",
+            "waterproof"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 149,
+          "sort_order": -3,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "sac_etanche",
+      "name": "Sac etanche",
+      "category": "bagagerie",
+      "expressions": [
+        "sac etanche",
+        "sac waterproof",
+        "dry bag"
+      ],
+      "default_price": 69,
+      "variants": [
+        {
+          "name": "Sac etanche",
+          "qualifiers": [
+            "etanche",
+            "waterproof"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 69,
+          "sort_order": -2,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "bulle",
+      "name": "Bulle/pare-brise",
+      "category": "confort",
+      "expressions": [
+        "bulle",
+        "pare-brise",
+        "windscreen",
+        "windshield"
+      ],
+      "default_price": 100,
+      "variants": [
+        {
+          "name": "Bulle touring Royal Enfield",
+          "qualifiers": [
+            "haute",
+            "touring",
+            "adventure"
+          ],
+          "brands": [
+            "royal enfield",
+            "re"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 119,
+          "sort_order": -5,
+          "notes": null
+        },
+        {
+          "name": "Bulle/pare-brise WRS",
+          "qualifiers": [
+            "haute",
+            "touring",
+            "adventure"
+          ],
+          "brands": [
+            "wrs"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 115,
+          "sort_order": -4,
+          "notes": null
+        },
+        {
+          "name": "Bulle touring aftermarket",
+          "qualifiers": [
+            "haute",
+            "touring",
+            "adventure"
+          ],
+          "brands": [
+            "givi",
+            "puig",
+            "ermax",
+            "isotta",
+            "mra"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 130,
+          "sort_order": -8,
+          "notes": null
+        },
+        {
+          "name": "Bulle haute/touring",
+          "qualifiers": [
+            "haute",
+            "touring",
+            "adventure"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 119,
+          "sort_order": -3,
+          "notes": null
+        },
+        {
+          "name": "Bulle/pare-brise",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 100,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "selle",
+      "name": "Selle conducteur",
+      "category": "confort",
+      "expressions": [
+        "selle rally",
+        "selle confort",
+        "selle basse",
+        "selle gel",
+        "selle chauffante"
+      ],
+      "default_price": 119,
+      "variants": [
+        {
+          "name": "Selle rally/confort Royal Enfield",
+          "qualifiers": [
+            "rally",
+            "confort"
+          ],
+          "brands": [
+            "royal enfield",
+            "re",
+            "genuine",
+            "origine"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 119,
+          "sort_order": -6,
+          "notes": null
+        },
+        {
+          "name": "Selle basse (-11mm) RE",
+          "qualifiers": [
+            "basse",
+            "low rider"
+          ],
+          "brands": [
+            "royal enfield",
+            "re"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 119,
+          "sort_order": -4,
+          "notes": null
+        },
+        {
+          "name": "Selle confort/rally",
+          "qualifiers": [
+            "rally",
+            "confort",
+            "basse",
+            "chauffante",
+            "gel"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 119,
+          "sort_order": -5,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "selle_passager",
+      "name": "Selle passager",
+      "category": "confort",
+      "expressions": [
+        "selle passager",
+        "selle touring",
+        "selle duo"
+      ],
+      "default_price": 99,
+      "variants": [
+        {
+          "name": "Selle passager touring RE",
+          "qualifiers": [
+            "passager",
+            "touring",
+            "duo",
+            "confort"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 99,
+          "sort_order": -4,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "poignees_chauffantes",
+      "name": "Poignees chauffantes",
+      "category": "confort",
+      "expressions": [
+        "poignees chauffantes"
+      ],
+      "default_price": 130,
+      "variants": [
+        {
+          "name": "Poignees chauffantes",
+          "qualifiers": [
+            "chauffante"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 130,
+          "sort_order": -1,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "repose_pieds",
+      "name": "Repose-pieds rally",
+      "category": "confort",
+      "expressions": [
+        "repose-pieds"
+      ],
+      "default_price": 90,
+      "variants": [
+        {
+          "name": "Repose-pieds rally",
+          "qualifiers": [
+            "rally",
+            "reglable",
+            "large",
+            "off-road",
+            "alu"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 90,
+          "sort_order": -5,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "rehausse",
+      "name": "Rehausse pontet guidon",
+      "category": "confort",
+      "expressions": [
+        "rehausse pontet",
+        "rehausse guidon",
+        "pontet sureleve",
+        "handlebar riser",
+        "handlebar extension"
+      ],
+      "default_price": 59,
+      "variants": [
+        {
+          "name": "Rehausse pontet guidon",
+          "qualifiers": [
+            "rehausse",
+            "sureleve"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 59,
+          "sort_order": -2,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "bequille_centrale",
+      "name": "Bequille centrale/atelier",
+      "category": "confort",
+      "expressions": [
+        "bequille centrale",
+        "bequille atelier",
+        "leve-moto",
+        "center stand"
+      ],
+      "default_price": 180,
+      "variants": [
+        {
+          "name": "Bequille centrale/atelier",
+          "qualifiers": [
+            "centrale",
+            "atelier"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 180,
+          "sort_order": -2,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "guidon",
+      "name": "Guidon",
+      "category": "confort",
+      "expressions": [
+        "guidon rehausse",
+        "guidon brace",
+        "guidon fatbar"
+      ],
+      "default_price": 80,
+      "variants": [
+        {
+          "name": "Guidon rehausse/brace",
+          "qualifiers": [
+            "rehausse",
+            "brace",
+            "fatbar"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 80,
+          "sort_order": -3,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "mousse_guidon",
+      "name": "Mousse guidon",
+      "category": "confort",
+      "expressions": [
+        "mousse de guidon",
+        "guidon foam",
+        "bar pad"
+      ],
+      "default_price": 35,
+      "variants": [
+        {
+          "name": "Mousse guidon rally",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [
+            "de"
+          ],
+          "regex_override": null,
+          "estimated_new_price": 35,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "gps",
+      "name": "GPS",
+      "category": "navigation",
+      "expressions": [
+        "gps"
+      ],
+      "default_price": 350,
+      "variants": [
+        {
+          "name": "GPS Garmin/TomTom",
+          "qualifiers": [],
+          "brands": [
+            "garmin",
+            "zumo",
+            "tomtom"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 350,
+          "sort_order": -3,
+          "notes": null
+        },
+        {
+          "name": "GPS",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": "(?<!support\\s)(?<!suport\\s)\\bgps\\b(?!\\s*/\\s*t[eé]l[eé]phone)(?!\\s*/\\s*smartphone)",
+          "estimated_new_price": 350,
+          "sort_order": 0,
+          "notes": "Uses lookbehinds/lookaheads to avoid matching 'support GPS' or 'GPS/telephone'"
+        }
+      ]
+    },
+    {
+      "group_key": "support_tel",
+      "name": "Support telephone/GPS",
+      "category": "navigation",
+      "expressions": [
+        "support telephone",
+        "support smartphone",
+        "support gps"
+      ],
+      "default_price": 49,
+      "variants": [
+        {
+          "name": "Support telephone/GPS RE",
+          "qualifiers": [],
+          "brands": [
+            "royal enfield",
+            "re"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 49,
+          "sort_order": -2,
+          "notes": null
+        },
+        {
+          "name": "Support Quad Lock",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [
+            "quad lock"
+          ],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 80,
+          "sort_order": -1,
+          "notes": null
+        },
+        {
+          "name": "Support telephone/GPS",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 49,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "chargeur",
+      "name": "Chargeur USB/induction",
+      "category": "navigation",
+      "expressions": [
+        "chargeur usb",
+        "chargeur sans fil",
+        "chargeur induction"
+      ],
+      "default_price": 30,
+      "variants": [
+        {
+          "name": "Chargeur USB/induction",
+          "qualifiers": [
+            "usb",
+            "sans fil",
+            "induction"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 30,
+          "sort_order": -3,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "phares_add",
+      "name": "Phares additionnels",
+      "category": "eclairage",
+      "expressions": [
+        "phares additionnels",
+        "feux additionnels",
+        "feux auxiliaires",
+        "antibrouillards",
+        "longue portee",
+        "fog light",
+        "auxiliary light"
+      ],
+      "default_price": 120,
+      "variants": [
+        {
+          "name": "Phares additionnels Denali/SW-Motech",
+          "qualifiers": [],
+          "brands": [
+            "denali",
+            "sw-motech"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 380,
+          "sort_order": -2,
+          "notes": null
+        },
+        {
+          "name": "Phares additionnels Givi",
+          "qualifiers": [],
+          "brands": [
+            "givi"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 170,
+          "sort_order": -1,
+          "notes": null
+        },
+        {
+          "name": "Phares additionnels",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 120,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "rampe_led",
+      "name": "Rampe LED",
+      "category": "eclairage",
+      "expressions": [
+        "rampe led",
+        "rampe lumineuse",
+        "light bar"
+      ],
+      "default_price": 150,
+      "variants": [
+        {
+          "name": "Rampe LED",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 150,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "retros",
+      "name": "Retroviseurs",
+      "category": "esthetique",
+      "expressions": [
+        "retroviseurs",
+        "retros"
+      ],
+      "default_price": 60,
+      "variants": [
+        {
+          "name": "Retros touring RE",
+          "qualifiers": [
+            "bar-end",
+            "embout",
+            "alu",
+            "touring"
+          ],
+          "brands": [
+            "royal enfield",
+            "re"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 69,
+          "sort_order": -6,
+          "notes": null
+        },
+        {
+          "name": "Retros bar-end",
+          "qualifiers": [
+            "bar-end",
+            "embout",
+            "alu",
+            "touring"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 60,
+          "sort_order": -4,
+          "notes": null
+        },
+        {
+          "name": "Retros alu",
+          "qualifiers": [
+            "alu"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 60,
+          "sort_order": -1,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "garde_boue",
+      "name": "Garde-boue",
+      "category": "esthetique",
+      "expressions": [
+        "garde-boue"
+      ],
+      "default_price": 80,
+      "variants": [
+        {
+          "name": "Kit garde-boue rally RE",
+          "qualifiers": [
+            "rally",
+            "avant haut",
+            "haut",
+            "court"
+          ],
+          "brands": [
+            "royal enfield",
+            "re"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 219,
+          "sort_order": -6,
+          "notes": null
+        },
+        {
+          "name": "Garde-boue additionnel",
+          "qualifiers": [
+            "avant",
+            "arriere",
+            "rally",
+            "haut",
+            "additionnel"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 80,
+          "sort_order": -5,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "clignotants",
+      "name": "Clignotants LED",
+      "category": "esthetique",
+      "expressions": [
+        "clignotants led",
+        "clignotants sequentiels"
+      ],
+      "default_price": 60,
+      "variants": [
+        {
+          "name": "Clignotants LED",
+          "qualifiers": [
+            "led",
+            "sequentiel"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 60,
+          "sort_order": -2,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "saute_vent",
+      "name": "Saute-vent",
+      "category": "esthetique",
+      "expressions": [
+        "saute-vent"
+      ],
+      "default_price": 40,
+      "variants": [
+        {
+          "name": "Saute-vent",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 40,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "stickers",
+      "name": "Stickers/deco",
+      "category": "esthetique",
+      "expressions": [
+        "stickers",
+        "autocollant",
+        "deco reservoir"
+      ],
+      "default_price": 30,
+      "variants": [
+        {
+          "name": "Stickers/deco",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 30,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "bouchon_alu",
+      "name": "Bouchon alu CNC",
+      "category": "esthetique",
+      "expressions": [
+        "bouchon huile alu",
+        "bouchon reservoir alu",
+        "bouchon cnc"
+      ],
+      "default_price": 65,
+      "variants": [
+        {
+          "name": "Bouchon alu CNC",
+          "qualifiers": [
+            "alu",
+            "cnc"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 65,
+          "sort_order": -2,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "echappement",
+      "name": "Echappement",
+      "category": "performance",
+      "expressions": [
+        "echappement",
+        "ligne complete",
+        "silencieux",
+        "pot echappement",
+        "pot sport",
+        "pot racing"
+      ],
+      "default_price": 350,
+      "variants": [
+        {
+          "name": "Echappement HP Corse",
+          "qualifiers": [],
+          "brands": [
+            "hp corse"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 400,
+          "sort_order": -1,
+          "notes": null
+        },
+        {
+          "name": "Echappement premium",
+          "qualifiers": [
+            "complete"
+          ],
+          "brands": [
+            "akrapovic",
+            "arrow",
+            "sc-project",
+            "leo vince"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 500,
+          "sort_order": -5,
+          "notes": null
+        },
+        {
+          "name": "Echappement aftermarket",
+          "qualifiers": [
+            "complete"
+          ],
+          "brands": [
+            "ixil",
+            "giannelli",
+            "mivv",
+            "cobra"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 350,
+          "sort_order": -5,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "filtre_air",
+      "name": "Filtre a air sport",
+      "category": "performance",
+      "expressions": [
+        "filtre a air sport"
+      ],
+      "default_price": 90,
+      "variants": [
+        {
+          "name": "Filtre a air sport",
+          "qualifiers": [
+            "sport"
+          ],
+          "brands": [
+            "kn",
+            "dna",
+            "bmc"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 90,
+          "sort_order": -4,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "reprog",
+      "name": "Reprogrammation/cartographie",
+      "category": "performance",
+      "expressions": [
+        "cartographie",
+        "flash ecu",
+        "power commander",
+        "rapid bike",
+        "fuel x",
+        "reprogrammation"
+      ],
+      "default_price": 300,
+      "variants": [
+        {
+          "name": "Reprogrammation/cartographie",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [
+            "power commander",
+            "rapid bike",
+            "fuel x"
+          ],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 300,
+          "sort_order": -3,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "leviers",
+      "name": "Leviers reglables",
+      "category": "performance",
+      "expressions": [
+        "leviers courts",
+        "leviers reglables",
+        "leviers cnc",
+        "leviers alu",
+        "leviers racing"
+      ],
+      "default_price": 60,
+      "variants": [
+        {
+          "name": "Leviers reglables",
+          "qualifiers": [
+            "court",
+            "reglable",
+            "cnc",
+            "alu",
+            "racing"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 60,
+          "sort_order": -5,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "kit_chaine",
+      "name": "Kit chaine",
+      "category": "performance",
+      "expressions": [
+        "kit chaine",
+        "couronne alu",
+        "couronne renforcee",
+        "pignon"
+      ],
+      "default_price": 174,
+      "variants": [
+        {
+          "name": "Kit chaine",
+          "qualifiers": [
+            "alu",
+            "renforce"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 174,
+          "sort_order": -2,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "pneus",
+      "name": "Pneus specifiques",
+      "category": "performance",
+      "expressions": [
+        "pneus"
+      ],
+      "default_price": 200,
+      "variants": [
+        {
+          "name": "Pneus specifiques",
+          "qualifiers": [
+            "neuf",
+            "route",
+            "trail",
+            "offroad",
+            "mixte"
+          ],
+          "brands": [
+            "karoo",
+            "anakee",
+            "tkc",
+            "heidenau",
+            "mitas",
+            "pirelli",
+            "continental",
+            "michelin",
+            "dunlop",
+            "bridgestone"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 200,
+          "sort_order": -15,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "antivol",
+      "name": "Antivol",
+      "category": "autre",
+      "expressions": [
+        "antivol",
+        "bloque-disque",
+        "u-lock"
+      ],
+      "default_price": 50,
+      "variants": [
+        {
+          "name": "Antivol",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 50,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "alarme",
+      "name": "Alarme",
+      "category": "autre",
+      "expressions": [
+        "alarme"
+      ],
+      "default_price": 100,
+      "variants": [
+        {
+          "name": "Alarme",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 100,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "housse",
+      "name": "Housse de protection",
+      "category": "autre",
+      "expressions": [
+        "housse de moto",
+        "housse de protection"
+      ],
+      "default_price": 45,
+      "variants": [
+        {
+          "name": "Housse de protection",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [
+            "de"
+          ],
+          "regex_override": null,
+          "estimated_new_price": 45,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "traceur",
+      "name": "Traceur GPS/antivol",
+      "category": "autre",
+      "expressions": [
+        "traceur gps",
+        "traceur moto",
+        "airtag",
+        "monimoto"
+      ],
+      "default_price": 150,
+      "variants": [
+        {
+          "name": "Traceur GPS/antivol",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [
+            "airtag",
+            "monimoto"
+          ],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 150,
+          "sort_order": -2,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "kit_rally",
+      "name": "Kit rally/aventure",
+      "category": "autre",
+      "expressions": [
+        "kit rally",
+        "kit aventure",
+        "kit baroudeur",
+        "kit touring"
+      ],
+      "default_price": 400,
+      "variants": [
+        {
+          "name": "Kit rally/aventure",
+          "qualifiers": [
+            "rally",
+            "aventure",
+            "baroudeur",
+            "touring"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 400,
+          "sort_order": -4,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "bequille_lat",
+      "name": "Bequille laterale",
+      "category": "autre",
+      "expressions": [
+        "bequille laterale"
+      ],
+      "default_price": 30,
+      "variants": [
+        {
+          "name": "Bequille laterale",
+          "qualifiers": [
+            "reglable"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 30,
+          "sort_order": -1,
+          "notes": null
+        }
+      ]
+    }
+  ]
+}

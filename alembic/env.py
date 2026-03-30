@@ -8,7 +8,8 @@ from alembic import context
 # Import des modeles pour enregistrer les tables dans SQLModel.metadata
 from src.models import (  # noqa: F401
     Ad, AdAttribute, AdImage, AdAccessory,
-    CrawlSession, CrawlSessionAd, AdPriceHistory, AccessoryOverride,
+    CrawlSession, CrawlSessionAd, AdPriceHistory,
+    AccessoryCatalogGroup, AccessoryCatalogVariant,
 )
 from src.database import get_database_url
 

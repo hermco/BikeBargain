@@ -4,7 +4,7 @@ import { X, Plus, Loader2, Link as LinkIcon, Check, Pencil, Trash2, ChevronLeft,
 import { useTranslation } from 'react-i18next'
 import { Button } from './ui/Button'
 import { CategoryBadge } from './AccessoryBadge'
-import { usePreviewAd, useConfirmAd, useAccessoryCatalog } from '../hooks/queries'
+import { usePreviewAd, useConfirmAd, useCatalogGroups } from '../hooks/queries'
 import { useToast } from './Toast'
 import { variantColor } from '../lib/utils'
 import { useFormatters } from '../hooks/useFormatters'
@@ -30,7 +30,18 @@ export function AdForm({ autoOpen, onAutoOpened }: AdFormProps) {
   const [accessorySearch, setAccessorySearch] = useState('')
   const previewMut = usePreviewAd()
   const confirmMut = useConfirmAd()
-  const { data: catalog } = useAccessoryCatalog()
+  const { data: catalogGroups } = useCatalogGroups()
+  const catalog = catalogGroups?.flatMap(g =>
+    g.variants.map(v => ({
+      name: v.name,
+      category: g.category,
+      estimated_new_price: v.estimated_new_price,
+      default_new_price: v.estimated_new_price,
+      estimated_used_price: Math.round(v.estimated_new_price * 0.65),
+      group: g.group_key,
+      has_override: false,
+    }))
+  ) ?? []
   const { toast } = useToast()
 
   function handleReset() {

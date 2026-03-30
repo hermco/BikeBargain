@@ -74,33 +74,7 @@ export function deleteAd(id: number): Promise<{ deleted: number }> {
   return fetchJSON(`/ads/${id}`, { method: 'DELETE' })
 }
 
-export interface CatalogAccessory {
-  name: string
-  category: string
-  estimated_new_price: number
-  default_new_price: number
-  estimated_used_price: number
-  group: string
-  has_override: boolean
-}
-
-export function fetchAccessoryCatalog(): Promise<CatalogAccessory[]> {
-  return fetchJSON<CatalogAccessory[]>('/accessory-catalog')
-}
-
-export function updateCatalogPrice(group: string, estimated_new_price: number): Promise<{ group: string; estimated_new_price: number; ads_refreshed: number }> {
-  return fetchJSON(`/accessory-catalog/${group}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ estimated_new_price }),
-  })
-}
-
-export function resetCatalogPrice(group: string): Promise<{ group: string; reset: boolean; ads_refreshed: number }> {
-  return fetchJSON(`/accessory-catalog/${group}/override`, { method: 'DELETE' })
-}
-
-export function refreshAllAccessories(): Promise<{ ads_refreshed: number; ads_skipped_manual: number }> {
+export function refreshAllAccessories(): Promise<{ ads_skipped_manual: number; status: string }> {
   return fetchJSON('/accessories/refresh', { method: 'POST' })
 }
 
@@ -154,6 +128,189 @@ export function confirmPrice(adId: number, newPrice: number): Promise<{ id: numb
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ new_price: newPrice }),
   })
+}
+
+// ─── Catalog V2 ──────────────────────────────────────────────────────────
+
+export interface CatalogVariant {
+  id: number
+  group_id: number
+  name: string
+  qualifiers: string[]
+  brands: string[]
+  product_aliases: string[]
+  optional_words: string[]
+  regex_override: string | null
+  estimated_new_price: number
+  sort_order: number
+  sort_order_manual: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CatalogGroup {
+  id: number
+  group_key: string
+  model_id: number | null
+  name: string
+  category: string
+  expressions: string[]
+  default_price: number
+  last_match_count: number
+  created_at: string
+  updated_at: string
+  variants: CatalogVariant[]
+}
+
+export interface SynonymSuggestion {
+  expression: string
+  rule: 'prefix' | 'equivalence'
+  context: string
+}
+
+export interface PreviewRegexResult {
+  generated_regex: string
+  matching_ads_count: number
+  matching_ads_sample: Array<{ id: number; title: string; matched_text: string }>
+  warning?: string
+}
+
+export interface PreviewDiffResult {
+  before: { matching_ads_count: number }
+  after: { matching_ads_count: number }
+  gained: Array<{ id: number; title: string }>
+  lost: Array<{ id: number; title: string }>
+}
+
+export interface TestOnAdMatch {
+  group: string
+  group_key: string
+  variant: string
+  matched_text: string
+}
+
+export interface RefreshStatus {
+  status: 'running' | 'idle' | 'error'
+  updated_ads_count: number
+  last_refresh: string | null
+}
+
+export function fetchCatalogGroups(): Promise<CatalogGroup[]> {
+  return fetchJSON<CatalogGroup[]>('/catalog/groups')
+}
+
+export function fetchCatalogGroup(id: number): Promise<CatalogGroup> {
+  return fetchJSON<CatalogGroup>(`/catalog/groups/${id}`)
+}
+
+export function createCatalogGroup(data: {
+  name: string; category: string; expressions: string[]; default_price: number
+}): Promise<CatalogGroup[]> {
+  return fetchJSON('/catalog/groups', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+}
+
+export function updateCatalogGroup(id: number, data: Partial<{
+  name: string; category: string; expressions: string[]; default_price: number
+}>): Promise<{ id: number; name: string; status: string }> {
+  return fetchJSON(`/catalog/groups/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+}
+
+export function deleteCatalogGroup(id: number): Promise<{ deleted: number }> {
+  return fetchJSON(`/catalog/groups/${id}`, { method: 'DELETE' })
+}
+
+export function createCatalogVariant(groupId: number, data: {
+  name: string; qualifiers?: string[]; brands?: string[]; product_aliases?: string[]
+  optional_words?: string[]; regex_override?: string | null
+  estimated_new_price: number; sort_order?: number; notes?: string | null
+}): Promise<{ id: number; name: string; status: string }> {
+  return fetchJSON(`/catalog/groups/${groupId}/variants`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+}
+
+export function updateCatalogVariant(id: number, data: Partial<CatalogVariant>): Promise<{ id: number; name: string; status: string }> {
+  return fetchJSON(`/catalog/variants/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+}
+
+export function deleteCatalogVariant(id: number): Promise<{ deleted: number }> {
+  return fetchJSON(`/catalog/variants/${id}`, { method: 'DELETE' })
+}
+
+export function suggestSynonyms(expression: string): Promise<{
+  normalized: string; suggestions: SynonymSuggestion[]
+}> {
+  return fetchJSON('/catalog/suggest-synonyms', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expression }),
+  })
+}
+
+export function previewRegex(data: {
+  group_expressions: string[]; qualifiers?: string[]; brands?: string[]
+  product_aliases?: string[]; optional_words?: string[]; regex_override?: string | null
+}): Promise<PreviewRegexResult> {
+  return fetchJSON('/catalog/preview-regex', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+}
+
+export function previewDiff(data: {
+  variant_id: number; group_expressions: string[]; qualifiers?: string[]
+  brands?: string[]; product_aliases?: string[]; optional_words?: string[]
+  regex_override?: string | null
+}): Promise<PreviewDiffResult> {
+  return fetchJSON('/catalog/preview-diff', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+}
+
+export function testOnAd(data: { ad_id?: number; text?: string }): Promise<{ matches: TestOnAdMatch[] }> {
+  return fetchJSON('/catalog/test-on-ad', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+}
+
+export function resetCatalog(): Promise<{ status: string }> {
+  return fetchJSON('/catalog/reset', { method: 'POST' })
+}
+
+export function exportCatalog(): Promise<{ groups: CatalogGroup[] }> {
+  return fetchJSON('/catalog/export')
+}
+
+export function importCatalog(data: { groups: unknown[] }): Promise<{ status: string }> {
+  return fetchJSON('/catalog/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+}
+
+export function fetchRefreshStatus(): Promise<RefreshStatus> {
+  return fetchJSON<RefreshStatus>('/catalog/refresh-status')
 }
 
 // ─── Crawl ────────────────────────────────────────────────────────────────
