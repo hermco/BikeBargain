@@ -1050,10 +1050,10 @@ def get_stats_scoped(slug: str, session: Session = Depends(get_session)):
 
     variant_rows = session.exec(
         select(
-            func.coalesce(Ad.variant, "Non detectee"),
+            func.coalesce(Ad.color, "Non detectée"),
             func.count(Ad.id),
         ).where(*base_conditions)
-        .group_by(func.coalesce(Ad.variant, "Non detectee"))
+        .group_by(func.coalesce(Ad.color, "Non detectée"))
     ).all()
 
     dept_rows = session.exec(

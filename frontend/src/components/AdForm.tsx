@@ -330,7 +330,7 @@ export function AdForm({ autoOpen, onAutoOpened }: AdFormProps) {
                     </div>
                   ) : (
                     <button onClick={() => setEditingField('variant')} className="flex items-center gap-1.5 group text-left">
-                      <Badge className={variantColor(variant)}>{variant ?? t('common.na')}</Badge>
+                      <Badge className={variantColor(previewData?.color as string)}>{variant ?? t('common.na')}</Badge>
                       <Pencil className="h-3 w-3 text-text-dim opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
                   )}

@@ -16,10 +16,11 @@ export function useCurrentModel() {
   return ctx
 }
 
-/** Get variant-specific colors from the model context */
+/** Get variant-specific options from the model context */
 export function useVariantOptions() {
   const { variants } = useCurrentModel()
   const variantNames = [...new Set(variants.map((v) => v.variant_name))]
+  const colorNames = [...new Set(variants.map((v) => v.color))]
   const wheelTypes = [...new Set(variants.map((v) => v.wheel_type))]
 
   function colorsForVariant(variantName: string | null): string[] {
@@ -33,7 +34,6 @@ export function useVariantOptions() {
     if (v?.color_hex) {
       return `bg-[${v.color_hex}]/15 text-[${v.color_hex}]`
     }
-    // Fallback — generate from variant name hash
     return 'bg-white/[0.06] text-text-muted'
   }
 
@@ -42,5 +42,5 @@ export function useVariantOptions() {
     return v?.color_hex ?? '#6b7280'
   }
 
-  return { variantNames, wheelTypes, colorsForVariant, variantColor, variantChartColor, variants }
+  return { variantNames, colorNames, wheelTypes, colorsForVariant, variantColor, variantChartColor, variants }
 }
