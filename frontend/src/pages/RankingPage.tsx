@@ -197,6 +197,7 @@ export function RankingPage() {
   const { data: rankings, isLoading } = useRankings()
   const checkOnlineMut = useCheckAdsOnline()
   const { toast } = useToast()
+  const [newlySoldIds, setNewlySoldIds] = useState<Set<number>>(new Set())
   const [expanded, setExpanded] = useState<number | null>(null)
   const [sortKey, setSortKey] = useState<SortKey>('rank')
   const [sortAsc, setSortAsc] = useState(true)
@@ -365,6 +366,8 @@ export function RankingPage() {
           onClick={() => {
             checkOnlineMut.mutate(undefined, {
               onSuccess: (data) => {
+                const soldIds = data.details.filter((d) => d.sold).map((d) => d.id)
+                setNewlySoldIds(new Set(soldIds))
                 toast(
                   data.newly_sold > 0
                     ? t('ads.newlySold', { count: data.newly_sold })
@@ -383,6 +386,52 @@ export function RankingPage() {
 
       {/* Location picker */}
       <LocationPicker location={userLoc} onChange={handleLocationChange} />
+
+      {/* Newly sold banner */}
+      <AnimatePresence>
+        {newlySoldIds.size > 0 && rankings && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-5 py-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-amber-300 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  {t('ranking.newlySoldBanner', { count: newlySoldIds.size })}
+                </h3>
+                <button
+                  onClick={() => setNewlySoldIds(new Set())}
+                  className="text-text-dim hover:text-text-secondary transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {rankings
+                  .filter((r) => newlySoldIds.has(r.id))
+                  .map((r) => {
+                    const origRank = (rankMap.get(r.id) ?? 0) + 1
+                    return (
+                      <Link
+                        key={r.id}
+                        to={`/ads/${r.id}`}
+                        className="inline-flex items-center gap-2 rounded-lg bg-white/[0.04] border border-white/[0.06] px-3 py-2 text-sm hover:bg-white/[0.08] transition-colors"
+                      >
+                        <span className="text-text-dim font-fraunces">#{origRank}</span>
+                        <span className="text-text-secondary">{r.city}</span>
+                        <Badge className={cn(variantColor(r.variant), 'text-[10px]')}>{r.color || r.variant}</Badge>
+                        <span className="text-text-primary font-medium tabular-nums">{formatPrice(r.price)}</span>
+                      </Link>
+                    )
+                  })}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Filtres */}
       <div className="flex flex-col sm:flex-row gap-3">

@@ -191,6 +191,8 @@
     "ad_one": "{{count}} annonce",
     "ad_other": "{{count}} annonces",
     "travel": "Trajet",
+    "newlySoldBanner_one": "{{count}} annonce nouvellement vendue",
+    "newlySoldBanner_other": "{{count}} annonces nouvellement vendues",
     "byRoad": "par la route",
     "distanceBand": {
       "close": "Proche",

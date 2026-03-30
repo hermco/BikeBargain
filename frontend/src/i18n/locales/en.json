@@ -191,6 +191,8 @@
     "ad_one": "{{count}} listing",
     "ad_other": "{{count}} listings",
     "travel": "Travel",
+    "newlySoldBanner_one": "{{count}} listing newly sold",
+    "newlySoldBanner_other": "{{count}} listings newly sold",
     "byRoad": "by road",
     "distanceBand": {
       "close": "Close",
