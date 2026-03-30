@@ -407,6 +407,12 @@ export function useCrawlSession(slug: string, sessionId: number | null) {
   })
 }
 
+export function useRedetectAccessories(slug: string) {
+  return useMutation({
+    mutationFn: (body: string) => api.redetectAccessories(slug, body),
+  })
+}
+
 export function useCrawlSearch(slug: string) {
   const qc = useQueryClient()
   return useMutation({

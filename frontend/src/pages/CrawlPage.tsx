@@ -1,10 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Search, Loader2, Play, Pause, SkipForward, Check, X, AlertTriangle, ArrowRight, ExternalLink, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Pencil, Trash2, Plus, Maximize2, Copy, DollarSign } from 'lucide-react'
+import { Search, Loader2, Play, Pause, SkipForward, Check, X, AlertTriangle, ArrowRight, ExternalLink, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Pencil, Trash2, Plus, Maximize2, Copy, DollarSign, RefreshCw } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { CategoryBadge } from '../components/AccessoryBadge'
 import { useToast } from '../components/Toast'
-import { useCrawlSearch, useCrawlExtract, useCrawlConfirm, useMergeAd, useCatalogGroups, useActiveCrawlSession, useCrawlSession, useUpdateCrawlAdAction, useCloseCrawlSession, useRemoveCrawlSessionAd, useCheckPrices, useConfirmPrice } from '../hooks/queries'
+import { useCrawlSearch, useCrawlExtract, useCrawlConfirm, useMergeAd, useCatalogGroups, useActiveCrawlSession, useCrawlSession, useUpdateCrawlAdAction, useCloseCrawlSession, useRemoveCrawlSessionAd, useCheckPrices, useConfirmPrice, useRedetectAccessories } from '../hooks/queries'
 import { variantColor } from '../lib/utils'
 import { useFormatters } from '../hooks/useFormatters'
 import { useCurrentModel, useVariantOptions } from '../hooks/useCurrentModel'
@@ -78,6 +78,7 @@ export function CrawlPage() {
   const updateActionMut = useUpdateCrawlAdAction(slug)
   const closeSessionMut = useCloseCrawlSession(slug)
   const removeAdMut = useRemoveCrawlSessionAd(slug)
+  const redetectMut = useRedetectAccessories(slug)
   const { data: catalogGroups } = useCatalogGroups()
   const catalog = catalogGroups?.flatMap(g =>
     g.variants.map(v => ({
@@ -605,6 +606,31 @@ export function CrawlPage() {
     setAdStates(updated)
     setShowAddAccessory(false)
     setAccessorySearch('')
+  }
+
+  function handleRedetect() {
+    if (currentIndex < 0) return
+    const state = adStates[currentIndex]
+    const body = state.extractData?.body as string | undefined
+    if (!body) return
+
+    const manualAccessories = (state.extractData?.accessories as Accessory[] ?? []).filter((a) => a.source === 'manual')
+
+    redetectMut.mutate(body, {
+      onSuccess: (result) => {
+        const merged = [...result.accessories, ...manualAccessories]
+        const updated = [...adStates]
+        updated[currentIndex] = {
+          ...updated[currentIndex],
+          extractData: { ...state.extractData!, accessories: merged },
+        }
+        setAdStates(updated)
+        toast(t('crawl.redetectSuccess', { count: result.accessories.length }), 'success')
+      },
+      onError: () => {
+        toast(t('crawl.redetectError'), 'error')
+      },
+    })
   }
 
   // Cleanup transition timer on unmount
@@ -1281,13 +1307,24 @@ export function CrawlPage() {
               <h4 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold">
                 {t('adForm.accessories')} ({accessories.length})
               </h4>
-              <button
-                onClick={() => setShowAddAccessory(!showAddAccessory)}
-                className="flex items-center gap-1 text-xs text-amber-300 hover:text-amber-200 transition-colors"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                {t('common.add')}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleRedetect}
+                  disabled={redetectMut.isPending}
+                  className="flex items-center gap-1 text-xs text-text-dim hover:text-amber-300 transition-colors disabled:opacity-50"
+                  title={t('crawl.redetectTooltip')}
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${redetectMut.isPending ? 'animate-spin' : ''}`} />
+                  {t('crawl.redetect')}
+                </button>
+                <button
+                  onClick={() => setShowAddAccessory(!showAddAccessory)}
+                  className="flex items-center gap-1 text-xs text-amber-300 hover:text-amber-200 transition-colors"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  {t('common.add')}
+                </button>
+              </div>
             </div>
 
             {/* Add accessory search */}

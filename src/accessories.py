@@ -53,6 +53,23 @@ def _clean_text_for_detection(text: str, exclusions: list | None = None) -> str:
     return cleaned
 
 
+def _extend_past_parenthetical(text: str, end: int) -> int:
+    """Etend un span au-dela du contenu parenthetique qui suit immediatement le match."""
+    lookahead = text[end:end + 4]
+    paren_pos = lookahead.find('(')
+    if paren_pos < 0:
+        return end
+    depth = 1
+    pos = end + paren_pos + 1
+    while pos < len(text) and depth > 0:
+        if text[pos] == '(':
+            depth += 1
+        elif text[pos] == ')':
+            depth -= 1
+        pos += 1
+    return pos
+
+
 def detect_accessories(
     text: str,
     patterns: list[tuple[str, str, str, int, str]] | None = None,
@@ -101,6 +118,14 @@ def detect_accessories(
             "estimated_new_price": price_new,
             "estimated_used_price": int(price_new * DEPRECIATION_RATE),
         }))
+
+    # Phase 1.5: extend spans to cover trailing parenthetical context.
+    # Prevents sub-features in parentheses from counting as separate accessories
+    # (e.g., "CarPlay (avec cameras, module GPS)" should not also detect GPS).
+    candidates = [
+        (_start, _extend_past_parenthetical(text_lower, _end), _acc)
+        for _start, _end, _acc in candidates
+    ]
 
     # Phase 2: resolve overlapping spans — longest match wins.
     # Ties broken by earliest start (captures more leading context like "rehausse").

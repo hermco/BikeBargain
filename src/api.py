@@ -1300,6 +1300,21 @@ def preview_diff_endpoint(req: PreviewDiffRequest, session: Session = Depends(ge
     }
 
 
+class RedetectRequest(BaseModel):
+    body: str
+
+
+@app.post("/api/bike-models/{slug}/ads/redetect")
+def redetect_accessories_endpoint(slug: str, req: RedetectRequest, session: Session = Depends(get_session)):
+    """Relance la detection d'accessoires sur un texte avec les patterns catalogue actuels."""
+    model = resolve_bike_model(slug, session)
+    catalog_groups = get_catalog_groups(session)
+    patterns = build_patterns_from_catalog(catalog_groups)
+    exclusions = get_exclusion_patterns(session, model.id)
+    accessories = detect_accessories(req.body, patterns, exclusions=exclusions)
+    return {"accessories": accessories}
+
+
 @app.post("/api/catalog/test-on-ad")
 def test_on_ad_endpoint(req: TestOnAdRequest, session: Session = Depends(get_session)):
     import re as re_module

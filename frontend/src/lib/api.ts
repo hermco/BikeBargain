@@ -1,4 +1,4 @@
-import type { AdsResponse, AdDetail, Stats, Ranking, CrawlSearchResult, CrawlExtractResult, PriceHistory, CheckPricesResult, BikeModel, BikeModelDetail, BikeVariant } from '../types'
+import type { AdsResponse, AdDetail, Stats, Ranking, CrawlSearchResult, CrawlExtractResult, PriceHistory, CheckPricesResult, BikeModel, BikeModelDetail, BikeVariant, Accessory } from '../types'
 import { config } from '../config'
 
 const BASE = `${config.apiBaseUrl}/api`
@@ -386,6 +386,14 @@ export function updateCrawlAdAction(slug: string, sessionId: number, adId: numbe
 
 export function closeCrawlSession(slug: string, sessionId: number): Promise<{ closed: number }> {
   return fetchJSON(`/bike-models/${slug}/crawl/sessions/${sessionId}`, { method: 'DELETE' })
+}
+
+export function redetectAccessories(slug: string, body: string): Promise<{ accessories: Accessory[] }> {
+  return fetchJSON(`/bike-models/${slug}/ads/redetect`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ body }),
+  })
 }
 
 export function removeCrawlSessionAd(slug: string, sessionId: number, adId: number): Promise<{ removed: number }> {
