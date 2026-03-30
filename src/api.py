@@ -64,6 +64,11 @@ app.add_middleware(
 )
 
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 @app.on_event("startup")
 def on_startup():
     # En production (Railway), les migrations sont lancees par le startCommand
