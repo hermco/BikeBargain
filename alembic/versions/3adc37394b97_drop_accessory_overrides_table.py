@@ -19,7 +19,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.drop_table("accessory_overrides")
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    if 'accessory_overrides' in inspector.get_table_names():
+        op.drop_table("accessory_overrides")
 
 
 def downgrade() -> None:

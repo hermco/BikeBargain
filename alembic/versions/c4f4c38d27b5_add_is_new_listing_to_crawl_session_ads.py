@@ -20,7 +20,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.add_column('crawl_session_ads', sa.Column('is_new_listing', sa.Integer(), server_default='0', nullable=False))
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = [c['name'] for c in inspector.get_columns('crawl_session_ads')]
+    if 'is_new_listing' not in columns:
+        op.add_column('crawl_session_ads', sa.Column('is_new_listing', sa.Integer(), server_default='0', nullable=False))
 
 
 def downgrade() -> None:
