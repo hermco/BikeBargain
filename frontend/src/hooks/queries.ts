@@ -398,6 +398,15 @@ export function useActiveCrawlSession(slug: string) {
   })
 }
 
+export function useCrawlSession(slug: string, sessionId: number | null) {
+  return useQuery({
+    queryKey: ['crawl-session', slug, sessionId],
+    queryFn: () => api.fetchCrawlSession(slug, sessionId!),
+    retry: false,
+    enabled: !!slug && sessionId != null,
+  })
+}
+
 export function useCrawlSearch(slug: string) {
   const qc = useQueryClient()
   return useMutation({

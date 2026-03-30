@@ -84,20 +84,34 @@ def detect_accessories(
 
     text_lower = _clean_text_for_detection(text, exclusions)
     matched_groups: set[str] = set()
-    found: list[dict] = []
 
+    # Phase 1: collect first match per group (group dedup)
+    candidates: list[tuple[int, int, dict]] = []
     for pattern, name, category, price_new, group in patterns:
         if group in matched_groups:
             continue
-        if re.search(pattern, text_lower):
-            matched_groups.add(group)
-            found.append({
-                "name": name,
-                "category": category,
-                "source": "body",
-                "estimated_new_price": price_new,
-                "estimated_used_price": int(price_new * DEPRECIATION_RATE),
-            })
+        m = re.search(pattern, text_lower)
+        if not m:
+            continue
+        matched_groups.add(group)
+        candidates.append((m.start(), m.end(), {
+            "name": name,
+            "category": category,
+            "source": "body",
+            "estimated_new_price": price_new,
+            "estimated_used_price": int(price_new * DEPRECIATION_RATE),
+        }))
+
+    # Phase 2: resolve overlapping spans — longest match wins.
+    # Ties broken by earliest start (captures more leading context like "rehausse").
+    candidates.sort(key=lambda c: (-(c[1] - c[0]), c[0]))
+    kept_spans: list[tuple[int, int]] = []
+    found: list[dict] = []
+    for start, end, accessory in candidates:
+        if any(s <= start < e or s < end <= e for s, e in kept_spans):
+            continue
+        kept_spans.append((start, end))
+        found.append(accessory)
 
     return found
 

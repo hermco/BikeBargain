@@ -1604,6 +1604,50 @@ def get_active_crawl_session_scoped(slug: str, session: Session = Depends(get_se
     }
 
 
+@app.get("/api/bike-models/{slug}/crawl/sessions/{session_id}")
+def get_crawl_session_by_id(slug: str, session_id: int, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
+
+    crawl_session = session.exec(
+        select(CrawlSession)
+        .where(CrawlSession.id == session_id, CrawlSession.bike_model_id == model.id)
+    ).first()
+
+    if not crawl_session:
+        raise HTTPException(status_code=404, detail="Session de crawl introuvable")
+
+    existing_ids = set(session.exec(select(Ad.id)).all())
+
+    rows = session.exec(
+        select(CrawlSessionAd)
+        .where(CrawlSessionAd.session_id == crawl_session.id)
+        .order_by(CrawlSessionAd.position)
+    ).all()
+
+    ads = []
+    for row in rows:
+        ads.append({
+            "id": row.ad_id,
+            "url": row.url,
+            "subject": row.subject,
+            "price": row.price,
+            "city": row.city,
+            "department": row.department,
+            "thumbnail": row.thumbnail,
+            "exists_in_db": row.ad_id in existing_ids,
+            "action": row.action,
+            "is_new_listing": bool(row.is_new_listing),
+        })
+
+    return {
+        "session_id": crawl_session.id,
+        "status": crawl_session.status,
+        "total_ads": crawl_session.total_ads,
+        "created_at": crawl_session.created_at,
+        "ads": ads,
+    }
+
+
 @app.patch("/api/bike-models/{slug}/crawl/sessions/{session_id}/ads/{ad_id}")
 def update_crawl_session_ad_scoped(slug: str, session_id: int, ad_id: int, req: UpdateCrawlAdAction, session: Session = Depends(get_session)):
     resolve_bike_model(slug, session)  # Validate slug

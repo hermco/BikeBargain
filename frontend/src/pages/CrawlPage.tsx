@@ -4,12 +4,12 @@ import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { CategoryBadge } from '../components/AccessoryBadge'
 import { useToast } from '../components/Toast'
-import { useCrawlSearch, useCrawlExtract, useCrawlConfirm, useMergeAd, useCatalogGroups, useActiveCrawlSession, useUpdateCrawlAdAction, useCloseCrawlSession, useRemoveCrawlSessionAd, useCheckPrices, useConfirmPrice } from '../hooks/queries'
+import { useCrawlSearch, useCrawlExtract, useCrawlConfirm, useMergeAd, useCatalogGroups, useActiveCrawlSession, useCrawlSession, useUpdateCrawlAdAction, useCloseCrawlSession, useRemoveCrawlSessionAd, useCheckPrices, useConfirmPrice } from '../hooks/queries'
 import { variantColor } from '../lib/utils'
 import { useFormatters } from '../hooks/useFormatters'
 import { useCurrentModel, useVariantOptions } from '../hooks/useCurrentModel'
 import type { CrawlAdSummary, CrawlDiff, Accessory, PotentialDuplicate, PriceChangeEntry } from '../types'
-import { Link } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
 const CRAWL_DELAY_MS = 5000
@@ -33,6 +33,11 @@ export function CrawlPage() {
   const { formatPrice } = useFormatters()
   const { slug, modelUrl } = useCurrentModel()
   const { variantNames, wheelTypes, colorsForVariant } = useVariantOptions()
+  const { sessionId: urlSessionId, adId: urlAdId } = useParams<{ sessionId?: string; adId?: string }>()
+  const navigate = useNavigate()
+  const urlSessionIdNum = urlSessionId ? parseInt(urlSessionId, 10) : null
+  const urlAdIdNum = urlAdId ? parseInt(urlAdId, 10) : null
+  const pendingAdPickRef = useRef<number | null>(urlAdIdNum)
   const [status, setStatus] = useState<CrawlStatus>('idle')
   const [adStates, setAdStates] = useState<AdState[]>([])
   const [currentIndex, setCurrentIndex] = useState(-1)
@@ -85,7 +90,10 @@ export function CrawlPage() {
       has_override: false,
     }))
   ) ?? []
-  const { data: activeSession, isLoading: isLoadingSession } = useActiveCrawlSession(slug)
+  const { data: activeSession, isLoading: isLoadingActiveSession } = useActiveCrawlSession(slug)
+  const { data: urlSession, isLoading: isLoadingUrlSession } = useCrawlSession(slug, urlSessionIdNum)
+  const sessionToRestore = urlSessionIdNum ? urlSession : activeSession
+  const isLoadingSession = urlSessionIdNum ? isLoadingUrlSession : isLoadingActiveSession
   const { toast } = useToast()
   const checkPricesMut = useCheckPrices(slug)
   const confirmPriceMut = useConfirmPrice(slug)
@@ -99,10 +107,10 @@ export function CrawlPage() {
   const restoredRef = useRef(false)
 
   useEffect(() => {
-    if (restoredRef.current || isLoadingSession || !activeSession) return
+    if (restoredRef.current || isLoadingSession || !sessionToRestore) return
     restoredRef.current = true
 
-    const states: AdState[] = activeSession.ads.map((ad) => ({
+    const states: AdState[] = sessionToRestore.ads.map((ad) => ({
       summary: {
         id: ad.id,
         url: ad.url,
@@ -118,7 +126,7 @@ export function CrawlPage() {
       action: ad.action as AdAction,
     }))
 
-    setSessionId(activeSession.session_id)
+    setSessionId(sessionToRestore.session_id)
     setAdStates(states)
 
     const confirmed = states.filter((s) => s.action === 'confirmed').length
@@ -132,7 +140,25 @@ export function CrawlPage() {
 
     const hasPending = states.some((s) => s.action === 'pending')
     setStatus(hasPending ? 'ready' : 'done')
-  }, [activeSession, isLoadingSession])
+
+    // Update URL to include session ID if not already there
+    if (!urlSessionIdNum) {
+      navigate(modelUrl(`crawl/${sessionToRestore.session_id}`), { replace: true })
+    }
+  }, [sessionToRestore, isLoadingSession])
+
+  // ─── Auto-pick ad from URL param ────────────────────────────────────────
+
+  useEffect(() => {
+    if (pendingAdPickRef.current == null || adStates.length === 0 || status === 'idle' || status === 'searching') return
+    const adId = pendingAdPickRef.current
+    pendingAdPickRef.current = null
+    const index = adStates.findIndex((s) => s.summary.id === adId)
+    if (index >= 0) {
+      // Defer to next tick so state from restore is fully committed
+      setTimeout(() => handleManualPick(index), 0)
+    }
+  }, [adStates, status])
 
   // ─── Search ────────────────────────────────────────────────────────────
 
@@ -153,6 +179,7 @@ export function CrawlPage() {
     searchMut.mutate(undefined, {
       onSuccess: (data) => {
         setSessionId(data.session_id)
+        navigate(modelUrl(`crawl/${data.session_id}`), { replace: true })
         const states: AdState[] = data.ads.map((ad) => ({
           summary: ad,
           action: 'pending' as AdAction,
@@ -238,6 +265,7 @@ export function CrawlPage() {
     setAdStates(updated)
 
     const ad = states[nextIdx].summary
+    navigateToAd(ad.id)
     extractMut.mutate(
       { adId: ad.id, url: ad.url },
       {
@@ -298,6 +326,14 @@ export function CrawlPage() {
     processNext(adStates, currentIndex)
   }
 
+  function navigateToAd(adId: number) {
+    if (sessionId) navigate(modelUrl(`crawl/${sessionId}/ad/${adId}`), { replace: true })
+  }
+
+  function navigateToSession() {
+    if (sessionId) navigate(modelUrl(`crawl/${sessionId}`), { replace: true })
+  }
+
   function handleManualPick(index: number) {
     const state = adStates[index]
 
@@ -306,14 +342,24 @@ export function CrawlPage() {
       setIsManualPick(true)
       setCurrentIndex(index)
       setStatus('waiting_validation')
+      navigateToAd(state.summary.id)
       return
     }
 
-    if (state.action !== 'pending') return
+    if (state.action === 'error') {
+      // Reset error state so it can be retried
+      const reset = [...adStates]
+      reset[index] = { ...reset[index], action: 'pending', error: undefined }
+      setAdStates(reset)
+      setProcessedCount((c) => Math.max(0, c - 1))
+    } else if (state.action !== 'pending') {
+      return
+    }
 
     setIsManualPick(true)
     setCurrentIndex(index)
     setStatus('crawling')
+    navigateToAd(state.summary.id)
     setEditingField(null)
     setGalleryIdx(0)
     setLightboxOpen(false)
@@ -366,6 +412,7 @@ export function CrawlPage() {
     setIsManualPick(false)
     setStatus('ready')
     setCurrentIndex(-1)
+    navigateToSession()
     setEditingField(null)
     setGalleryIdx(0)
     setLightboxOpen(false)
@@ -426,6 +473,7 @@ export function CrawlPage() {
           setIsManualPick(false)
           setStatus('ready')
           setCurrentIndex(-1)
+          navigateToSession()
           toast(t('crawl.adAddedToast', { subject: state.summary.subject }), 'success')
         } else {
           startCrawlTransition('confirmed', state.summary.subject ?? '', () => processNext(updated, currentIndex + 1))
@@ -461,6 +509,7 @@ export function CrawlPage() {
       setIsManualPick(false)
       setStatus('ready')
       setCurrentIndex(-1)
+      navigateToSession()
       toast(t('crawl.adSkippedToast', { subject: state.summary.subject }), 'info')
     } else {
       startCrawlTransition('skipped', state.summary.subject ?? '', () => processNext(updated, currentIndex + 1))
@@ -497,6 +546,7 @@ export function CrawlPage() {
           setIsManualPick(false)
           setStatus('ready')
           setCurrentIndex(-1)
+          navigateToSession()
         } else {
           startCrawlTransition('confirmed', state.summary.subject ?? '', () => processNext(updated, currentIndex + 1))
         }
@@ -633,6 +683,7 @@ export function CrawlPage() {
                     if (sessionId) closeSessionMut.mutate(sessionId)
                     restoredRef.current = true
                     setSessionId(null)
+                    navigate(modelUrl('crawl'), { replace: true })
                     setStatus('idle')
                     setAdStates([])
                     setCurrentIndex(-1)
@@ -831,6 +882,7 @@ export function CrawlPage() {
               if (sessionId) closeSessionMut.mutate(sessionId)
               restoredRef.current = true
               setSessionId(null)
+              navigate(modelUrl('crawl'), { replace: true })
               setStatus('idle')
               setAdStates([])
               setCurrentIndex(-1)
@@ -1499,7 +1551,7 @@ export function CrawlPage() {
               const isConfirmed = state.action === 'confirmed'
               const isSkipped = state.action === 'skipped'
               const isError = state.action === 'error'
-              const isClickable = isPending || isWaiting
+              const isClickable = isPending || isWaiting || isError
               return (
               <div
                 key={state.summary.id}

@@ -33,6 +33,8 @@ export default function App() {
                 <Route path="ads/:id" element={<AdDetailPage />} />
                 <Route path="stats" element={<StatsPage />} />
                 <Route path="crawl" element={<CrawlPage />} />
+                <Route path="crawl/:sessionId" element={<CrawlPage />} />
+                <Route path="crawl/:sessionId/ad/:adId" element={<CrawlPage />} />
                 <Route path="catalog" element={<CatalogPage />} />
               </Route>
               {/* Legacy redirects */}

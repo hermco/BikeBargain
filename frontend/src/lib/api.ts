@@ -372,6 +372,10 @@ export function fetchActiveCrawlSession(slug: string): Promise<CrawlSession | nu
   return fetchJSON<CrawlSession | null>(`/bike-models/${slug}/crawl/sessions/active`)
 }
 
+export function fetchCrawlSession(slug: string, sessionId: number): Promise<CrawlSession> {
+  return fetchJSON<CrawlSession>(`/bike-models/${slug}/crawl/sessions/${sessionId}`)
+}
+
 export function updateCrawlAdAction(slug: string, sessionId: number, adId: number, action: string): Promise<{ updated: boolean }> {
   return fetchJSON(`/bike-models/${slug}/crawl/sessions/${sessionId}/ads/${adId}`, {
     method: 'PATCH',
