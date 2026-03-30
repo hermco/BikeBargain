@@ -2,14 +2,13 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, AlertTriangle, ExternalLink, Search, X, Wifi, Car } from 'lucide-react'
+import { ChevronDown, AlertTriangle, ExternalLink, Search, X, ScanSearch, Car, EyeOff, Eye } from 'lucide-react'
 import { useRankings, useCheckAdsOnline } from '../hooks/queries'
 import { useCurrentModel } from '../hooks/useCurrentModel'
 import { useToast } from '../components/Toast'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
-import { Select } from '../components/ui/Select'
 import { TableSkeleton } from '../components/LoadingSkeleton'
 import { EmptyState } from '../components/EmptyState'
 import { LocationPicker } from '../components/LocationPicker'
@@ -139,26 +138,34 @@ function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
 
 // ─── Mobile card ─────────────────────────────────────────────────────────────
 
-function RankingCard({ r, rank, isOpen, onToggle, travel, travelLoading }: {
-  r: Ranking; rank: number; isOpen: boolean; onToggle: () => void; travel?: TravelInfo; travelLoading?: boolean
+function RankingCard({ r, rank, isOpen, onToggle, travel, travelLoading, hasFilters: filtered }: {
+  r: Ranking; rank: number; isOpen: boolean; onToggle: () => void; travel?: TravelInfo; travelLoading?: boolean; hasFilters?: boolean
 }) {
   const { t } = useTranslation()
   const { formatPrice, formatKm } = useFormatters()
-  const colorStr = `${r.color || r.variant}${r.wheel_type === 'tubeless' ? ' TL' : ''}`
+  const colorStr = `${r.color || '?'}${r.wheel_type === 'tubeless' ? ' TL' : ''}`
+  const isPodium = !filtered && !r.sold && rank <= 3
+  const podiumBorder = isPodium && rank === 1
+    ? 'border-l-2 border-l-amber-400/60'
+    : isPodium && rank === 2
+      ? 'border-l-2 border-l-gray-300/40'
+      : isPodium && rank === 3
+        ? 'border-l-2 border-l-amber-700/40'
+        : ''
 
   return (
-    <Card className={cn('overflow-hidden', r.sold && 'opacity-50')}>
+    <Card className={cn('overflow-hidden', r.sold ? 'opacity-50 !border-red-500/25 bg-red-950/15' : podiumBorder)}>
       <button onClick={onToggle} className="w-full text-left p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-lg font-bold text-text-muted font-fraunces">#{rank}</span>
+            <span className={cn('text-lg font-bold font-fraunces', r.sold ? 'text-red-400/60' : 'text-text-muted')}>#{rank}</span>
             <div>
               <p className="text-sm font-medium text-text-primary flex items-center gap-2 flex-wrap">
                 {r.city}
                 <TravelBadge travel={travel} loading={travelLoading} />
-                {r.sold && <span className="text-[10px] text-red-400 uppercase font-semibold">{t('common.sold')}</span>}
+                {r.sold && <span className="text-[10px] text-red-100 uppercase font-bold bg-red-500/30 border border-red-500/40 px-2 py-0.5 rounded-md tracking-wider shadow-sm shadow-red-500/10">{t('common.sold')}</span>}
               </p>
-              <Badge className={variantColor(r.variant)}>{colorStr}</Badge>
+              <Badge className={variantColor(r.color)}>{colorStr}</Badge>
             </div>
           </div>
           <div className="text-right">
@@ -179,6 +186,23 @@ function RankingCard({ r, rank, isOpen, onToggle, travel, travelLoading }: {
             <span className="text-orange-400/80">+{r.wear_total}</span>
             <ChevronDown className={cn('h-4 w-4 text-text-dim transition-transform duration-200', isOpen && 'rotate-180')} />
           </div>
+        </div>
+
+        {/* Décote progress bar */}
+        <div className="flex items-center gap-2 pt-1">
+          <span className="text-[10px] text-text-dim">{t('ranking.discount')}</span>
+          <div className="flex-1 h-1 rounded-full bg-white/[0.06] overflow-hidden">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all duration-500',
+                r.decote_pct > 20 ? 'bg-emerald-400/70' : r.decote_pct > 10 ? 'bg-amber-400/70' : 'bg-red-400/70',
+              )}
+              style={{ width: `${Math.min(r.decote_pct, 40) / 40 * 100}%` }}
+            />
+          </div>
+          <span className={cn('text-[10px] font-semibold tabular-nums', r.decote_pct > 20 ? 'text-emerald-400' : r.decote_pct > 10 ? 'text-amber-400' : 'text-red-400')}>
+            -{r.decote_pct}%
+          </span>
         </div>
       </button>
 
@@ -204,6 +228,8 @@ export function RankingPage() {
   const [expanded, setExpanded] = useState<number | null>(null)
   const [sortKey, setSortKey] = useState<SortKey>('rank')
   const [sortAsc, setSortAsc] = useState(true)
+
+  const [hideSold, setHideSold] = useState(false)
 
   // Filtres
   const [search, setSearch] = useState('')
@@ -263,6 +289,8 @@ export function RankingPage() {
     [rankings],
   )
 
+  const soldCount = useMemo(() => (rankings ?? []).filter((r) => r.sold).length, [rankings])
+
   const hasFilters = search || filterColors.size > 0 || filterWheel || maxKm || maxPrice || maxTrajet
 
   function toggleColor(color: string) {
@@ -300,6 +328,7 @@ export function RankingPage() {
   }
 
   const filtered = useMemo(() => (rankings ?? []).filter((r) => {
+    if (hideSold && r.sold) return false
     if (search) {
       const q = search.toLowerCase()
       if (!r.city.toLowerCase().includes(q) && !r.color?.toLowerCase().includes(q) && !r.variant.toLowerCase().includes(q)) return false
@@ -313,7 +342,7 @@ export function RankingPage() {
       if (t == null || t.durationSec > Number(maxTrajet) * 60) return false
     }
     return true
-  }), [rankings, search, filterColors, filterWheel, maxKm, maxPrice, maxTrajet, travelMap])
+  }), [rankings, search, filterColors, filterWheel, maxKm, maxPrice, maxTrajet, hideSold, travelMap])
 
   const sorted = useMemo(() => [...filtered].sort((a, b) => {
     const aIdx = rankMap.get(a.id) ?? 0
@@ -337,7 +366,7 @@ export function RankingPage() {
   }), [filtered, sortKey, sortAsc, rankMap, travelMap, distanceMap])
 
   if (isLoading) return <TableSkeleton rows={10} />
-  if (!rankings?.length) return <EmptyState title={t('ranking.emptyTitle')} description={t('ranking.emptyDescription')} />
+  if (!rankings?.length) return <EmptyState icon="trophy" title={t('ranking.emptyTitle')} description={t('ranking.emptyDescription')} />
 
   const hasLocation = userLoc != null
   const colSpan = hasLocation ? 9 : 8
@@ -353,7 +382,12 @@ export function RankingPage() {
   )
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="space-y-6"
+    >
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight font-fraunces">{t('ranking.title')}</h1>
@@ -382,7 +416,7 @@ export function RankingPage() {
             })
           }}
         >
-          <Wifi className={`h-3.5 w-3.5 ${checkOnlineMut.isPending ? 'animate-pulse' : ''}`} />
+          <ScanSearch className={`h-3.5 w-3.5 ${checkOnlineMut.isPending ? 'animate-pulse' : ''}`} />
           <span className="hidden sm:inline">{checkOnlineMut.isPending ? t('common.checking') : t('common.checkOnline')}</span>
         </Button>
       </div>
@@ -425,7 +459,7 @@ export function RankingPage() {
                       >
                         <span className="text-text-dim font-fraunces">#{origRank}</span>
                         <span className="text-text-secondary">{r.city}</span>
-                        <Badge className={cn(variantColor(r.variant), 'text-[10px]')}>{r.color || r.variant}</Badge>
+                        <Badge className={cn(variantColor(r.color), 'text-[10px]')}>{r.color || '?'}</Badge>
                         <span className="text-text-primary font-medium tabular-nums">{formatPrice(r.price)}</span>
                       </Link>
                     )
@@ -436,7 +470,7 @@ export function RankingPage() {
         )}
       </AnimatePresence>
 
-      {/* Filtres */}
+      {/* Row 1: Search + Hide Sold toggle */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-dim" />
@@ -448,83 +482,210 @@ export function RankingPage() {
             className="w-full rounded-xl bg-white/[0.04] border border-white/[0.06] pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/30 transition-all"
           />
         </div>
-        <div className="flex flex-wrap gap-1.5 items-center">
-          {availableColors.map((c) => (
-            <button
-              key={c}
-              onClick={() => toggleColor(c)}
-              className={cn(
-                'rounded-lg px-2.5 py-1.5 text-xs font-medium border transition-all cursor-pointer',
-                filterColors.has(c)
-                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                  : 'bg-white/[0.03] border-white/[0.06] text-text-dim hover:text-text-secondary hover:bg-white/[0.06]',
-              )}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-        <Select
-          value={filterWheel}
-          onChange={setFilterWheel}
-          options={[
-            { value: '', label: t('ranking.allWheels') },
-            { value: 'rayons', label: t('ranking.spoked') },
-            { value: 'tubeless', label: t('ranking.tubeless') },
-          ]}
-          className="w-full sm:w-auto sm:min-w-[140px]"
-        />
-        <input
-          type="number"
-          placeholder={t('ranking.maxKm')}
-          value={maxKm}
-          onChange={(e) => setMaxKm(e.target.value)}
-          className="rounded-xl bg-white/[0.04] border border-white/[0.06] px-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all w-full sm:w-[110px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-        />
-        <input
-          type="number"
-          placeholder={t('ranking.maxPrice')}
-          value={maxPrice}
-          onChange={(e) => setMaxPrice(e.target.value)}
-          className="rounded-xl bg-white/[0.04] border border-white/[0.06] px-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all w-full sm:w-[110px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-        />
-        {hasLocation && (
-          <div className="flex gap-1.5 items-center">
+        <button
+          onClick={() => setHideSold(!hideSold)}
+          className={cn(
+            'flex items-center gap-2.5 rounded-xl border px-4 py-2.5 transition-all cursor-pointer shrink-0',
+            hideSold
+              ? 'bg-gradient-to-r from-amber-500/12 to-amber-500/6 border-amber-500/25'
+              : 'bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.05]',
+          )}
+          title={t('ranking.toggleSold')}
+        >
+          {/* Toggle switch */}
+          <div className={cn(
+            'relative w-9 h-5 rounded-full transition-colors duration-200',
+            hideSold ? 'bg-amber-500/80' : 'bg-white/[0.12]',
+          )}>
+            <div className={cn(
+              'absolute top-[2px] w-4 h-4 rounded-full bg-bg shadow-sm transition-all duration-200',
+              hideSold ? 'left-[18px]' : 'left-[2px]',
+            )} />
+          </div>
+          <span className={cn(
+            'text-sm font-medium transition-colors',
+            hideSold ? 'text-amber-300' : 'text-text-muted',
+          )}>
+            {t('ranking.hideSold')}
+          </span>
+          {soldCount > 0 && (
+            <span className={cn(
+              'text-[11px] tabular-nums font-semibold px-1.5 py-0.5 rounded-md transition-colors',
+              hideSold ? 'bg-amber-500/15 text-amber-400' : 'bg-white/[0.06] text-text-dim',
+            )}>
+              {soldCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Row 2: Filter groups in card container */}
+      <div className="rounded-xl bg-white/[0.02] border border-white/[0.05] px-4 py-3">
+        <div className="flex flex-wrap gap-x-4 gap-y-3 items-center">
+
+          {/* Color group */}
+          {availableColors.length > 0 && (
+            <>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] uppercase tracking-widest text-text-dim font-semibold mr-1">{t('ranking.color')}</span>
+                {availableColors.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => toggleColor(c)}
+                    className={cn(
+                      'rounded-lg px-2.5 py-1 text-xs font-medium border transition-all cursor-pointer',
+                      filterColors.has(c)
+                        ? 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+                        : 'bg-white/[0.03] border-white/[0.06] text-text-dim hover:text-text-secondary hover:bg-white/[0.06]',
+                    )}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+              <div className="w-px h-5 bg-white/[0.06] hidden sm:block" />
+            </>
+          )}
+
+          {/* Wheels group */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-widest text-text-dim font-semibold mr-1">{t('ranking.wheels')}</span>
             {[
-              { label: '< 1h', value: '60' },
-              { label: '< 2h', value: '120' },
-              { label: '< 3h', value: '180' },
-              { label: '< 5h', value: '300' },
-            ].map((p) => (
+              { value: '', label: t('ranking.allWheels') },
+              { value: 'rayons', label: t('ranking.spoked') },
+              { value: 'tubeless', label: t('ranking.tubeless') },
+            ].map((opt) => (
               <button
-                key={p.value}
-                onClick={() => setMaxTrajet(maxTrajet === p.value ? '' : p.value)}
+                key={opt.value}
+                onClick={() => setFilterWheel(filterWheel === opt.value ? '' : opt.value)}
                 className={cn(
-                  'rounded-lg px-2.5 py-1.5 text-xs font-medium border transition-all cursor-pointer',
-                  maxTrajet === p.value
-                    ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                  'rounded-lg px-2.5 py-1 text-xs font-medium border transition-all cursor-pointer',
+                  filterWheel === opt.value
+                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-300'
                     : 'bg-white/[0.03] border-white/[0.06] text-text-dim hover:text-text-secondary hover:bg-white/[0.06]',
                 )}
               >
-                {p.label}
+                {opt.label}
               </button>
             ))}
           </div>
-        )}
-        {hasFilters && (
-          <button
-            onClick={clearFilters}
-            className="rounded-xl bg-white/[0.04] border border-white/[0.06] px-3 py-2.5 text-sm text-text-dim hover:text-text-secondary hover:bg-white/[0.06] transition-all flex items-center gap-1.5"
-          >
-            <X className="h-3.5 w-3.5" /> {t('common.clear')}
-          </button>
-        )}
+
+          <div className="w-px h-5 bg-white/[0.06] hidden sm:block" />
+
+          {/* Max values group */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-widest text-text-dim font-semibold mr-1">Max</span>
+            <div className="relative">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-text-dim pointer-events-none">km</span>
+              <input
+                type="number"
+                placeholder="—"
+                value={maxKm}
+                onChange={(e) => setMaxKm(e.target.value)}
+                className="rounded-lg bg-white/[0.04] border border-white/[0.06] pl-8 pr-2.5 py-1 text-xs text-text-primary placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-all w-[90px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+            </div>
+            <div className="relative">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-text-dim pointer-events-none">€</span>
+              <input
+                type="number"
+                placeholder="—"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+                className="rounded-lg bg-white/[0.04] border border-white/[0.06] pl-7 pr-2.5 py-1 text-xs text-text-primary placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-all w-[90px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+            </div>
+          </div>
+
+          {/* Travel time presets (only if location set) */}
+          {hasLocation && (
+            <>
+              <div className="w-px h-5 bg-white/[0.06] hidden sm:block" />
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] uppercase tracking-widest text-text-dim font-semibold mr-1">{t('ranking.travel')}</span>
+                {[
+                  { label: '< 1h', value: '60' },
+                  { label: '< 2h', value: '120' },
+                  { label: '< 3h', value: '180' },
+                  { label: '< 5h', value: '300' },
+                ].map((p) => (
+                  <button
+                    key={p.value}
+                    onClick={() => setMaxTrajet(maxTrajet === p.value ? '' : p.value)}
+                    className={cn(
+                      'rounded-lg px-2.5 py-1 text-xs font-medium border transition-all cursor-pointer',
+                      maxTrajet === p.value
+                        ? 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+                        : 'bg-white/[0.03] border-white/[0.06] text-text-dim hover:text-text-secondary hover:bg-white/[0.06]',
+                    )}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Spacer + clear */}
+          {hasFilters && (
+            <>
+              <div className="flex-1" />
+              <button
+                onClick={clearFilters}
+                className="text-xs text-text-dim hover:text-text-secondary transition-colors flex items-center gap-1"
+              >
+                <X className="h-3 w-3" /> {t('common.clear')}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
-      {filtered.length < rankings.length && (
-        <p className="text-xs text-text-dim">
-          {filtered.length} / {rankings.length} {t('ranking.ad', { count: rankings.length })}
-        </p>
+      {/* Row 3: Active filter chips + result count */}
+      {(hasFilters || filtered.length < rankings.length) && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {search && (
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-amber-300">
+              "{search}"
+              <button onClick={() => setSearch('')} className="hover:text-amber-100 transition-colors"><X className="h-2.5 w-2.5" /></button>
+            </span>
+          )}
+          {[...filterColors].map((c) => (
+            <span key={c} className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-amber-300">
+              {c}
+              <button onClick={() => toggleColor(c)} className="hover:text-amber-100 transition-colors"><X className="h-2.5 w-2.5" /></button>
+            </span>
+          ))}
+          {filterWheel && (
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-amber-300">
+              {filterWheel === 'rayons' ? t('ranking.spoked') : t('ranking.tubeless')}
+              <button onClick={() => setFilterWheel('')} className="hover:text-amber-100 transition-colors"><X className="h-2.5 w-2.5" /></button>
+            </span>
+          )}
+          {maxKm && (
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-amber-300">
+              ≤ {Number(maxKm).toLocaleString()} km
+              <button onClick={() => setMaxKm('')} className="hover:text-amber-100 transition-colors"><X className="h-2.5 w-2.5" /></button>
+            </span>
+          )}
+          {maxPrice && (
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-amber-300">
+              ≤ {Number(maxPrice).toLocaleString()} €
+              <button onClick={() => setMaxPrice('')} className="hover:text-amber-100 transition-colors"><X className="h-2.5 w-2.5" /></button>
+            </span>
+          )}
+          {maxTrajet && (
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-amber-300">
+              ≤ {Math.round(Number(maxTrajet) / 60)}h
+              <button onClick={() => setMaxTrajet('')} className="hover:text-amber-100 transition-colors"><X className="h-2.5 w-2.5" /></button>
+            </span>
+          )}
+          {filtered.length < rankings.length && (
+            <span className="text-[11px] text-text-dim ml-1 tabular-nums">
+              {filtered.length} / {rankings.length} {t('ranking.ad', { count: rankings.length })}
+            </span>
+          )}
+        </div>
       )}
 
       {/* Mobile: card layout */}
@@ -540,6 +701,7 @@ export function RankingPage() {
               onToggle={() => setExpanded(expanded === r.id ? null : r.id)}
               travel={travelMap.get(r.id)}
               travelLoading={travelLoading}
+              hasFilters={!!hasFilters}
             />
           )
         })}
@@ -565,22 +727,37 @@ export function RankingPage() {
             {sorted.map((r) => {
               const origRank = (rankMap.get(r.id) ?? 0) + 1
               const isOpen = expanded === r.id
-              const colorStr = `${r.color || r.variant}${r.wheel_type === 'tubeless' ? ' TL' : ''}`
+              const colorStr = `${r.color || '?'}${r.wheel_type === 'tubeless' ? ' TL' : ''}`
+
+              const isPodium = !hasFilters && !r.sold && origRank <= 3
+              const podiumStyle = isPodium && origRank === 1
+                ? 'border-l-2 border-l-amber-400/60 bg-amber-500/[0.04]'
+                : isPodium && origRank === 2
+                  ? 'border-l-2 border-l-gray-300/40 bg-white/[0.02]'
+                  : isPodium && origRank === 3
+                    ? 'border-l-2 border-l-amber-700/40 bg-amber-900/[0.03]'
+                    : ''
 
               return (
                 <React.Fragment key={r.id}>
                   <tr
                     className={cn(
-                      'border-b border-white/[0.04] cursor-pointer transition-all duration-200',
-                      isOpen ? 'bg-white/[0.04]' : 'hover:bg-white/[0.02]',
-                      r.sold && 'opacity-50',
+                      'border-b border-white/[0.04] cursor-pointer transition-all duration-200 group/row',
+                      isOpen ? 'bg-white/[0.04]' : 'hover:bg-white/[0.03]',
+                      r.sold ? 'opacity-50 bg-red-950/20 border-l-2 !border-l-red-500/40' : podiumStyle,
                     )}
                     onClick={() => setExpanded(isOpen ? null : r.id)}
                   >
-                    <td className="py-3 pl-5 pr-4 w-12 text-center font-bold text-text-muted font-fraunces">{origRank}</td>
+                    <td className={cn(
+                      'py-3 pl-5 pr-4 w-12 text-center font-bold font-fraunces',
+                      r.sold ? 'text-red-400/60' :
+                      isPodium && origRank === 1 ? 'text-amber-400' :
+                      isPodium && origRank === 2 ? 'text-gray-300' :
+                      isPodium && origRank === 3 ? 'text-amber-600' : 'text-text-muted',
+                    )}>{origRank}</td>
                     <td className="py-3 pr-4 text-text-secondary">
                       {r.city}
-                      {r.sold && <span className="ml-2 text-[10px] text-red-400 uppercase font-semibold">{t('common.sold')}</span>}
+                      {r.sold && <span className="ml-2 text-[10px] text-red-100 uppercase font-bold bg-red-500/30 border border-red-500/40 px-2 py-0.5 rounded-md tracking-wider shadow-sm shadow-red-500/10">{t('common.sold')}</span>}
                     </td>
                     {hasLocation && (
                       <td className="py-3 pr-4 text-right w-20">
@@ -588,10 +765,10 @@ export function RankingPage() {
                       </td>
                     )}
                     <td className="py-3 pr-4">
-                      <Badge className={variantColor(r.variant)}>{colorStr}</Badge>
+                      <Badge className={variantColor(r.color)}>{colorStr}</Badge>
                     </td>
                     <td className="py-3 pr-4 text-right tabular-nums text-text-secondary">{formatKm(r.km)}</td>
-                    <td className="py-3 pr-4 text-right tabular-nums text-text-primary">{formatPrice(r.price)}</td>
+                    <td className={cn('py-3 pr-4 text-right tabular-nums text-text-primary', r.sold && 'line-through decoration-red-400/50')}>{formatPrice(r.price)}</td>
                     <td className="py-3 pr-4 text-right text-emerald-400 tabular-nums">
                       {r.acc_used_total > 0 ? `-${r.acc_used_total}` : '0'}
                     </td>

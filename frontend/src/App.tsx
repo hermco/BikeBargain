@@ -1,7 +1,11 @@
+import { useState, useCallback } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AnimatePresence } from 'framer-motion'
 import { ToastProvider } from './components/Toast'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { ScrollToTop } from './components/ScrollToTop'
+import { SplashScreen } from './components/SplashScreen'
 import { ModelLayout } from './components/ModelLayout'
 import { LegacyAdRedirect } from './components/LegacyRedirect'
 import { LandingPage } from './pages/LandingPage'
@@ -19,11 +23,22 @@ const queryClient = new QueryClient({
 })
 
 export default function App() {
+  const [splashDone, setSplashDone] = useState(false)
+
+  const handleSplashDone = useCallback(() => {
+    setSplashDone(true)
+  }, [])
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
+          <AnimatePresence>
+            {!splashDone && <SplashScreen onDone={handleSplashDone} />}
+          </AnimatePresence>
+          {splashDone && (
           <BrowserRouter>
+            <ScrollToTop />
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/models/:slug" element={<ModelLayout />}>
@@ -46,6 +61,7 @@ export default function App() {
               <Route path="/ads/:id" element={<LegacyAdRedirect />} />
             </Routes>
           </BrowserRouter>
+          )}
         </ToastProvider>
       </QueryClientProvider>
     </ErrorBoundary>

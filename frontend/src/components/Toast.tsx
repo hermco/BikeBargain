@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback } from 'react'
 import { CheckCircle, XCircle, Info, X } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../lib/utils'
 
 type ToastType = 'success' | 'error' | 'info'
@@ -49,39 +50,49 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }
 
   const colors = {
-    success: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-    error: 'text-red-400 bg-red-500/10 border-red-500/20',
-    info: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+    success: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20 border-l-emerald-400',
+    error: 'text-red-400 bg-red-500/10 border-red-500/20 border-l-red-400',
+    info: 'text-blue-400 bg-blue-500/10 border-blue-500/20 border-l-blue-400',
   }
 
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
       <div className="fixed bottom-24 md:bottom-6 right-6 z-[60] flex flex-col gap-2 pointer-events-none">
-        {toasts.map((t) => {
-          const Icon = icons[t.type]
-          return (
-            <div
-              key={t.id}
-              className={cn(
-                'pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-xl shadow-2xl shadow-black/40 min-w-[280px] max-w-[400px]',
-                colors[t.type],
-              )}
-              style={{
-                animation: t.leaving ? 'toastOut 0.2s ease-in forwards' : 'toastIn 0.3s ease-out',
-              }}
-            >
-              <Icon className="h-4.5 w-4.5 shrink-0" />
-              <span className="text-sm font-medium text-text-primary flex-1">{t.message}</span>
-              <button
-                onClick={() => removeToast(t.id)}
-                className="text-text-dim hover:text-text-secondary transition-colors shrink-0"
+        <AnimatePresence mode="popLayout">
+          {toasts.map((t) => {
+            const Icon = icons[t.type]
+            return (
+              <motion.div
+                key={t.id}
+                layout
+                initial={{ opacity: 0, x: 80, scale: 0.9 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: 80, scale: 0.9, filter: 'blur(4px)' }}
+                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                className={cn(
+                  'pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border border-l-[3px] backdrop-blur-xl shadow-2xl shadow-black/40 min-w-[280px] max-w-[400px]',
+                  colors[t.type],
+                )}
               >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          )
-        })}
+                <motion.span
+                  initial={{ scale: 0, rotate: -90 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ delay: 0.1, type: 'spring', stiffness: 500, damping: 15 }}
+                >
+                  <Icon className="h-4.5 w-4.5 shrink-0" />
+                </motion.span>
+                <span className="text-sm font-medium text-text-primary flex-1">{t.message}</span>
+                <button
+                  onClick={() => removeToast(t.id)}
+                  className="text-text-dim hover:text-text-secondary transition-colors shrink-0 hover:rotate-90 transition-transform duration-200"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </motion.div>
+            )
+          })}
+        </AnimatePresence>
       </div>
     </ToastContext.Provider>
   )

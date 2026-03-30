@@ -64,9 +64,38 @@ export function LandingPage() {
             initial={{ scale: 0.7, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.55, ease: [0.34, 1.56, 0.64, 1] }}
-            className="w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-xl shadow-amber-500/30 mx-auto mb-6"
+            className="mx-auto mb-6 relative"
           >
-            <span className="text-bg font-bold text-3xl font-fraunces">B</span>
+            <motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+              className="w-20 h-20 flex items-center justify-center"
+            >
+              <svg width="80" height="80" viewBox="0 0 110 110" fill="none" style={{ filter: 'drop-shadow(0 8px 24px rgba(212,168,83,0.3))' }}>
+                <defs>
+                  <linearGradient id="heroGauge" x1="0" y1="0" x2="110" y2="110" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#fbbf24"/>
+                    <stop offset="100%" stopColor="#d97706"/>
+                  </linearGradient>
+                </defs>
+                <circle cx="55" cy="55" r="50" stroke="rgba(255,255,255,0.1)" strokeWidth="3.5" fill="none"/>
+                <path d="M 18.4 80 A 50 50 0 1 1 91.6 80" stroke="url(#heroGauge)" strokeWidth="4" strokeLinecap="round" fill="none"/>
+                <line x1="55" y1="9" x2="55" y2="17" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round"/>
+                <line x1="91" y1="27" x2="86" y2="31" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round"/>
+                <line x1="19" y1="27" x2="24" y2="31" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round"/>
+                <line x1="101" y1="55" x2="95" y2="55" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round"/>
+                <line x1="9" y1="55" x2="15" y2="55" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round"/>
+                <line x1="55" y1="55" x2="76" y2="32" stroke="#d4a853" strokeWidth="2.5" strokeLinecap="round"/>
+                <circle cx="55" cy="55" r="5" fill="#d4a853"/>
+                <circle cx="55" cy="55" r="2.5" fill="#0c0f14"/>
+              </svg>
+            </motion.div>
+            {/* Glow beneath logo */}
+            <motion.div
+              className="absolute -inset-4 rounded-[2rem] bg-amber-500/10 blur-2xl -z-10"
+              animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0.7, 0.4] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            />
           </motion.div>
 
           <motion.h1
@@ -98,26 +127,25 @@ export function LandingPage() {
                 initial={{ opacity: 0, scale: 0.93, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ delay: 0.22 + i * 0.09, duration: 0.45, ease: 'easeOut' }}
-                whileHover={{ y: -4 }}
               >
                 <Link
                   to={`/models/${model.slug}/rankings`}
-                  className="group block rounded-2xl border border-white/[0.06] bg-surface/80 backdrop-blur-sm overflow-hidden transition-all duration-300 hover:border-amber-500/25 hover:shadow-2xl hover:shadow-amber-500/10"
+                  className="group block rounded-2xl border border-white/[0.06] bg-surface/80 backdrop-blur-sm overflow-hidden transition-all duration-500 ease-out hover:border-amber-500/25 hover:shadow-[0_8px_40px_rgba(212,168,83,0.12)] hover:-translate-y-1"
                 >
                   {/* Card image with gradient overlay */}
                   {model.image_url && (
-                    <div className="relative h-44 bg-bg overflow-hidden">
+                    <div className="relative h-44 bg-surface/80 overflow-hidden">
                       <img
                         src={model.image_url}
                         alt={model.name}
-                        className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500 ease-out"
+                        className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-700 ease-out"
                       />
-                      {/* Bottom-to-surface gradient */}
+                      {/* Bottom-to-surface gradient — seamless blend */}
                       <div
-                        className="absolute inset-0"
+                        className="absolute inset-0 pointer-events-none"
                         style={{
                           background:
-                            'linear-gradient(to bottom, transparent 40%, color-mix(in srgb, var(--color-surface) 90%, transparent) 100%)',
+                            'linear-gradient(to bottom, transparent 50%, var(--color-surface) 100%)',
                         }}
                       />
                     </div>
@@ -136,8 +164,8 @@ export function LandingPage() {
                       </div>
 
                       {/* Arrow indicator — fades in on hover */}
-                      <div className="shrink-0 mt-1 w-7 h-7 rounded-full border border-white/[0.08] bg-white/[0.04] flex items-center justify-center opacity-0 group-hover:opacity-100 group-hover:border-amber-500/30 group-hover:bg-amber-500/10 transition-all duration-200">
-                        <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
+                      <div className="shrink-0 mt-1 w-7 h-7 rounded-full border border-white/[0.08] bg-white/[0.04] flex items-center justify-center opacity-0 group-hover:opacity-100 group-hover:border-amber-500/30 group-hover:bg-amber-500/10 transition-all duration-300 -translate-x-1 group-hover:translate-x-0">
+                        <ArrowRight className="w-3.5 h-3.5 text-amber-400 transition-transform duration-200 group-hover:translate-x-0.5" />
                       </div>
                     </div>
 

@@ -1,8 +1,9 @@
-import { motion } from 'framer-motion'
+import { motion, useInView } from 'framer-motion'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, ReferenceLine,
 } from 'recharts'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStats } from '../hooks/queries'
 import { Card } from '../components/ui/Card'
@@ -10,6 +11,7 @@ import { StatCardSkeleton } from '../components/LoadingSkeleton'
 import { variantChartColor } from '../lib/utils'
 import { useFormatters } from '../hooks/useFormatters'
 import { useCurrentModel } from '../hooks/useCurrentModel'
+import { AnimatedNumber, EASE_OUT_EXPO } from '../components/animations'
 import { Package, TrendingUp, ArrowUpDown, Gauge } from 'lucide-react'
 
 const TOOLTIP_STYLE = {
@@ -40,16 +42,21 @@ function KpiCard({
   accent?: string
 }) {
   const colors = ACCENT_COLORS[accent] ?? ACCENT_COLORS.amber
+  const ref = useRef<HTMLDivElement>(null)
+  const isInView = useInView(ref, { once: true })
 
   return (
     <Card
-      className="p-6 relative overflow-hidden"
+      ref={ref}
+      className="p-6 relative overflow-hidden group"
       style={{ borderLeft: `4px solid ${colors.border}` }}
     >
-      {/* Soft glow in the background */}
-      <div
+      {/* Soft glow in the background — animated */}
+      <motion.div
         className="absolute top-0 right-0 w-28 h-28 rounded-full blur-[50px] pointer-events-none"
         style={{ background: colors.bg }}
+        animate={isInView ? { scale: [0.8, 1.1, 1], opacity: [0, 1, 0.8] } : {}}
+        transition={{ duration: 1.2, ease: 'easeOut' }}
       />
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -60,12 +67,14 @@ function KpiCard({
             {value}
           </p>
         </div>
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+        <motion.div
+          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors duration-300"
           style={{ background: colors.icon }}
+          whileHover={{ scale: 1.1, rotate: -5 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 15 }}
         >
           <Icon className="h-5 w-5" style={{ color: colors.hex }} />
-        </div>
+        </motion.div>
       </div>
     </Card>
   )
@@ -74,10 +83,16 @@ function KpiCard({
 function ChartTitle({ label, dotColor }: { label: string; dotColor: string }) {
   return (
     <div className="flex items-center gap-2 mb-5">
-      <span
-        className="inline-block w-2 h-2 rounded-full flex-shrink-0"
-        style={{ background: dotColor }}
-      />
+      <span className="relative inline-flex items-center justify-center flex-shrink-0">
+        <span
+          className="w-2 h-2 rounded-full"
+          style={{ background: dotColor }}
+        />
+        <span
+          className="absolute w-2 h-2 rounded-full animate-ping opacity-30"
+          style={{ background: dotColor }}
+        />
+      </span>
       <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold">
         {label}
       </h2>
@@ -161,7 +176,12 @@ export function StatsPage() {
     .map((v) => ({ name: v.name, count: v.count }))
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
+      className="space-y-8"
+    >
 
       {/* Page header */}
       <div>
@@ -184,7 +204,12 @@ export function StatsPage() {
       </div>
 
       {/* Section divider */}
-      <div className="border-t border-white/[0.05]" />
+      <motion.div
+        className="border-t border-white/[0.05]"
+        initial={{ scaleX: 0 }}
+        animate={{ scaleX: 1 }}
+        transition={{ duration: 0.6, ease: EASE_OUT_EXPO }}
+      />
 
       {/* Charts 2x2 grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -242,7 +267,7 @@ export function StatsPage() {
         {/* Variant distribution */}
         <motion.div custom={6} initial="hidden" animate="visible" variants={cardVariants}>
           <Card className="p-6">
-            <ChartTitle label={t('stats.variantDistribution')} dotColor="#8b5cf6" />
+            <ChartTitle label={t('stats.colorDistribution')} dotColor="#8b5cf6" />
             <ResponsiveContainer width="100%" height={260}>
               <PieChart>
                 <Pie
@@ -290,7 +315,12 @@ export function StatsPage() {
       </div>
 
       {/* Section divider */}
-      <div className="border-t border-white/[0.05]" />
+      <motion.div
+        className="border-t border-white/[0.05]"
+        initial={{ scaleX: 0 }}
+        animate={{ scaleX: 1 }}
+        transition={{ duration: 0.6, ease: EASE_OUT_EXPO }}
+      />
 
       {/* Top accessories */}
       <motion.div custom={8} initial="hidden" animate="visible" variants={cardVariants}>

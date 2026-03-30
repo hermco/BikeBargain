@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate, Navigate } from 'react-router-dom'
-import { ArrowLeft, ExternalLink, Trash2, MapPin, Calendar, ChevronLeft, ChevronRight, ChevronDown, Camera, Pencil, X, Check, Plus, RefreshCw, Ban, Wifi, TrendingDown, TrendingUp, History } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Trash2, MapPin, Calendar, ChevronLeft, ChevronRight, ChevronDown, Camera, Pencil, X, Check, Plus, RefreshCw, Ban, ScanSearch, TrendingDown, TrendingUp, History } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { useAd, useDeleteAd, useUpdateAd, useCatalogGroups, useRefreshAdAccessories, useMarkAdSold, useCheckAdOnline, usePriceHistory } from '../hooks/queries'
@@ -183,11 +183,21 @@ export function AdDetailPage() {
   })
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="space-y-8"
+    >
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+      <motion.div
+        className="flex flex-col gap-4 sm:flex-row sm:items-center"
+        initial={{ opacity: 0, x: -12 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.1, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      >
         <div className="flex items-center gap-4 flex-1 min-w-0">
-          <Link to={modelUrl('/rankings')} className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-white/[0.08] transition-all shrink-0">
+          <Link to={modelUrl('/rankings')} className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-white/[0.08] transition-all shrink-0 hover:scale-105 active:scale-95">
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div className="min-w-0">
@@ -241,7 +251,7 @@ export function AdDetailPage() {
                   })
                 }}
               >
-                <Wifi className={`h-3.5 w-3.5 ${checkOnlineMut.isPending ? 'animate-pulse' : ''}`} />
+                <ScanSearch className={`h-3.5 w-3.5 ${checkOnlineMut.isPending ? 'animate-pulse' : ''}`} />
                 <span className="hidden sm:inline">{checkOnlineMut.isPending ? t('common.checking') : t('common.checkOnline')}</span>
               </Button>
               <Button variant="secondary" size="sm" onClick={startEdit} className="gap-1.5">
@@ -258,7 +268,7 @@ export function AdDetailPage() {
             </>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Superseded banner */}
       {ad.superseded_by && !editing && (
@@ -307,6 +317,54 @@ export function AdDetailPage() {
         <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-300 flex items-center gap-2">
           <Pencil className="h-4 w-4 shrink-0" />
           {t('adDetail.editBanner')}
+        </div>
+      )}
+
+      {/* Hero price block + stat pills */}
+      {!editing && (
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <div className="flex items-baseline gap-3">
+            <span className="text-3xl font-bold text-text-primary font-fraunces tabular-nums">{formatPrice(ad.price)}</span>
+            {ad.price != null && ad.estimated_new_price != null && (() => {
+              const decotePct = ((ad.estimated_new_price - ad.price) / ad.estimated_new_price * 100)
+              return (
+                <span className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-sm font-semibold tabular-nums ${
+                  decotePct > 20 ? 'bg-emerald-500/15 text-emerald-400' :
+                  decotePct > 10 ? 'bg-amber-500/15 text-amber-400' :
+                  decotePct > 0 ? 'bg-red-500/15 text-red-400' :
+                  'bg-red-500/15 text-red-400'
+                }`}>
+                  {decotePct > 0 ? '-' : '+'}{Math.abs(decotePct).toFixed(0)}%
+                </span>
+              )
+            })()}
+          </div>
+          <div className="h-6 w-px bg-white/[0.08] hidden sm:block" />
+          <div className="flex flex-wrap gap-2">
+            {ad.year && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] px-3 py-1.5 text-xs text-text-secondary">
+                <Calendar className="h-3 w-3 text-text-dim" />
+                {ad.year}
+              </span>
+            )}
+            {ad.mileage_km != null && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] px-3 py-1.5 text-xs text-text-secondary tabular-nums">
+                {formatKm(ad.mileage_km)}
+              </span>
+            )}
+            {ad.city && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] px-3 py-1.5 text-xs text-text-secondary">
+                <MapPin className="h-3 w-3 text-text-dim" />
+                {ad.city}
+              </span>
+            )}
+            <Badge className={variantColor(ad.color)}>{ad.color ?? t('common.na')}</Badge>
+            {ad.wheel_type && (
+              <Badge className="bg-white/[0.06] text-text-secondary text-[10px]">
+                {ad.wheel_type === 'tubeless' ? 'Tubeless' : 'Tube'}
+              </Badge>
+            )}
+          </div>
         </div>
       )}
 
@@ -414,7 +472,7 @@ export function AdDetailPage() {
                 ))}
               </div>
             ) : (
-              <Badge className={variantColor(ad.variant)}>{ad.variant ?? t('common.na')}</Badge>
+              <Badge className={variantColor(ad.color)}>{ad.color ?? t('common.na')}</Badge>
             )}
 
             {/* Couleur */}
@@ -685,6 +743,22 @@ export function AdDetailPage() {
               </table>
             </div>
           )}
+        </Card>
+      )}
+
+      {/* Original ad body */}
+      {ad.body && (
+        <Card>
+          <div className="p-6">
+            <h3 className="text-[11px] font-semibold text-text-muted uppercase tracking-widest mb-4">
+              {t('adDetail.originalBody')}
+            </h3>
+            <div className="border-l-2 border-amber-500/30 pl-4">
+              <p className="text-sm text-text-secondary whitespace-pre-line leading-relaxed italic">
+                {ad.body}
+              </p>
+            </div>
+          </div>
         </Card>
       )}
 

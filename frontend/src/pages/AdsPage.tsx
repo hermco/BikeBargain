@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
-import { X, Wifi } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { X, ScanSearch, TrendingUp, Tag, ArrowUpDown } from 'lucide-react'
 import { useAds, useCheckAdsOnline } from '../hooks/queries'
 import { AdCard } from '../components/AdCard'
 import { AdForm } from '../components/AdForm'
@@ -11,6 +12,7 @@ import { CardSkeleton } from '../components/LoadingSkeleton'
 import { Button } from '../components/ui/Button'
 import { useToast } from '../components/Toast'
 import { useCurrentModel } from '../hooks/useCurrentModel'
+import { useFormatters } from '../hooks/useFormatters'
 import type { Ad } from '../types'
 
 function sortAds(ads: Ad[], sort: SortOption): Ad[] {
@@ -45,6 +47,7 @@ export function AdsPage() {
   const { data, isLoading } = useAds(slug)
   const checkOnlineMut = useCheckAdsOnline(slug)
   const { toast } = useToast()
+  const { formatPrice } = useFormatters()
 
   useEffect(() => {
     if (searchParams.get('add') === 'true') {
@@ -56,7 +59,7 @@ export function AdsPage() {
   const filtered = useMemo(() => {
     if (!data?.ads) return []
     let ads = data.ads
-    if (variant) ads = ads.filter((a) => a.variant === variant)
+    if (variant) ads = ads.filter((a) => a.color === variant)
     if (search) {
       const q = search.toLowerCase()
       ads = ads.filter(
@@ -73,6 +76,17 @@ export function AdsPage() {
   const hasFilters = variant || search
   const totalCount = data?.total ?? 0
 
+  const kpiStats = useMemo(() => {
+    if (!data?.ads?.length) return null
+    const prices = data.ads.map(a => a.price).filter((p): p is number => p != null)
+    if (!prices.length) return null
+    const avg = Math.round(prices.reduce((s, p) => s + p, 0) / prices.length)
+    const min = Math.min(...prices)
+    const max = Math.max(...prices)
+    const soldCount = data.ads.filter(a => a.sold).length
+    return { avg, min, max, soldCount }
+  }, [data])
+
   function clearFilters() {
     setVariant('')
     setSearch('')
@@ -80,8 +94,17 @@ export function AdsPage() {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.35 }}
+    >
+      <motion.div
+        className="flex items-center justify-between mb-8"
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      >
         <div>
           <h1 className="text-2xl font-semibold tracking-tight font-fraunces">{t('ads.title')}</h1>
           {data && (
@@ -122,12 +145,40 @@ export function AdsPage() {
               })
             }}
           >
-            <Wifi className={`h-3.5 w-3.5 ${checkOnlineMut.isPending ? 'animate-pulse' : ''}`} />
+            <ScanSearch className={`h-3.5 w-3.5 ${checkOnlineMut.isPending ? 'animate-pulse' : ''}`} />
             <span className="hidden sm:inline">{checkOnlineMut.isPending ? t('common.checking') : t('common.checkOnline')}</span>
           </Button>
           <AdForm autoOpen={autoOpenAdd} onAutoOpened={() => setAutoOpenAdd(false)} />
         </div>
-      </div>
+      </motion.div>
+
+      {/* KPI summary strip */}
+      {kpiStats && (
+        <motion.div
+          className="flex flex-wrap gap-4 mb-6 px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.04]"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <div className="flex items-center gap-2 text-xs">
+            <TrendingUp className="h-3.5 w-3.5 text-amber-400/70" />
+            <span className="text-text-muted">{t('stats.avgPrice')}</span>
+            <span className="text-text-primary font-semibold tabular-nums">{formatPrice(kpiStats.avg)}</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <ArrowUpDown className="h-3.5 w-3.5 text-text-dim" />
+            <span className="text-text-muted">{t('stats.priceRange')}</span>
+            <span className="text-text-secondary tabular-nums">{formatPrice(kpiStats.min)} — {formatPrice(kpiStats.max)}</span>
+          </div>
+          {kpiStats.soldCount > 0 && (
+            <div className="flex items-center gap-2 text-xs">
+              <Tag className="h-3.5 w-3.5 text-red-400/60" />
+              <span className="text-text-muted">{t('ads.sold')}</span>
+              <span className="text-red-400/80 tabular-nums">{kpiStats.soldCount}</span>
+            </div>
+          )}
+        </motion.div>
+      )}
 
       <FilterBar
         variant={variant}
@@ -141,11 +192,12 @@ export function AdsPage() {
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {Array.from({ length: 6 }).map((_, i) => (
-            <CardSkeleton key={i} />
+            <CardSkeleton key={i} index={i} />
           ))}
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
+          icon="grid"
           title={t('ads.emptyTitle')}
           description={t('ads.emptyDescription')}
         />
@@ -156,6 +208,6 @@ export function AdsPage() {
           ))}
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }

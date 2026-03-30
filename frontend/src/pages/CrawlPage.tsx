@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { Search, Loader2, Play, Pause, SkipForward, Check, X, AlertTriangle, ArrowRight, ExternalLink, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Pencil, Trash2, Plus, Maximize2, Copy, DollarSign, RefreshCw } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
@@ -678,7 +679,11 @@ export function CrawlPage() {
   })
 
   return (
-    <div>
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -996,7 +1001,7 @@ export function CrawlPage() {
                             {dup.price != null && <span>{formatPrice(dup.price)}</span>}
                             {dup.city && <span>{dup.city}</span>}
                             {dup.mileage_km != null && <span>{dup.mileage_km.toLocaleString('fr-FR')} km</span>}
-                            {dup.variant && <Badge className={variantColor(dup.variant)}>{dup.variant}</Badge>}
+                            {dup.color && <Badge className={variantColor(dup.color)}>{dup.color}</Badge>}
                             {dup.sold && <Badge className="bg-red-500/20 text-red-300 text-[10px]">Vendue</Badge>}
                           </div>
                           <div className="flex flex-wrap gap-1.5 mt-2">
@@ -1189,7 +1194,7 @@ export function CrawlPage() {
                     </div>
                   ) : (
                     <button onClick={() => setEditingField('variant')} className="flex items-center gap-1.5 group text-left">
-                      <Badge className={variantColor(variant)}>{variant ?? t('common.na')}</Badge>
+                      <Badge className={variantColor(currentExtract.color as string)}>{variant ?? t('common.na')}</Badge>
                       <Pencil className="h-3 w-3 text-text-dim opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
                   )}
@@ -1718,6 +1723,6 @@ export function CrawlPage() {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }

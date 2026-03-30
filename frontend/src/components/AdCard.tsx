@@ -39,7 +39,7 @@ export function AdCard({ ad, index }: AdCardProps) {
     >
       <Link
         to={modelUrl(`/ads/${ad.id}`)}
-        className="group block rounded-2xl border border-white/[0.06] bg-surface/80 backdrop-blur-sm hover:border-amber-500/30 hover:shadow-2xl hover:shadow-amber-500/[0.08] transition-all duration-300 relative hover:-translate-y-1"
+        className="group block rounded-2xl border border-white/[0.06] bg-surface/80 backdrop-blur-sm hover:border-amber-500/25 hover:shadow-[0_8px_40px_rgba(212,168,83,0.1),0_0_0_1px_rgba(212,168,83,0.1)] transition-all duration-500 ease-out relative hover:-translate-y-1.5"
       >
         {/* Image */}
         <div className="relative h-48 bg-bg overflow-hidden rounded-t-2xl">
@@ -50,7 +50,7 @@ export function AdCard({ ad, index }: AdCardProps) {
             <img
               src={heroImage}
               alt={ad.subject ?? ''}
-              className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
+              className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-700 ease-out"
               loading="lazy"
             />
           ) : (
@@ -95,11 +95,13 @@ export function AdCard({ ad, index }: AdCardProps) {
           </h3>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge className={variantColor(ad.variant)}>
-              {ad.variant ?? t('common.na')}
+            <Badge className={variantColor(ad.color)}>
+              {ad.color ?? t('common.na')}
             </Badge>
-            {ad.color && (
-              <Badge className="bg-white/[0.06] text-text-secondary">{ad.color}</Badge>
+            {ad.wheel_type && (
+              <Badge className="bg-white/[0.06] text-text-secondary text-[10px]">
+                {ad.wheel_type === 'tubeless' ? 'TL' : 'Tube'}
+              </Badge>
             )}
             {accCount > 0 && (
               <Badge className="bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20 flex items-center gap-1">
@@ -147,9 +149,12 @@ export function AdCard({ ad, index }: AdCardProps) {
                     </span>
                   </div>
                   <div style={{ height: '3px', background: 'rgba(255,255,255,0.06)', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div
+                    <motion.div
                       className={`bg-gradient-to-r ${kmColor}`}
-                      style={{ height: '100%', width: `${ratio * 100}%`, borderRadius: '9999px', transition: 'width 0.6s ease' }}
+                      style={{ height: '100%', borderRadius: '9999px' }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${ratio * 100}%` }}
+                      transition={{ duration: 0.8, delay: index * 0.04 + 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
                     />
                   </div>
                 </div>

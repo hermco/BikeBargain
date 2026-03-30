@@ -1,7 +1,9 @@
 import { Search, ArrowUpDown } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Select } from './ui/Select'
 import { useVariantOptions } from '../hooks/useCurrentModel'
+import { EASE_OUT_EXPO } from './animations'
 
 export type SortOption = 'recent' | 'price_asc' | 'price_desc' | 'km_asc' | 'km_desc'
 
@@ -24,11 +26,11 @@ const SORT_OPTIONS = [
 
 export function FilterBar({ variant, onVariantChange, search, onSearchChange, sort, onSortChange }: FilterBarProps) {
   const { t } = useTranslation()
-  const { variantNames } = useVariantOptions()
+  const { colorNames } = useVariantOptions()
 
-  const variantOptions = [
-    { value: '', label: t('filter.allVariants') },
-    ...variantNames.map((v) => ({ value: v, label: v })),
+  const colorOptions = [
+    { value: '', label: t('filter.allColors') },
+    ...colorNames.map((c) => ({ value: c, label: c })),
   ]
 
   const sortOptions = SORT_OPTIONS.map((o) => ({
@@ -37,9 +39,14 @@ export function FilterBar({ variant, onVariantChange, search, onSearchChange, so
   }))
 
   return (
-    <div className="flex flex-col sm:flex-row gap-3 mb-8">
-      <div className="relative flex-1">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-dim" />
+    <motion.div
+      className="flex flex-col sm:flex-row gap-3 mb-8"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: EASE_OUT_EXPO }}
+    >
+      <div className="relative flex-1 group">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-dim transition-colors duration-200 group-focus-within:text-amber-400/70" />
         <input
           type="text"
           placeholder={t('filter.searchPlaceholder')}
@@ -51,7 +58,7 @@ export function FilterBar({ variant, onVariantChange, search, onSearchChange, so
       <Select
         value={variant}
         onChange={onVariantChange}
-        options={variantOptions}
+        options={colorOptions}
         className="w-full sm:w-auto sm:min-w-[160px]"
       />
       <Select
@@ -61,6 +68,6 @@ export function FilterBar({ variant, onVariantChange, search, onSearchChange, so
         icon={<ArrowUpDown className="h-4 w-4" />}
         className="w-full sm:w-auto sm:min-w-[170px]"
       />
-    </div>
+    </motion.div>
   )
 }
