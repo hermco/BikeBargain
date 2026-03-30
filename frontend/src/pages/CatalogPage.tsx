@@ -209,8 +209,8 @@ export function CatalogPage() {
     refreshAll.mutate(undefined, {
       onSuccess: (data) => {
         const msg = data.ads_skipped_manual > 0
-          ? t('catalog.recalculatedWithSkipped', { refreshed: data.ads_refreshed, skipped: data.ads_skipped_manual })
-          : t('catalog.recalculated', { refreshed: data.ads_refreshed })
+          ? t('catalog.recalculatedWithSkipped', { skipped: data.ads_skipped_manual })
+          : t('catalog.recalculated')
         toast(msg, 'success')
       },
       onError: (err) => toast((err as Error).message, 'error'),
