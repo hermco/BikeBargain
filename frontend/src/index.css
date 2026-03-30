@@ -73,6 +73,12 @@ body::before {
   to { height: 0; opacity: 0; }
 }
 
+/* Model image zoom-in on load */
+@keyframes zoomIn {
+  from { transform: scale(1.08); opacity: 0.6; }
+  to { transform: scale(1); opacity: 1; }
+}
+
 /* Toast animations */
 @keyframes toastIn {
   from { transform: translateX(100%); opacity: 0; }

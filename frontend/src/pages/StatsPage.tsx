@@ -13,26 +13,75 @@ import { useCurrentModel } from '../hooks/useCurrentModel'
 import { Package, TrendingUp, ArrowUpDown, Gauge } from 'lucide-react'
 
 const TOOLTIP_STYLE = {
-  backgroundColor: '#161a22',
+  backgroundColor: 'rgba(16, 18, 28, 0.92)',
   border: '1px solid rgba(255,255,255,0.08)',
   borderRadius: 12,
-  boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+  boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+  backdropFilter: 'blur(12px)',
+  WebkitBackdropFilter: 'blur(12px)',
 }
 
-function KpiCard({ label, value, icon: Icon, accent }: { label: string; value: string; icon: React.ElementType; accent?: string }) {
+const ACCENT_COLORS: Record<string, { hex: string; bg: string; border: string; icon: string }> = {
+  blue:    { hex: '#3b82f6', bg: 'rgba(59,130,246,0.12)',  border: 'rgba(59,130,246,0.8)',  icon: 'rgba(59,130,246,0.15)'  },
+  amber:   { hex: '#d4a853', bg: 'rgba(212,168,83,0.12)',  border: 'rgba(212,168,83,0.8)',  icon: 'rgba(212,168,83,0.15)'  },
+  emerald: { hex: '#10b981', bg: 'rgba(16,185,129,0.12)',  border: 'rgba(16,185,129,0.8)',  icon: 'rgba(16,185,129,0.15)'  },
+  violet:  { hex: '#8b5cf6', bg: 'rgba(139,92,246,0.12)',  border: 'rgba(139,92,246,0.8)',  icon: 'rgba(139,92,246,0.15)'  },
+}
+
+function KpiCard({
+  label,
+  value,
+  icon: Icon,
+  accent = 'amber',
+}: {
+  label: string
+  value: string
+  icon: React.ElementType
+  accent?: string
+}) {
+  const colors = ACCENT_COLORS[accent] ?? ACCENT_COLORS.amber
+
   return (
-    <Card className="p-6 relative overflow-hidden">
-      <div className={`absolute top-0 right-0 w-24 h-24 rounded-full blur-[40px] opacity-[0.07] ${accent ?? 'bg-amber-500'}`} />
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-2">{label}</p>
-          <p className="text-2xl font-bold text-text-primary font-fraunces">{value}</p>
+    <Card
+      className="p-6 relative overflow-hidden"
+      style={{ borderLeft: `4px solid ${colors.border}` }}
+    >
+      {/* Soft glow in the background */}
+      <div
+        className="absolute top-0 right-0 w-28 h-28 rounded-full blur-[50px] pointer-events-none"
+        style={{ background: colors.bg }}
+      />
+      <div className="relative flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-2 truncate">
+            {label}
+          </p>
+          <p className="text-3xl font-bold text-text-primary font-fraunces leading-none">
+            {value}
+          </p>
         </div>
-        <div className="w-10 h-10 rounded-xl bg-white/[0.04] flex items-center justify-center">
-          <Icon className="h-5 w-5 text-text-dim" />
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+          style={{ background: colors.icon }}
+        >
+          <Icon className="h-5 w-5" style={{ color: colors.hex }} />
         </div>
       </div>
     </Card>
+  )
+}
+
+function ChartTitle({ label, dotColor }: { label: string; dotColor: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-5">
+      <span
+        className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+        style={{ background: dotColor }}
+      />
+      <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold">
+        {label}
+      </h2>
+    </div>
   )
 }
 
@@ -52,6 +101,36 @@ function buildHistogram(values: number[], bins: number): { label: string; count:
   return buckets
 }
 
+const cardVariants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.38, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] as const },
+  }),
+}
+
+// Gradient bar shape for the accessories chart
+function GradientBar(props: {
+  x?: number; y?: number; width?: number; height?: number;
+  gradientId: string; pct?: number; total?: number
+}) {
+  const { x = 0, y = 0, width = 0, height = 0, gradientId, pct } = props
+  if (!width || !height) return null
+  const labelX = x + width + 6
+  const labelY = y + height / 2 + 4
+  return (
+    <g>
+      <rect x={x} y={y} width={width} height={height} fill={`url(#${gradientId})`} rx={6} ry={6} />
+      {pct != null && width > 24 && (
+        <text x={labelX} y={labelY} fill="#8b95a8" fontSize={10} fontWeight={500}>
+          {pct}%
+        </text>
+      )}
+    </g>
+  )
+}
+
 export function StatsPage() {
   const { slug } = useCurrentModel()
   const { data: stats, isLoading } = useStats(slug)
@@ -61,7 +140,10 @@ export function StatsPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold tracking-tight font-fraunces">{t('stats.title')}</h1>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight font-fraunces">{t('stats.title')}</h1>
+          <p className="text-sm text-text-muted mt-1">{t('stats.subtitle')}</p>
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)}
         </div>
@@ -74,118 +156,178 @@ export function StatsPage() {
   const priceHist = buildHistogram(stats.prices_list, 8)
   const kmHist = buildHistogram(stats.mileages_list, 8)
 
-  // Compute average price per variant from raw data
   const variantPriceData = stats.variants
     .filter((v) => v.count > 0)
     .map((v) => ({ name: v.name, count: v.count }))
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-      <h1 className="text-2xl font-semibold tracking-tight">{t('stats.title')}</h1>
+
+      {/* Page header */}
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight font-fraunces">{t('stats.title')}</h1>
+        <p className="text-sm text-text-muted mt-1">{t('stats.subtitle')}</p>
+      </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label={t('stats.ads')} value={String(stats.count)} icon={Package} accent="bg-blue-500" />
-        <KpiCard label={t('stats.avgPrice')} value={formatPrice(stats.price.mean)} icon={TrendingUp} accent="bg-amber-500" />
-        <KpiCard label={t('stats.medianPrice')} value={formatPrice(stats.price.median)} icon={ArrowUpDown} accent="bg-emerald-500" />
-        <KpiCard label={t('stats.avgKm')} value={formatKm(stats.mileage.mean)} icon={Gauge} accent="bg-violet-500" />
+        {[
+          { label: t('stats.ads'),         value: String(stats.count),              icon: Package,    accent: 'blue'    },
+          { label: t('stats.avgPrice'),     value: formatPrice(stats.price.mean),    icon: TrendingUp, accent: 'amber'   },
+          { label: t('stats.medianPrice'),  value: formatPrice(stats.price.median),  icon: ArrowUpDown,accent: 'emerald' },
+          { label: t('stats.avgKm'),        value: formatKm(stats.mileage.mean),     icon: Gauge,      accent: 'violet'  },
+        ].map((card, i) => (
+          <motion.div key={card.label} custom={i} initial="hidden" animate="visible" variants={cardVariants}>
+            <KpiCard {...card} />
+          </motion.div>
+        ))}
       </div>
 
-      {/* Charts */}
+      {/* Section divider */}
+      <div className="border-t border-white/[0.05]" />
+
+      {/* Charts 2x2 grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <Card className="p-6">
-          <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-5">{t('stats.priceDistribution')}</h2>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={priceHist}>
-              <XAxis dataKey="label" tick={{ fill: '#5a6478', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#5a6478', fontSize: 11 }} allowDecimals={false} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: '#8b95a8' }} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-              {stats.price.median != null && (
-                <ReferenceLine
-                  x={String(Math.round(stats.price.median))}
-                  stroke="#d4a853"
-                  strokeDasharray="4 4"
-                  strokeWidth={1.5}
-                  label={{ value: `${t('stats.median')}: ${formatPrice(stats.price.median)}`, position: 'top', fill: '#d4a853', fontSize: 10 }}
-                />
-              )}
-              <Bar dataKey="count" fill="#d4a853" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-
-        <Card className="p-6">
-          <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-5">{t('stats.kmDistribution')}</h2>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={kmHist}>
-              <XAxis dataKey="label" tick={{ fill: '#5a6478', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#5a6478', fontSize: 11 }} allowDecimals={false} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: '#8b95a8' }} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-              <Bar dataKey="count" fill="#3b82f6" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-
-        <Card className="p-6">
-          <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-5">{t('stats.variantDistribution')}</h2>
-          <ResponsiveContainer width="100%" height={240}>
-            <PieChart>
-              <Pie
-                data={variantPriceData}
-                dataKey="count"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                innerRadius={45}
-                outerRadius={75}
-                paddingAngle={3}
-                strokeWidth={0}
-                label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
-              >
-                {variantPriceData.map((entry) => (
-                  <Cell key={entry.name} fill={variantChartColor(entry.name)} />
-                ))}
-              </Pie>
-              <Tooltip contentStyle={TOOLTIP_STYLE} />
-            </PieChart>
-          </ResponsiveContainer>
-        </Card>
-
-        <Card className="p-4 sm:p-6">
-          <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-5">{t('stats.topDepartments')}</h2>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={stats.departments} layout="vertical">
-              <XAxis type="number" tick={{ fill: '#5a6478', fontSize: 11 }} allowDecimals={false} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="name" tick={{ fill: '#5a6478', fontSize: 11 }} width={80} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-              <Bar dataKey="count" fill="#10b981" radius={[0, 6, 6, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-      </div>
-
-      {/* Top accessories */}
-      <Card className="p-4 sm:p-6">
-        <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-5">
-          {t('stats.topAccessories')}
-        </h2>
-        <div className="overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6">
-          <div className="min-w-[480px]">
-            <ResponsiveContainer width="100%" height={Math.max(stats.top_accessories.length * 32, 120)}>
-              <BarChart data={stats.top_accessories} layout="vertical">
-                <XAxis type="number" tick={{ fill: '#5a6478', fontSize: 11 }} unit="%" axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={{ fill: '#5a6478', fontSize: 11 }} width={220} axisLine={false} tickLine={false} />
-                <Tooltip
-                  contentStyle={TOOLTIP_STYLE}
-                  formatter={(value) => [`${value}%`, t('stats.frequency')]}
-                  cursor={{ fill: 'rgba(255,255,255,0.03)' }}
-                />
-                <Bar dataKey="pct" fill="#d4a853" radius={[0, 6, 6, 0]} />
+        {/* Price distribution */}
+        <motion.div custom={4} initial="hidden" animate="visible" variants={cardVariants}>
+          <Card className="p-6">
+            <ChartTitle label={t('stats.priceDistribution')} dotColor="#d4a853" />
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={priceHist}>
+                <defs>
+                  <linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#d4a853" stopOpacity={0.9} />
+                    <stop offset="100%" stopColor="#d4a853" stopOpacity={0.4} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="label" tick={{ fill: '#5a6478', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#5a6478', fontSize: 11 }} allowDecimals={false} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: '#8b95a8' }} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                {stats.price.median != null && (
+                  <ReferenceLine
+                    x={String(Math.round(stats.price.median))}
+                    stroke="#d4a853"
+                    strokeDasharray="4 4"
+                    strokeWidth={1.5}
+                    label={{ value: `${t('stats.median')}: ${formatPrice(stats.price.median)}`, position: 'top', fill: '#d4a853', fontSize: 10 }}
+                  />
+                )}
+                <Bar dataKey="count" fill="url(#priceGrad)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+          </Card>
+        </motion.div>
+
+        {/* Mileage distribution */}
+        <motion.div custom={5} initial="hidden" animate="visible" variants={cardVariants}>
+          <Card className="p-6">
+            <ChartTitle label={t('stats.kmDistribution')} dotColor="#3b82f6" />
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={kmHist}>
+                <defs>
+                  <linearGradient id="kmGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.9} />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.4} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="label" tick={{ fill: '#5a6478', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#5a6478', fontSize: 11 }} allowDecimals={false} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: '#8b95a8' }} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                <Bar dataKey="count" fill="url(#kmGrad)" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </motion.div>
+
+        {/* Variant distribution */}
+        <motion.div custom={6} initial="hidden" animate="visible" variants={cardVariants}>
+          <Card className="p-6">
+            <ChartTitle label={t('stats.variantDistribution')} dotColor="#8b5cf6" />
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart>
+                <Pie
+                  data={variantPriceData}
+                  dataKey="count"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={82}
+                  paddingAngle={3}
+                  strokeWidth={0}
+                  label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
+                >
+                  {variantPriceData.map((entry) => (
+                    <Cell key={entry.name} fill={variantChartColor(entry.name)} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
+              </PieChart>
+            </ResponsiveContainer>
+          </Card>
+        </motion.div>
+
+        {/* Top departments */}
+        <motion.div custom={7} initial="hidden" animate="visible" variants={cardVariants}>
+          <Card className="p-4 sm:p-6">
+            <ChartTitle label={t('stats.topDepartments')} dotColor="#10b981" />
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={stats.departments} layout="vertical">
+                <defs>
+                  <linearGradient id="deptGrad" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.9} />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity={0.4} />
+                  </linearGradient>
+                </defs>
+                <XAxis type="number" tick={{ fill: '#5a6478', fontSize: 11 }} allowDecimals={false} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" tick={{ fill: '#5a6478', fontSize: 11 }} width={80} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                <Bar dataKey="count" fill="url(#deptGrad)" radius={[0, 6, 6, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* Section divider */}
+      <div className="border-t border-white/[0.05]" />
+
+      {/* Top accessories */}
+      <motion.div custom={8} initial="hidden" animate="visible" variants={cardVariants}>
+        <Card className="p-4 sm:p-6">
+          <ChartTitle label={t('stats.topAccessories')} dotColor="#d4a853" />
+          <div className="overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6">
+            <div className="min-w-[480px]">
+              <svg width="0" height="0" style={{ position: 'absolute' }}>
+                <defs>
+                  <linearGradient id="accGrad" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#d4a853" stopOpacity={0.95} />
+                    <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.55} />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <ResponsiveContainer width="100%" height={Math.max(stats.top_accessories.length * 32, 120)}>
+                <BarChart data={stats.top_accessories} layout="vertical">
+                  <XAxis type="number" tick={{ fill: '#5a6478', fontSize: 11 }} unit="%" axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="name" tick={{ fill: '#5a6478', fontSize: 11 }} width={220} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={TOOLTIP_STYLE}
+                    formatter={(value) => [`${value}%`, t('stats.frequency')]}
+                    cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                  />
+                  <Bar
+                    dataKey="pct"
+                    radius={[0, 6, 6, 0]}
+                    shape={(props: { x?: number; y?: number; width?: number; height?: number; pct?: number }) => (
+                      <GradientBar gradientId="accGrad" {...props} pct={props.pct} />
+                    )}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </motion.div>
     </motion.div>
   )
 }
