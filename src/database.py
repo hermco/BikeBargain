@@ -4,10 +4,14 @@ Database engine et session management.
 PostgreSQL uniquement, via DATABASE_URL (fichier .env ou variable d'environnement).
 """
 
+import re
+import json
+import threading
 from pathlib import Path
 from datetime import datetime
 
 from sqlmodel import SQLModel, Session, create_engine, select, delete
+from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 
 # Import des modeles pour enregistrer les tables dans SQLModel.metadata
@@ -17,6 +21,7 @@ from .models import (  # noqa: F401
     BikeModel, BikeModelConfig, BikeVariant, BikeConsumable,
     BikeAccessoryPattern, BikeVariantPattern, BikeExclusionPattern,
     BikeNewListingPattern, BikeSearchConfig,
+    AccessoryCatalogGroup, AccessoryCatalogVariant,
 )
 from .config import get_settings
 
@@ -31,6 +36,70 @@ def get_database_url() -> str:
 
 
 engine = create_engine(get_database_url(), echo=settings.debug)
+
+
+# ─── Catalog cache (thread-safe) ────────────────────────────────────────────
+_catalog_cache: list[dict] | None = None
+_catalog_cache_lock = threading.Lock()
+
+
+def get_catalog_groups(session: Session) -> list[dict]:
+    """Charge le catalogue depuis la DB (avec cache thread-safe)."""
+    global _catalog_cache
+    with _catalog_cache_lock:
+        if _catalog_cache is not None:
+            return _catalog_cache
+
+    groups = session.exec(
+        select(AccessoryCatalogGroup)
+        .options(selectinload(AccessoryCatalogGroup.variants))
+        .order_by(AccessoryCatalogGroup.category)
+    ).all()
+
+    result = []
+    for g in groups:
+        result.append({
+            "id": g.id,
+            "group_key": g.group_key,
+            "model_id": g.model_id,
+            "name": g.name,
+            "category": g.category,
+            "expressions": g.expressions or [],
+            "default_price": g.default_price,
+            "last_match_count": g.last_match_count,
+            "created_at": g.created_at,
+            "updated_at": g.updated_at,
+            "variants": [
+                {
+                    "id": v.id,
+                    "group_id": v.group_id,
+                    "name": v.name,
+                    "qualifiers": v.qualifiers or [],
+                    "brands": v.brands or [],
+                    "product_aliases": v.product_aliases or [],
+                    "optional_words": v.optional_words or [],
+                    "regex_override": v.regex_override,
+                    "estimated_new_price": v.estimated_new_price,
+                    "sort_order": v.sort_order,
+                    "sort_order_manual": v.sort_order_manual,
+                    "notes": v.notes,
+                    "created_at": v.created_at,
+                    "updated_at": v.updated_at,
+                }
+                for v in sorted(g.variants, key=lambda v: v.sort_order)
+            ],
+        })
+
+    with _catalog_cache_lock:
+        _catalog_cache = result
+    return result
+
+
+def invalidate_catalog_cache() -> None:
+    """Invalide le cache catalogue. Thread-safe."""
+    global _catalog_cache
+    with _catalog_cache_lock:
+        _catalog_cache = None
 
 
 def get_session():
@@ -101,6 +170,13 @@ def upsert_ad(session: Session, ad_data: dict, *, auto_commit: bool = True) -> i
     # Accessoires
     if "accessories" in ad_data:
         _replace_accessories(session, ad.id, ad_data["accessories"])
+
+    # Flag for crosscheck if few accessories detected despite long description
+    accessories = ad_data.get("accessories", [])
+    if len(accessories) < 2 and len(ad.body or "") > 200:
+        ad.needs_crosscheck = 1
+    else:
+        ad.needs_crosscheck = 0
 
     if auto_commit:
         session.commit()
@@ -175,13 +251,14 @@ def refresh_accessories(
     skip_manual: bool = False,
     ad_ids: list[int] | None = None,
 ) -> list[dict]:
-    """Re-detecte les accessoires en base pour un modele donne."""
+    """Re-detecte les accessoires en base via le catalogue DB pour un modele donne."""
     from .accessories import detect_accessories
+    from .catalog import build_patterns_from_catalog
 
-    overrides = get_accessory_overrides(session, bike_model_id)
+    catalog_groups = get_catalog_groups(session)
+    patterns = build_patterns_from_catalog(catalog_groups)
 
-    # Pre-charger les patterns une seule fois pour toutes les annonces
-    patterns = get_accessory_patterns(session, bike_model_id)
+    # Pre-charger les patterns d'exclusion pour le modele
     exclusions = get_exclusion_patterns(session, bike_model_id)
 
     statement = select(Ad).where(Ad.bike_model_id == bike_model_id)
@@ -195,17 +272,11 @@ def refresh_accessories(
 
     for ad in ads:
         before = len(ad.accessories)
-        detected = detect_accessories(
-            ad.body or "", bike_model_id, session,
-            patterns=patterns, exclusions=exclusions,
-            price_overrides=overrides,
-        )
+        detected = detect_accessories(ad.body or "", patterns=patterns, exclusions=exclusions)
 
-        # Supprimer les anciens
         session.exec(delete(AdAccessory).where(AdAccessory.ad_id == ad.id))
         session.flush()
 
-        # Inserer les nouveaux
         for acc in detected:
             session.add(AdAccessory(
                 ad_id=ad.id, name=acc["name"],
@@ -220,6 +291,19 @@ def refresh_accessories(
         })
 
     session.commit()
+
+    _update_group_match_counts(session, catalog_groups)
+
+    for r in results:
+        ad = session.get(Ad, r["id"])
+        if not ad:
+            continue
+        if r["after"] < r["before"]:
+            ad.needs_crosscheck = 1
+        elif r["after"] >= r["before"] and ad.needs_crosscheck == 1:
+            ad.needs_crosscheck = 0
+    session.commit()
+
     return results
 
 
@@ -229,6 +313,35 @@ def get_accessory_overrides(session: Session, bike_model_id: int) -> dict[str, i
         select(AccessoryOverride).where(AccessoryOverride.bike_model_id == bike_model_id)
     ).all()
     return {o.group_key: o.estimated_new_price for o in overrides}
+
+
+def _update_group_match_counts(session: Session, catalog_groups: list[dict]) -> None:
+    """Met a jour last_match_count de chaque groupe via COUNT SQL sur ad_accessories."""
+    variant_to_group: dict[str, str] = {}
+    for g in catalog_groups:
+        for v in g.get("variants", []):
+            variant_to_group[v["name"]] = g["group_key"]
+
+    rows = session.exec(
+        select(AdAccessory.name, func.count(AdAccessory.id))
+        .group_by(AdAccessory.name)
+    ).all()
+
+    group_counts: dict[str, int] = {}
+    for name, count in rows:
+        gk = variant_to_group.get(name)
+        if gk:
+            group_counts[gk] = group_counts.get(gk, 0) + count
+
+    for group_data in catalog_groups:
+        gk = group_data["group_key"]
+        count = group_counts.get(gk, 0)
+        group = session.get(AccessoryCatalogGroup, group_data["id"])
+        if group:
+            group.last_match_count = count
+
+    session.commit()
+    invalidate_catalog_cache()
 
 
 def set_accessory_override(session: Session, bike_model_id: int, group_key: str, estimated_new_price: int) -> None:
@@ -249,9 +362,231 @@ def delete_accessory_override(session: Session, bike_model_id: int, group_key: s
         session.commit()
 
 
+# ─── Catalog CRUD ───────────────────────────────────────────────────────────
+
+def create_catalog_group(session: Session, data: dict) -> AccessoryCatalogGroup:
+    """Cree un groupe de catalogue."""
+    from sqlalchemy.exc import IntegrityError
+    from .catalog import normalize_text
+    now = datetime.now().isoformat()
+
+    slug = normalize_text(data["name"]).replace(" ", "_").replace("-", "_")
+    slug = re.sub(r"[^a-z0-9_]", "", slug)
+
+    group = AccessoryCatalogGroup(
+        group_key=slug,
+        name=data["name"],
+        category=data["category"],
+        expressions=data.get("expressions", []),
+        default_price=data["default_price"],
+        model_id=data.get("model_id"),
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(group)
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise ValueError(f"Un groupe avec la cle « {slug} » existe deja")
+    session.refresh(group)
+    invalidate_catalog_cache()
+    return group
+
+
+def update_catalog_group(session: Session, group_id: int, data: dict) -> AccessoryCatalogGroup:
+    """Met a jour un groupe."""
+    group = session.get(AccessoryCatalogGroup, group_id)
+    if not group:
+        raise ValueError(f"Groupe {group_id} non trouve")
+
+    for field in ("name", "category", "expressions", "default_price"):
+        if field in data:
+            setattr(group, field, data[field])
+    group.updated_at = datetime.now().isoformat()
+
+    session.commit()
+    session.refresh(group)
+    invalidate_catalog_cache()
+    return group
+
+
+def delete_catalog_group(session: Session, group_id: int) -> None:
+    """Supprime un groupe (cascade delete variantes)."""
+    group = session.get(AccessoryCatalogGroup, group_id)
+    if not group:
+        raise ValueError(f"Groupe {group_id} non trouve")
+    session.delete(group)
+    session.commit()
+    invalidate_catalog_cache()
+
+
+def create_catalog_variant(session: Session, group_id: int, data: dict) -> AccessoryCatalogVariant:
+    """Cree une variante dans un groupe."""
+    now = datetime.now().isoformat()
+
+    sort_order = data.get("sort_order")
+    sort_order_manual = 0
+    if sort_order is not None:
+        sort_order_manual = 1
+    else:
+        sort_order = -(
+            len(data.get("qualifiers", []))
+            + len(data.get("brands", []))
+            + len(data.get("product_aliases", []))
+        )
+
+    variant = AccessoryCatalogVariant(
+        group_id=group_id,
+        name=data["name"],
+        qualifiers=data.get("qualifiers", []),
+        brands=data.get("brands", []),
+        product_aliases=data.get("product_aliases", []),
+        optional_words=data.get("optional_words", []),
+        regex_override=data.get("regex_override"),
+        estimated_new_price=data["estimated_new_price"],
+        sort_order=sort_order,
+        sort_order_manual=sort_order_manual,
+        notes=data.get("notes"),
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(variant)
+    session.commit()
+    session.refresh(variant)
+    invalidate_catalog_cache()
+    return variant
+
+
+def update_catalog_variant(session: Session, variant_id: int, data: dict) -> AccessoryCatalogVariant:
+    """Met a jour une variante."""
+    variant = session.get(AccessoryCatalogVariant, variant_id)
+    if not variant:
+        raise ValueError(f"Variante {variant_id} non trouvee")
+
+    if "name" in data and data["name"] != variant.name:
+        refs = session.exec(
+            select(func.count()).select_from(AdAccessory).where(AdAccessory.name == variant.name)
+        ).one()
+        if refs > 0:
+            raise ValueError(
+                f"Impossible de renommer « {variant.name} » : {refs} annonce(s) la referencent. "
+                "Supprimez la variante et recreez-la avec le nouveau nom."
+            )
+
+    for field in ("name", "qualifiers", "brands", "product_aliases", "optional_words",
+                  "regex_override", "estimated_new_price", "notes"):
+        if field in data:
+            setattr(variant, field, data[field])
+
+    if "sort_order" in data:
+        variant.sort_order = data["sort_order"]
+        variant.sort_order_manual = 1
+    elif not variant.sort_order_manual:
+        variant.sort_order = -(
+            len(variant.qualifiers or [])
+            + len(variant.brands or [])
+            + len(variant.product_aliases or [])
+        )
+
+    variant.updated_at = datetime.now().isoformat()
+    session.commit()
+    session.refresh(variant)
+    invalidate_catalog_cache()
+    return variant
+
+
+def delete_catalog_variant(session: Session, variant_id: int) -> int:
+    """Supprime une variante. Retourne le nombre de refs ad_accessories."""
+    variant = session.get(AccessoryCatalogVariant, variant_id)
+    if not variant:
+        raise ValueError(f"Variante {variant_id} non trouvee")
+
+    refs = session.exec(
+        select(func.count()).select_from(AdAccessory).where(AdAccessory.name == variant.name)
+    ).one()
+
+    session.delete(variant)
+    session.commit()
+    invalidate_catalog_cache()
+    return refs
+
+
+def reset_catalog_to_seed(session: Session) -> None:
+    """Reset le catalogue aux valeurs par defaut depuis le seed JSON."""
+    seed_file = PROJECT_ROOT / "alembic" / "seed_accessory_catalog.json"
+    with open(seed_file) as f:
+        data = json.load(f)
+
+    session.exec(delete(AccessoryCatalogVariant))
+    session.exec(delete(AccessoryCatalogGroup))
+    session.flush()
+
+    now = datetime.now().isoformat()
+    for group_data in data["groups"]:
+        group = AccessoryCatalogGroup(
+            group_key=group_data["group_key"],
+            name=group_data["name"],
+            category=group_data["category"],
+            expressions=group_data["expressions"],
+            default_price=group_data["default_price"],
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(group)
+        session.flush()
+
+        for variant_data in group_data["variants"]:
+            session.add(AccessoryCatalogVariant(
+                group_id=group.id,
+                name=variant_data["name"],
+                qualifiers=variant_data.get("qualifiers", []),
+                brands=variant_data.get("brands", []),
+                product_aliases=variant_data.get("product_aliases", []),
+                optional_words=variant_data.get("optional_words", []),
+                regex_override=variant_data.get("regex_override"),
+                estimated_new_price=variant_data["estimated_new_price"],
+                sort_order=variant_data.get("sort_order", 0),
+                notes=variant_data.get("notes"),
+                created_at=now,
+                updated_at=now,
+            ))
+
+    session.commit()
+    invalidate_catalog_cache()
+
+
+def export_catalog(session: Session) -> dict:
+    """Exporte le catalogue complet en JSON."""
+    groups = get_catalog_groups(session)
+    export = {"groups": []}
+    for g in groups:
+        export["groups"].append({
+            "group_key": g["group_key"],
+            "name": g["name"],
+            "category": g["category"],
+            "expressions": g["expressions"],
+            "default_price": g["default_price"],
+            "variants": [
+                {
+                    "name": v["name"],
+                    "qualifiers": v["qualifiers"],
+                    "brands": v["brands"],
+                    "product_aliases": v["product_aliases"],
+                    "optional_words": v["optional_words"],
+                    "regex_override": v["regex_override"],
+                    "estimated_new_price": v["estimated_new_price"],
+                    "sort_order": v["sort_order"],
+                    "notes": v["notes"],
+                }
+                for v in g["variants"]
+            ],
+        })
+    return export
+
+
 def get_ad_count(session: Session) -> int:
     """Nombre total d'annonces actives (hors superseded)."""
-    from sqlalchemy import func
     return session.exec(
         select(func.count()).select_from(Ad).where(Ad.superseded_by == None)  # noqa: E711
     ).one()

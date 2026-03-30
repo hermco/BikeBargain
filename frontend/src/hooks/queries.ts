@@ -106,42 +106,6 @@ export function useUpdateAd(slug: string) {
   })
 }
 
-export function useAccessoryCatalog(slug: string) {
-  return useQuery({
-    queryKey: ['accessory-catalog', slug],
-    queryFn: () => api.fetchAccessoryCatalog(slug),
-    staleTime: 30_000,
-    enabled: !!slug,
-  })
-}
-
-export function useUpdateCatalogPrice(slug: string) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ group, estimated_new_price }: { group: string; estimated_new_price: number }) =>
-      api.updateCatalogPrice(slug, group, estimated_new_price),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['accessory-catalog', slug] })
-      void qc.invalidateQueries({ queryKey: ['ads', slug] })
-      void qc.invalidateQueries({ queryKey: ['rankings', slug] })
-      void qc.invalidateQueries({ queryKey: ['stats', slug] })
-    },
-  })
-}
-
-export function useResetCatalogPrice(slug: string) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (group: string) => api.resetCatalogPrice(slug, group),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['accessory-catalog', slug] })
-      void qc.invalidateQueries({ queryKey: ['ads', slug] })
-      void qc.invalidateQueries({ queryKey: ['rankings', slug] })
-      void qc.invalidateQueries({ queryKey: ['stats', slug] })
-    },
-  })
-}
-
 export function useRefreshAllAccessories(slug: string) {
   const qc = useQueryClient()
   return useMutation({
@@ -261,6 +225,164 @@ export function useConfirmPrice(slug: string) {
       void qc.invalidateQueries({ queryKey: ['stats', slug] })
       void qc.invalidateQueries({ queryKey: ['rankings', slug] })
       void qc.invalidateQueries({ queryKey: ['price-history', slug, vars.adId] })
+    },
+  })
+}
+
+// ─── Catalog V2 ──────────────────────────────────────────────────────────
+
+export function useCatalogGroups() {
+  return useQuery({
+    queryKey: ['catalog-groups'],
+    queryFn: api.fetchCatalogGroups,
+    staleTime: 30_000,
+  })
+}
+
+export function useCatalogGroup(id: number) {
+  return useQuery({
+    queryKey: ['catalog-group', id],
+    queryFn: () => api.fetchCatalogGroup(id),
+    enabled: id > 0,
+  })
+}
+
+export function useCreateCatalogGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: api.createCatalogGroup,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['catalog-groups'] })
+      void qc.invalidateQueries({ queryKey: ['ads'] })
+      void qc.invalidateQueries({ queryKey: ['rankings'] })
+    },
+  })
+}
+
+export function useUpdateCatalogGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: number } & Parameters<typeof api.updateCatalogGroup>[1]) =>
+      api.updateCatalogGroup(id, data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['catalog-groups'] })
+      void qc.invalidateQueries({ queryKey: ['ads'] })
+      void qc.invalidateQueries({ queryKey: ['rankings'] })
+    },
+  })
+}
+
+export function useDeleteCatalogGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: api.deleteCatalogGroup,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['catalog-groups'] })
+      void qc.invalidateQueries({ queryKey: ['ads'] })
+      void qc.invalidateQueries({ queryKey: ['rankings'] })
+    },
+  })
+}
+
+export function useCreateCatalogVariant() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ groupId, ...data }: { groupId: number } & Parameters<typeof api.createCatalogVariant>[1]) =>
+      api.createCatalogVariant(groupId, data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['catalog-groups'] })
+      void qc.invalidateQueries({ queryKey: ['ads'] })
+      void qc.invalidateQueries({ queryKey: ['rankings'] })
+    },
+  })
+}
+
+export function useUpdateCatalogVariant() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: number } & Partial<api.CatalogVariant>) =>
+      api.updateCatalogVariant(id, data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['catalog-groups'] })
+      void qc.invalidateQueries({ queryKey: ['ads'] })
+      void qc.invalidateQueries({ queryKey: ['rankings'] })
+    },
+  })
+}
+
+export function useDeleteCatalogVariant() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: api.deleteCatalogVariant,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['catalog-groups'] })
+      void qc.invalidateQueries({ queryKey: ['ads'] })
+      void qc.invalidateQueries({ queryKey: ['rankings'] })
+    },
+  })
+}
+
+export function useSuggestSynonyms() {
+  return useMutation({
+    mutationFn: api.suggestSynonyms,
+  })
+}
+
+export function usePreviewRegex() {
+  return useMutation({
+    mutationFn: api.previewRegex,
+  })
+}
+
+export function usePreviewDiff() {
+  return useMutation({
+    mutationFn: api.previewDiff,
+  })
+}
+
+export function useTestOnAd() {
+  return useMutation({
+    mutationFn: api.testOnAd,
+  })
+}
+
+export function useResetCatalog() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: api.resetCatalog,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['catalog-groups'] })
+      void qc.invalidateQueries({ queryKey: ['ads'] })
+      void qc.invalidateQueries({ queryKey: ['rankings'] })
+    },
+  })
+}
+
+export function useExportCatalog() {
+  return useMutation({
+    mutationFn: api.exportCatalog,
+  })
+}
+
+export function useImportCatalog() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: api.importCatalog,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['catalog-groups'] })
+      void qc.invalidateQueries({ queryKey: ['ads'] })
+      void qc.invalidateQueries({ queryKey: ['rankings'] })
+    },
+  })
+}
+
+export function useRefreshStatus() {
+  return useQuery({
+    queryKey: ['refresh-status'],
+    queryFn: api.fetchRefreshStatus,
+    refetchInterval: (query) => {
+      const data = query.state.data
+      return data?.status === 'running' ? 2000 : false
     },
   })
 }

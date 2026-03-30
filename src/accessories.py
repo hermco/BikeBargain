@@ -11,58 +11,63 @@ Chaque accessoire est categorise et valorise (prix neuf estime en EUR) :
   - performance  : echappement, cartographie, filtre
   - autre        : antivol, housse, bequille
 
-Les patterns d'accessoires, les patterns d'exclusion et le taux de depreciation
-sont charges depuis la base de donnees (tables bike_accessory_patterns et
-bike_exclusion_patterns) en fonction du modele de moto.
+Les patterns d'accessoires sont compiles depuis le catalogue DB (AccessoryCatalogGroup/
+AccessoryCatalogVariant) par catalog.py. Les patterns d'exclusion sont charges depuis
+la base de donnees (table bike_exclusion_patterns) en fonction du modele de moto.
 """
 
 import re
 
+DEPRECIATION_RATE = 0.65
+
+# ─── ZONES D'EXCLUSION ────────────────────────────────────────────────────────
+# Fallback patterns qui identifient des sections "services concessionnaire" ou contextes
+# ou les mots-cles d'accessoires ne designent pas un equipement de la moto.
+# On supprime ces zones du texte avant la detection.
+EXCLUSION_PATTERNS: list[str] = [
+    # Listes de services garage/concessionnaire entre parentheses
+    r"\((?:[^)]*(?:pneumatique|vidange|service|atelier|reparation|entretien)[^)]*)\)",
+    # Phrases "service rapide ..." jusqu'a fin de ligne
+    r"service[s]?\s*(rapide|moto|atelier)[^\n]*",
+    # Phrases "atelier de ..." jusqu'a fin de ligne
+    r"atelier\s*(de\s*)?(reparation|entretien|mecanique)[^\n]*",
+]
+
 
 def _clean_text_for_detection(text: str, exclusions: list | None = None) -> str:
-    """Supprime les zones de texte qui decrivent des services garage.
+    """Supprime les zones de texte qui decrivent des services garage et normalise.
 
     Args:
         text: Texte brut de l'annonce.
         exclusions: Liste d'objets BikeExclusionPattern avec .regex_pattern,
-            ou None pour ne rien exclure.
+            ou None pour utiliser les patterns par defaut.
     """
-    cleaned = text.lower()
+    from .catalog import normalize_text
+    cleaned = normalize_text(text)
     if exclusions:
         for exc in exclusions:
             cleaned = re.sub(exc.regex_pattern, " ", cleaned)
+    else:
+        for pattern in EXCLUSION_PATTERNS:
+            cleaned = re.sub(pattern, " ", cleaned)
     return cleaned
 
 
 def detect_accessories(
     text: str,
-    bike_model_id: int,
-    session,
+    patterns: list[tuple[str, str, str, int, str]] | None = None,
     *,
-    patterns: list | None = None,
     exclusions: list | None = None,
-    price_overrides: dict[str, int] | None = None,
 ) -> list[dict]:
     """
     Detecte les accessoires mentionnes dans un texte d'annonce.
 
-    La deduplication se fait par GROUPE : si un pattern specifique
-    (ex: "Crash bars SW-Motech") matche, le pattern generique ("Crash bars")
-    du meme groupe est ignore.
-
-    Les zones de texte decrivant des services garage (ex: "Service rapide :
-    pneumatique, kit chaine, vidange") sont exclues avant la detection.
-
     Args:
         text: Le body ou la description de l'annonce.
-        bike_model_id: ID du modele de moto (pour charger les patterns).
-        session: SQLModel session.
-        patterns: Liste optionnelle de BikeAccessoryPattern pre-charges.
-            Si None, charge depuis la DB.
+        patterns: Liste de (regex, nom, categorie, prix_neuf, groupe_dedup)
+            produite par catalog.build_patterns_from_catalog().
         exclusions: Liste optionnelle de BikeExclusionPattern pre-charges.
-            Si None, charge depuis la DB.
-        price_overrides: Dict optionnel {group_key: prix_neuf} pour surcharger
-            les prix par defaut du catalogue.
+            Si None, utilise les EXCLUSION_PATTERNS par defaut.
 
     Returns:
         Liste de dicts :
@@ -74,37 +79,24 @@ def detect_accessories(
             "estimated_used_price": int,
         }
     """
-    if not text:
+    if not text or not patterns:
         return []
 
-    # Charger les patterns depuis la DB si non fournis
-    if patterns is None:
-        from .database import get_accessory_patterns
-        patterns = get_accessory_patterns(session, bike_model_id)
-    if exclusions is None:
-        from .database import get_exclusion_patterns
-        exclusions = get_exclusion_patterns(session, bike_model_id)
-
-    overrides = price_overrides or {}
     text_lower = _clean_text_for_detection(text, exclusions)
     matched_groups: set[str] = set()
     found: list[dict] = []
 
-    for pattern in patterns:
-        group = pattern.dedup_group
-        if group and group in matched_groups:
-            continue  # Ce groupe a deja ete matche par un pattern plus specifique
-        if re.search(pattern.regex_pattern, text_lower):
-            if group:
-                matched_groups.add(group)
-            effective_price = overrides.get(group, pattern.new_price) if group else pattern.new_price
-            depreciation_rate = pattern.depreciation_rate
+    for pattern, name, category, price_new, group in patterns:
+        if group in matched_groups:
+            continue
+        if re.search(pattern, text_lower):
+            matched_groups.add(group)
             found.append({
-                "name": pattern.name,
-                "category": pattern.category,
+                "name": name,
+                "category": category,
                 "source": "body",
-                "estimated_new_price": effective_price,
-                "estimated_used_price": int(effective_price * depreciation_rate),
+                "estimated_new_price": price_new,
+                "estimated_used_price": int(price_new * DEPRECIATION_RATE),
             })
 
     return found

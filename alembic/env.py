@@ -12,6 +12,7 @@ from src.models import (  # noqa: F401
     BikeModel, BikeModelConfig, BikeVariant, BikeConsumable,
     BikeAccessoryPattern, BikeVariantPattern, BikeNewListingPattern,
     BikeExclusionPattern, BikeSearchConfig,
+    AccessoryCatalogGroup, AccessoryCatalogVariant,
 )
 from src.database import get_database_url
 

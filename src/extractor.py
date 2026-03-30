@@ -13,6 +13,7 @@ import lbc
 from typing import Optional
 
 from .accessories import detect_accessories
+from .catalog import build_patterns_from_catalog
 from .config import get_settings
 
 
@@ -318,6 +319,16 @@ def _safe_int(val) -> Optional[int]:
         return None
 
 
+def _get_catalog_patterns() -> list[tuple]:
+    """Charge les patterns du catalogue DB pour la detection hors-API."""
+    from .database import get_catalog_groups
+    from sqlmodel import Session
+    from .database import engine
+    with Session(engine) as session:
+        groups = get_catalog_groups(session)
+    return build_patterns_from_catalog(groups)
+
+
 def detect_new_listing(*, seller_type, price, mileage_km, subject, body,
                        variant, color, wheel_type, bike_model_id, session) -> bool:
     """
@@ -418,8 +429,7 @@ def detect_new_listing_light(subject, price, seller_type, catalog_prices: list[i
 
 
 def fetch_ad(url: str, bike_model_id: int, session, *,
-             client: Optional[lbc.Client] = None,
-             price_overrides: Optional[dict] = None) -> dict:
+             client: Optional[lbc.Client] = None) -> dict:
     """
     Recupere une annonce LeBonCoin et la transforme en dict pret pour la BDD.
 
@@ -428,7 +438,6 @@ def fetch_ad(url: str, bike_model_id: int, session, *,
         bike_model_id: ID du modele de moto.
         session: SQLModel session.
         client: Client lbc optionnel (en cree un par defaut).
-        price_overrides: Surcharges de prix accessoires {group: prix_neuf}.
 
     Returns:
         Dict avec toutes les donnees extraites, pret pour upsert_ad().
@@ -455,7 +464,10 @@ def fetch_ad(url: str, bike_model_id: int, session, *,
     estimated_new_price = _estimate_new_price(bike_model_id, variant, color, wheel_type, session)
 
     # Detection des accessoires depuis le body
-    accessories = detect_accessories(body, bike_model_id, session, price_overrides=price_overrides)
+    from .database import get_exclusion_patterns
+    catalog_patterns = _get_catalog_patterns()
+    exclusions = get_exclusion_patterns(session, bike_model_id)
+    accessories = detect_accessories(body, patterns=catalog_patterns, exclusions=exclusions)
 
     # Localisation
     location = _parse_location(ad)
