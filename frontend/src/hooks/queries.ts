@@ -1,301 +1,339 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as api from '../lib/api'
 
-export function useAds(params?: Parameters<typeof api.fetchAds>[0]) {
+// ─── Bike Models ─────────────────────────────────────────────────────────────
+
+export function useBikeModels() {
   return useQuery({
-    queryKey: ['ads', params],
-    queryFn: () => api.fetchAds(params),
+    queryKey: ['bike-models'],
+    queryFn: api.fetchBikeModels,
   })
 }
 
-export function useAd(id: number) {
+export function useBikeModel(slug: string) {
   return useQuery({
-    queryKey: ['ad', id],
-    queryFn: () => api.fetchAd(id),
+    queryKey: ['bike-model', slug],
+    queryFn: () => api.fetchBikeModel(slug),
+    enabled: !!slug,
   })
 }
 
-export function useStats() {
+export function useBikeVariants(slug: string) {
   return useQuery({
-    queryKey: ['stats'],
-    queryFn: api.fetchStats,
+    queryKey: ['bike-variants', slug],
+    queryFn: () => api.fetchBikeVariants(slug),
+    enabled: !!slug,
   })
 }
 
-export function useRankings() {
+// ─── Ads ─────────────────────────────────────────────────────────────────────
+
+export function useAds(slug: string, params?: Parameters<typeof api.fetchAds>[1]) {
   return useQuery({
-    queryKey: ['rankings'],
-    queryFn: api.fetchRankings,
+    queryKey: ['ads', slug, params],
+    queryFn: () => api.fetchAds(slug, params),
+    enabled: !!slug,
   })
 }
 
-export function usePreviewAd() {
+export function useAd(slug: string, id: number) {
+  return useQuery({
+    queryKey: ['ad', slug, id],
+    queryFn: () => api.fetchAd(slug, id),
+    enabled: !!slug && id > 0,
+  })
+}
+
+export function useStats(slug: string) {
+  return useQuery({
+    queryKey: ['stats', slug],
+    queryFn: () => api.fetchStats(slug),
+    enabled: !!slug,
+  })
+}
+
+export function useRankings(slug: string) {
+  return useQuery({
+    queryKey: ['rankings', slug],
+    queryFn: () => api.fetchRankings(slug),
+    enabled: !!slug,
+  })
+}
+
+export function usePreviewAd(slug: string) {
   return useMutation({
-    mutationFn: (url: string) => api.previewAd(url),
+    mutationFn: (url: string) => api.previewAd(slug, url),
   })
 }
 
-export function useConfirmAd() {
+export function useConfirmAd(slug: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (adData: Record<string, unknown>) => api.confirmAd(adData),
+    mutationFn: (adData: Record<string, unknown>) => api.confirmAd(slug, adData),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['ads'] })
-      void qc.invalidateQueries({ queryKey: ['stats'] })
-      void qc.invalidateQueries({ queryKey: ['rankings'] })
+      void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['stats', slug] })
+      void qc.invalidateQueries({ queryKey: ['rankings', slug] })
+      void qc.invalidateQueries({ queryKey: ['bike-models'] })
     },
   })
 }
 
-export function useAddAd() {
+export function useAddAd(slug: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (url: string) => api.addAd(url),
+    mutationFn: (url: string) => api.addAd(slug, url),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['ads'] })
-      void qc.invalidateQueries({ queryKey: ['stats'] })
-      void qc.invalidateQueries({ queryKey: ['rankings'] })
+      void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['stats', slug] })
+      void qc.invalidateQueries({ queryKey: ['rankings', slug] })
+      void qc.invalidateQueries({ queryKey: ['bike-models'] })
     },
   })
 }
 
-export function useUpdateAd() {
+export function useUpdateAd(slug: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, ...data }: Parameters<typeof api.updateAd>[1] & { id: number }) =>
-      api.updateAd(id, data),
+    mutationFn: ({ id, ...data }: Parameters<typeof api.updateAd>[2] & { id: number }) =>
+      api.updateAd(slug, id, data),
     onSuccess: (_data, vars) => {
-      void qc.invalidateQueries({ queryKey: ['ad', vars.id] })
-      void qc.invalidateQueries({ queryKey: ['ads'] })
-      void qc.invalidateQueries({ queryKey: ['stats'] })
-      void qc.invalidateQueries({ queryKey: ['rankings'] })
+      void qc.invalidateQueries({ queryKey: ['ad', slug, vars.id] })
+      void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['stats', slug] })
+      void qc.invalidateQueries({ queryKey: ['rankings', slug] })
     },
   })
 }
 
-export function useAccessoryCatalog() {
+export function useAccessoryCatalog(slug: string) {
   return useQuery({
-    queryKey: ['accessory-catalog'],
-    queryFn: api.fetchAccessoryCatalog,
+    queryKey: ['accessory-catalog', slug],
+    queryFn: () => api.fetchAccessoryCatalog(slug),
     staleTime: 30_000,
+    enabled: !!slug,
   })
 }
 
-export function useUpdateCatalogPrice() {
+export function useUpdateCatalogPrice(slug: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ group, estimated_new_price }: { group: string; estimated_new_price: number }) =>
-      api.updateCatalogPrice(group, estimated_new_price),
+      api.updateCatalogPrice(slug, group, estimated_new_price),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['accessory-catalog'] })
-      void qc.invalidateQueries({ queryKey: ['ads'] })
-      void qc.invalidateQueries({ queryKey: ['rankings'] })
-      void qc.invalidateQueries({ queryKey: ['stats'] })
+      void qc.invalidateQueries({ queryKey: ['accessory-catalog', slug] })
+      void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['rankings', slug] })
+      void qc.invalidateQueries({ queryKey: ['stats', slug] })
     },
   })
 }
 
-export function useResetCatalogPrice() {
+export function useResetCatalogPrice(slug: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (group: string) => api.resetCatalogPrice(group),
+    mutationFn: (group: string) => api.resetCatalogPrice(slug, group),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['accessory-catalog'] })
-      void qc.invalidateQueries({ queryKey: ['ads'] })
-      void qc.invalidateQueries({ queryKey: ['rankings'] })
-      void qc.invalidateQueries({ queryKey: ['stats'] })
+      void qc.invalidateQueries({ queryKey: ['accessory-catalog', slug] })
+      void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['rankings', slug] })
+      void qc.invalidateQueries({ queryKey: ['stats', slug] })
     },
   })
 }
 
-export function useRefreshAllAccessories() {
+export function useRefreshAllAccessories(slug: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: () => api.refreshAllAccessories(),
+    mutationFn: () => api.refreshAllAccessories(slug),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['ads'] })
-      void qc.invalidateQueries({ queryKey: ['stats'] })
-      void qc.invalidateQueries({ queryKey: ['rankings'] })
+      void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['stats', slug] })
+      void qc.invalidateQueries({ queryKey: ['rankings', slug] })
     },
   })
 }
 
-export function useRefreshAdAccessories() {
+export function useRefreshAdAccessories(slug: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (adId: number) => api.refreshAdAccessories(adId),
+    mutationFn: (adId: number) => api.refreshAdAccessories(slug, adId),
     onSuccess: (_data, adId) => {
-      void qc.invalidateQueries({ queryKey: ['ad', adId] })
-      void qc.invalidateQueries({ queryKey: ['ads'] })
-      void qc.invalidateQueries({ queryKey: ['stats'] })
-      void qc.invalidateQueries({ queryKey: ['rankings'] })
+      void qc.invalidateQueries({ queryKey: ['ad', slug, adId] })
+      void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['stats', slug] })
+      void qc.invalidateQueries({ queryKey: ['rankings', slug] })
     },
   })
 }
 
-export function useMergeAd() {
+export function useMergeAd(slug: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ newAdData, oldAdId }: { newAdData: Record<string, unknown>; oldAdId: number }) =>
-      api.mergeAd(newAdData, oldAdId),
+      api.mergeAd(slug, newAdData, oldAdId),
     onSuccess: (data) => {
-      void qc.invalidateQueries({ queryKey: ['ads'] })
-      void qc.invalidateQueries({ queryKey: ['ad', data.id] })
-      void qc.invalidateQueries({ queryKey: ['ad', data.old_ad_id] })
-      void qc.invalidateQueries({ queryKey: ['stats'] })
-      void qc.invalidateQueries({ queryKey: ['rankings'] })
-      void qc.invalidateQueries({ queryKey: ['price-history', data.id] })
-      void qc.invalidateQueries({ queryKey: ['price-history', data.old_ad_id] })
-      void qc.invalidateQueries({ queryKey: ['crawl-session'] })
+      void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['ad', slug, data.id] })
+      void qc.invalidateQueries({ queryKey: ['ad', slug, data.old_ad_id] })
+      void qc.invalidateQueries({ queryKey: ['stats', slug] })
+      void qc.invalidateQueries({ queryKey: ['rankings', slug] })
+      void qc.invalidateQueries({ queryKey: ['price-history', slug, data.id] })
+      void qc.invalidateQueries({ queryKey: ['price-history', slug, data.old_ad_id] })
+      void qc.invalidateQueries({ queryKey: ['crawl-session', slug] })
+      void qc.invalidateQueries({ queryKey: ['bike-models'] })
     },
   })
 }
 
-export function usePriceHistory(adId: number) {
+export function usePriceHistory(slug: string, adId: number) {
   return useQuery({
-    queryKey: ['price-history', adId],
-    queryFn: () => api.fetchPriceHistory(adId),
-    enabled: adId > 0,
+    queryKey: ['price-history', slug, adId],
+    queryFn: () => api.fetchPriceHistory(slug, adId),
+    enabled: !!slug && adId > 0,
   })
 }
 
-export function useMarkAdSold() {
+export function useMarkAdSold(slug: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, sold }: { id: number; sold: boolean }) => api.markAdSold(id, sold),
+    mutationFn: ({ id, sold }: { id: number; sold: boolean }) => api.markAdSold(slug, id, sold),
     onSuccess: (_data, vars) => {
-      void qc.invalidateQueries({ queryKey: ['ad', vars.id] })
-      void qc.invalidateQueries({ queryKey: ['ads'] })
-      void qc.invalidateQueries({ queryKey: ['stats'] })
-      void qc.invalidateQueries({ queryKey: ['rankings'] })
+      void qc.invalidateQueries({ queryKey: ['ad', slug, vars.id] })
+      void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['stats', slug] })
+      void qc.invalidateQueries({ queryKey: ['rankings', slug] })
     },
   })
 }
 
-export function useCheckAdsOnline() {
+export function useCheckAdsOnline(slug: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: () => api.checkAdsOnline(),
+    mutationFn: () => api.checkAdsOnline(slug),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['ads'] })
-      void qc.invalidateQueries({ queryKey: ['stats'] })
-      void qc.invalidateQueries({ queryKey: ['rankings'] })
+      void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['stats', slug] })
+      void qc.invalidateQueries({ queryKey: ['rankings', slug] })
     },
   })
 }
 
-export function useCheckAdOnline() {
+export function useCheckAdOnline(slug: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => api.checkAdOnline(id),
+    mutationFn: (id: number) => api.checkAdOnline(slug, id),
     onSuccess: (_data, id) => {
-      void qc.invalidateQueries({ queryKey: ['ad', id] })
-      void qc.invalidateQueries({ queryKey: ['ads'] })
-      void qc.invalidateQueries({ queryKey: ['rankings'] })
+      void qc.invalidateQueries({ queryKey: ['ad', slug, id] })
+      void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['rankings', slug] })
     },
   })
 }
 
-export function useDeleteAd() {
+export function useDeleteAd(slug: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => api.deleteAd(id),
+    mutationFn: (id: number) => api.deleteAd(slug, id),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['ads'] })
-      void qc.invalidateQueries({ queryKey: ['stats'] })
-      void qc.invalidateQueries({ queryKey: ['rankings'] })
+      void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['stats', slug] })
+      void qc.invalidateQueries({ queryKey: ['rankings', slug] })
+      void qc.invalidateQueries({ queryKey: ['bike-models'] })
     },
   })
 }
 
-export function useCheckPrices() {
+export function useCheckPrices(slug: string) {
   return useMutation({
-    mutationFn: () => api.checkPrices(),
+    mutationFn: () => api.checkPrices(slug),
   })
 }
 
-export function useConfirmPrice() {
+export function useConfirmPrice(slug: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ adId, newPrice }: { adId: number; newPrice: number }) =>
-      api.confirmPrice(adId, newPrice),
+      api.confirmPrice(slug, adId, newPrice),
     onSuccess: (_data, vars) => {
-      void qc.invalidateQueries({ queryKey: ['ad', vars.adId] })
-      void qc.invalidateQueries({ queryKey: ['ads'] })
-      void qc.invalidateQueries({ queryKey: ['stats'] })
-      void qc.invalidateQueries({ queryKey: ['rankings'] })
-      void qc.invalidateQueries({ queryKey: ['price-history', vars.adId] })
+      void qc.invalidateQueries({ queryKey: ['ad', slug, vars.adId] })
+      void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['stats', slug] })
+      void qc.invalidateQueries({ queryKey: ['rankings', slug] })
+      void qc.invalidateQueries({ queryKey: ['price-history', slug, vars.adId] })
     },
   })
 }
 
 // ─── Crawl ────────────────────────────────────────────────────────────────
 
-export function useActiveCrawlSession() {
+export function useActiveCrawlSession(slug: string) {
   return useQuery({
-    queryKey: ['crawl-session'],
-    queryFn: api.fetchActiveCrawlSession,
+    queryKey: ['crawl-session', slug],
+    queryFn: () => api.fetchActiveCrawlSession(slug),
     retry: false,
+    enabled: !!slug,
   })
 }
 
-export function useCrawlSearch() {
+export function useCrawlSearch(slug: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: () => api.crawlSearch(),
+    mutationFn: () => api.crawlSearch(slug),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['crawl-session'] })
+      void qc.invalidateQueries({ queryKey: ['crawl-session', slug] })
     },
   })
 }
 
-export function useCrawlExtract() {
+export function useCrawlExtract(slug: string) {
   return useMutation({
     mutationFn: ({ adId, url }: { adId: number; url: string }) =>
-      api.crawlExtract(adId, url),
+      api.crawlExtract(slug, adId, url),
   })
 }
 
-export function useCrawlConfirm() {
+export function useCrawlConfirm(slug: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (adData: Record<string, unknown>) => api.confirmAd(adData),
+    mutationFn: (adData: Record<string, unknown>) => api.confirmAd(slug, adData),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['ads'] })
-      void qc.invalidateQueries({ queryKey: ['stats'] })
-      void qc.invalidateQueries({ queryKey: ['rankings'] })
+      void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['stats', slug] })
+      void qc.invalidateQueries({ queryKey: ['rankings', slug] })
+      void qc.invalidateQueries({ queryKey: ['bike-models'] })
     },
   })
 }
 
-export function useUpdateCrawlAdAction() {
+export function useUpdateCrawlAdAction(slug: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ sessionId, adId, action }: { sessionId: number; adId: number; action: string }) =>
-      api.updateCrawlAdAction(sessionId, adId, action),
+      api.updateCrawlAdAction(slug, sessionId, adId, action),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['crawl-session'] })
+      void qc.invalidateQueries({ queryKey: ['crawl-session', slug] })
     },
   })
 }
 
-export function useCloseCrawlSession() {
+export function useCloseCrawlSession(slug: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (sessionId: number) => api.closeCrawlSession(sessionId),
+    mutationFn: (sessionId: number) => api.closeCrawlSession(slug, sessionId),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['crawl-session'] })
+      void qc.invalidateQueries({ queryKey: ['crawl-session', slug] })
     },
   })
 }
 
-export function useRemoveCrawlSessionAd() {
+export function useRemoveCrawlSessionAd(slug: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ sessionId, adId }: { sessionId: number; adId: number }) =>
-      api.removeCrawlSessionAd(sessionId, adId),
+      api.removeCrawlSessionAd(slug, sessionId, adId),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['crawl-session'] })
+      void qc.invalidateQueries({ queryKey: ['crawl-session', slug] })
     },
   })
 }

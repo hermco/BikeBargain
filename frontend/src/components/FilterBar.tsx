@@ -1,6 +1,7 @@
 import { Search, ArrowUpDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Select } from './ui/Select'
+import { useVariantOptions } from '../hooks/useCurrentModel'
 
 export type SortOption = 'recent' | 'price_asc' | 'price_desc' | 'km_asc' | 'km_desc'
 
@@ -13,14 +14,6 @@ interface FilterBarProps {
   onSortChange: (s: SortOption) => void
 }
 
-const VARIANT_OPTIONS = [
-  { value: '', labelKey: 'filter.allVariants' },
-  { value: 'Base', label: 'Base' },
-  { value: 'Pass', label: 'Pass' },
-  { value: 'Summit', label: 'Summit' },
-  { value: 'Mana Black', label: 'Mana Black' },
-]
-
 const SORT_OPTIONS = [
   { value: 'recent', labelKey: 'filter.recentlyAdded' },
   { value: 'price_asc', labelKey: 'filter.priceAsc' },
@@ -31,11 +24,12 @@ const SORT_OPTIONS = [
 
 export function FilterBar({ variant, onVariantChange, search, onSearchChange, sort, onSortChange }: FilterBarProps) {
   const { t } = useTranslation()
+  const { variantNames } = useVariantOptions()
 
-  const variantOptions = VARIANT_OPTIONS.map((o) => ({
-    value: o.value,
-    label: o.labelKey ? t(o.labelKey) : o.label!,
-  }))
+  const variantOptions = [
+    { value: '', label: t('filter.allVariants') },
+    ...variantNames.map((v) => ({ value: v, label: v })),
+  ]
 
   const sortOptions = SORT_OPTIONS.map((o) => ({
     value: o.value,

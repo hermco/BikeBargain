@@ -1,4 +1,4 @@
-import type { AdsResponse, AdDetail, Stats, Ranking, CrawlSearchResult, CrawlExtractResult, PriceHistory, CheckPricesResult } from '../types'
+import type { AdsResponse, AdDetail, Stats, Ranking, CrawlSearchResult, CrawlExtractResult, PriceHistory, CheckPricesResult, BikeModel, BikeModelDetail, BikeVariant } from '../types'
 import { config } from '../config'
 
 const BASE = `${config.apiBaseUrl}/api`
@@ -12,7 +12,27 @@ async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
-export function fetchAds(params?: {
+// ─── Bike Models ─────────────────────────────────────────────────────────────
+
+export function fetchBikeModels(): Promise<BikeModel[]> {
+  return fetchJSON<BikeModel[]>('/bike-models')
+}
+
+export function fetchBikeModel(slug: string): Promise<BikeModelDetail> {
+  return fetchJSON<BikeModelDetail>(`/bike-models/${slug}`)
+}
+
+export function fetchBikeVariants(slug: string): Promise<BikeVariant[]> {
+  return fetchJSON<BikeVariant[]>(`/bike-models/${slug}/variants`)
+}
+
+export function fetchAdModelSlug(id: number): Promise<{ ad_id: number; slug: string | null }> {
+  return fetchJSON<{ ad_id: number; slug: string | null }>(`/ads/${id}/model-slug`)
+}
+
+// ─── Ads ─────────────────────────────────────────────────────────────────────
+
+export function fetchAds(slug: string, params?: {
   variant?: string
   min_price?: number
   max_price?: number
@@ -26,52 +46,52 @@ export function fetchAds(params?: {
   if (params?.limit != null) sp.set('limit', String(params.limit))
   if (params?.offset != null) sp.set('offset', String(params.offset))
   const qs = sp.toString()
-  return fetchJSON<AdsResponse>(`/ads${qs ? '?' + qs : ''}`)
+  return fetchJSON<AdsResponse>(`/bike-models/${slug}/ads${qs ? '?' + qs : ''}`)
 }
 
-export function fetchAd(id: number): Promise<AdDetail> {
-  return fetchJSON<AdDetail>(`/ads/${id}`)
+export function fetchAd(slug: string, id: number): Promise<AdDetail> {
+  return fetchJSON<AdDetail>(`/bike-models/${slug}/ads/${id}`)
 }
 
-export function previewAd(url: string): Promise<AdDetail> {
-  return fetchJSON(`/ads/preview`, {
+export function previewAd(slug: string, url: string): Promise<AdDetail> {
+  return fetchJSON(`/bike-models/${slug}/ads/preview`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url }),
   })
 }
 
-export function confirmAd(adData: Record<string, unknown>): Promise<{ id: number; subject: string; price: number }> {
-  return fetchJSON(`/ads/confirm`, {
+export function confirmAd(slug: string, adData: Record<string, unknown>): Promise<{ id: number; subject: string; price: number }> {
+  return fetchJSON(`/bike-models/${slug}/ads/confirm`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ad_data: adData }),
   })
 }
 
-export function addAd(url: string): Promise<{ id: number; subject: string; price: number }> {
-  return fetchJSON(`/ads`, {
+export function addAd(slug: string, url: string): Promise<{ id: number; subject: string; price: number }> {
+  return fetchJSON(`/bike-models/${slug}/ads`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url }),
   })
 }
 
-export function updateAd(id: number, data: {
+export function updateAd(slug: string, id: number, data: {
   color?: string
   variant?: string
   wheel_type?: string
   accessories?: Array<{ name: string; category: string; source: string; estimated_new_price: number; estimated_used_price: number }>
 }): Promise<{ updated: number }> {
-  return fetchJSON(`/ads/${id}`, {
+  return fetchJSON(`/bike-models/${slug}/ads/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
 }
 
-export function deleteAd(id: number): Promise<{ deleted: number }> {
-  return fetchJSON(`/ads/${id}`, { method: 'DELETE' })
+export function deleteAd(slug: string, id: number): Promise<{ deleted: number }> {
+  return fetchJSON(`/bike-models/${slug}/ads/${id}`, { method: 'DELETE' })
 }
 
 export interface CatalogAccessory {
@@ -84,72 +104,72 @@ export interface CatalogAccessory {
   has_override: boolean
 }
 
-export function fetchAccessoryCatalog(): Promise<CatalogAccessory[]> {
-  return fetchJSON<CatalogAccessory[]>('/accessory-catalog')
+export function fetchAccessoryCatalog(slug: string): Promise<CatalogAccessory[]> {
+  return fetchJSON<CatalogAccessory[]>(`/bike-models/${slug}/accessory-catalog`)
 }
 
-export function updateCatalogPrice(group: string, estimated_new_price: number): Promise<{ group: string; estimated_new_price: number; ads_refreshed: number }> {
-  return fetchJSON(`/accessory-catalog/${group}`, {
+export function updateCatalogPrice(slug: string, group: string, estimated_new_price: number): Promise<{ group: string; estimated_new_price: number; ads_refreshed: number }> {
+  return fetchJSON(`/bike-models/${slug}/accessory-catalog/${group}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ estimated_new_price }),
   })
 }
 
-export function resetCatalogPrice(group: string): Promise<{ group: string; reset: boolean; ads_refreshed: number }> {
-  return fetchJSON(`/accessory-catalog/${group}/override`, { method: 'DELETE' })
+export function resetCatalogPrice(slug: string, group: string): Promise<{ group: string; reset: boolean; ads_refreshed: number }> {
+  return fetchJSON(`/bike-models/${slug}/accessory-catalog/${group}/override`, { method: 'DELETE' })
 }
 
-export function refreshAllAccessories(): Promise<{ ads_refreshed: number; ads_skipped_manual: number }> {
-  return fetchJSON('/accessories/refresh', { method: 'POST' })
+export function refreshAllAccessories(slug: string): Promise<{ ads_refreshed: number; ads_skipped_manual: number }> {
+  return fetchJSON(`/bike-models/${slug}/accessories/refresh`, { method: 'POST' })
 }
 
-export function refreshAdAccessories(adId: number): Promise<{ id: number; before: number; after: number }> {
-  return fetchJSON(`/ads/${adId}/refresh-accessories`, { method: 'POST' })
+export function refreshAdAccessories(slug: string, adId: number): Promise<{ id: number; before: number; after: number }> {
+  return fetchJSON(`/bike-models/${slug}/ads/${adId}/refresh-accessories`, { method: 'POST' })
 }
 
-export function markAdSold(id: number, sold: boolean): Promise<{ updated: number }> {
-  return fetchJSON(`/ads/${id}`, {
+export function markAdSold(slug: string, id: number, sold: boolean): Promise<{ updated: number }> {
+  return fetchJSON(`/bike-models/${slug}/ads/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sold: sold ? 1 : 0 }),
   })
 }
 
-export function checkAdsOnline(): Promise<{ checked: number; newly_sold: number; details: Array<{ id: number; sold: boolean; reason?: string }> }> {
-  return fetchJSON('/ads/check-online', { method: 'POST' })
+export function checkAdsOnline(slug: string): Promise<{ checked: number; newly_sold: number; details: Array<{ id: number; sold: boolean; reason?: string }> }> {
+  return fetchJSON(`/bike-models/${slug}/ads/check-online`, { method: 'POST' })
 }
 
-export function mergeAd(newAdData: Record<string, unknown>, oldAdId: number): Promise<{ id: number; old_ad_id: number; price_delta: number; subject: string }> {
-  return fetchJSON('/ads/merge', {
+export function mergeAd(slug: string, newAdData: Record<string, unknown>, oldAdId: number): Promise<{ id: number; old_ad_id: number; price_delta: number; subject: string }> {
+  return fetchJSON(`/bike-models/${slug}/ads/merge`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ new_ad_data: newAdData, old_ad_id: oldAdId }),
   })
 }
 
-export function fetchPriceHistory(adId: number): Promise<PriceHistory> {
-  return fetchJSON<PriceHistory>(`/ads/${adId}/price-history`)
+export function fetchPriceHistory(slug: string, adId: number): Promise<PriceHistory> {
+  return fetchJSON<PriceHistory>(`/bike-models/${slug}/ads/${adId}/price-history`)
 }
 
-export function checkAdOnline(id: number): Promise<{ id: number; sold: boolean; reason?: string }> {
-  return fetchJSON(`/ads/${id}/check-online`, { method: 'POST' })
+export function checkAdOnline(slug: string, id: number): Promise<{ id: number; sold: boolean; reason?: string }> {
+  return fetchJSON(`/bike-models/${slug}/ads/${id}/check-online`, { method: 'POST' })
 }
 
-export function fetchStats(): Promise<Stats> {
-  return fetchJSON<Stats>('/stats')
+export function fetchStats(slug: string): Promise<Stats> {
+  return fetchJSON<Stats>(`/bike-models/${slug}/stats`)
 }
 
-export function fetchRankings(): Promise<Ranking[]> {
-  return fetchJSON<Ranking[]>('/rankings')
+export function fetchRankings(slug: string): Promise<Ranking[]> {
+  return fetchJSON<Ranking[]>(`/bike-models/${slug}/rankings`)
 }
 
-export function checkPrices(): Promise<CheckPricesResult> {
-  return fetchJSON<CheckPricesResult>('/ads/check-prices', { method: 'POST' })
+export function checkPrices(slug: string): Promise<CheckPricesResult> {
+  return fetchJSON<CheckPricesResult>(`/bike-models/${slug}/ads/check-prices`, { method: 'POST' })
 }
 
-export function confirmPrice(adId: number, newPrice: number): Promise<{ id: number; price_delta: number; new_price: number }> {
-  return fetchJSON(`/ads/${adId}/confirm-price`, {
+export function confirmPrice(slug: string, adId: number, newPrice: number): Promise<{ id: number; price_delta: number; new_price: number }> {
+  return fetchJSON(`/bike-models/${slug}/ads/${adId}/confirm-price`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ new_price: newPrice }),
@@ -158,12 +178,12 @@ export function confirmPrice(adId: number, newPrice: number): Promise<{ id: numb
 
 // ─── Crawl ────────────────────────────────────────────────────────────────
 
-export function crawlSearch(): Promise<CrawlSearchResult & { session_id: number }> {
-  return fetchJSON<CrawlSearchResult & { session_id: number }>('/crawl/search')
+export function crawlSearch(slug: string): Promise<CrawlSearchResult & { session_id: number }> {
+  return fetchJSON<CrawlSearchResult & { session_id: number }>(`/bike-models/${slug}/crawl/search`)
 }
 
-export function crawlExtract(adId: number, url: string): Promise<CrawlExtractResult> {
-  return fetchJSON<CrawlExtractResult>('/crawl/extract', {
+export function crawlExtract(slug: string, adId: number, url: string): Promise<CrawlExtractResult> {
+  return fetchJSON<CrawlExtractResult>(`/bike-models/${slug}/crawl/extract`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ad_id: adId, url }),
@@ -191,22 +211,22 @@ export interface CrawlSession {
   ads: CrawlSessionAd[]
 }
 
-export function fetchActiveCrawlSession(): Promise<CrawlSession | null> {
-  return fetchJSON<CrawlSession | null>('/crawl/sessions/active')
+export function fetchActiveCrawlSession(slug: string): Promise<CrawlSession | null> {
+  return fetchJSON<CrawlSession | null>(`/bike-models/${slug}/crawl/sessions/active`)
 }
 
-export function updateCrawlAdAction(sessionId: number, adId: number, action: string): Promise<{ updated: boolean }> {
-  return fetchJSON(`/crawl/sessions/${sessionId}/ads/${adId}`, {
+export function updateCrawlAdAction(slug: string, sessionId: number, adId: number, action: string): Promise<{ updated: boolean }> {
+  return fetchJSON(`/bike-models/${slug}/crawl/sessions/${sessionId}/ads/${adId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action }),
   })
 }
 
-export function closeCrawlSession(sessionId: number): Promise<{ closed: number }> {
-  return fetchJSON(`/crawl/sessions/${sessionId}`, { method: 'DELETE' })
+export function closeCrawlSession(slug: string, sessionId: number): Promise<{ closed: number }> {
+  return fetchJSON(`/bike-models/${slug}/crawl/sessions/${sessionId}`, { method: 'DELETE' })
 }
 
-export function removeCrawlSessionAd(sessionId: number, adId: number): Promise<{ removed: number }> {
-  return fetchJSON(`/crawl/sessions/${sessionId}/ads/${adId}`, { method: 'DELETE' })
+export function removeCrawlSessionAd(slug: string, sessionId: number, adId: number): Promise<{ removed: number }> {
+  return fetchJSON(`/bike-models/${slug}/crawl/sessions/${sessionId}/ads/${adId}`, { method: 'DELETE' })
 }

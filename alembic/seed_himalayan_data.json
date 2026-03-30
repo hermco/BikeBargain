@@ -1,0 +1,308 @@
+{
+  "config": {
+    "warranty_years": 3,
+    "warranty_value_per_year": 200,
+    "mechanical_wear_per_km": 0.03,
+    "condition_risk_per_km": 0.04,
+    "short_term_km_threshold": 3000
+  },
+  "variants": [
+    {
+      "variant_name": "Base",
+      "color": "Kaza Brown",
+      "wheel_type": "standard",
+      "new_price": 5890,
+      "color_hex": "#d97706"
+    },
+    {
+      "variant_name": "Pass",
+      "color": "Slate Himalayan Salt",
+      "wheel_type": "standard",
+      "new_price": 5990,
+      "color_hex": "#2563eb"
+    },
+    {
+      "variant_name": "Pass",
+      "color": "Slate Poppy Blue",
+      "wheel_type": "standard",
+      "new_price": 5990,
+      "color_hex": "#2563eb"
+    },
+    {
+      "variant_name": "Summit",
+      "color": "Hanle Black",
+      "wheel_type": "standard",
+      "new_price": 6190,
+      "color_hex": "#059669"
+    },
+    {
+      "variant_name": "Summit",
+      "color": "Kamet White",
+      "wheel_type": "tubeless",
+      "new_price": 6440,
+      "color_hex": "#059669"
+    },
+    {
+      "variant_name": "Summit",
+      "color": "Hanle Black",
+      "wheel_type": "tubeless",
+      "new_price": 6490,
+      "color_hex": "#059669"
+    },
+    {
+      "variant_name": "Mana Black",
+      "color": "Mana Black",
+      "wheel_type": "tubeless",
+      "new_price": 6590,
+      "color_hex": "#6b7280"
+    }
+  ],
+  "consumables": [
+    {
+      "name": "Pneus (AV+AR)",
+      "cost_eur": 270,
+      "life_km": 12000
+    },
+    {
+      "name": "Kit chaîne",
+      "cost_eur": 254,
+      "life_km": 20000
+    },
+    {
+      "name": "Plaquettes (AV+AR)",
+      "cost_eur": 145,
+      "life_km": 15000
+    },
+    {
+      "name": "Vidange (huile+filtre)",
+      "cost_eur": 140,
+      "life_km": 10000
+    }
+  ],
+  "variant_patterns": [
+    {
+      "regex_pattern": "mana\\s*black",
+      "matched_variant": "Mana Black",
+      "matched_color": "Mana Black",
+      "matched_wheel_type": "tubeless",
+      "priority": 100
+    },
+    {
+      "regex_pattern": "kamet\\s*white|kamet|blanc\\s*kamet",
+      "matched_variant": "Summit",
+      "matched_color": "Kamet White",
+      "matched_wheel_type": "tubeless",
+      "priority": 99
+    },
+    {
+      "regex_pattern": "hanle\\s*black|hanle|noir\\s*hanle",
+      "matched_variant": "Summit",
+      "matched_color": "Hanle Black",
+      "matched_wheel_type": null,
+      "priority": 98
+    },
+    {
+      "regex_pattern": "himalayan\\s*salt|salt|gris.*rouge",
+      "matched_variant": "Pass",
+      "matched_color": "Slate Himalayan Salt",
+      "matched_wheel_type": "standard",
+      "priority": 97
+    },
+    {
+      "regex_pattern": "poppy\\s*blue|poppy|gris.*bleu",
+      "matched_variant": "Pass",
+      "matched_color": "Slate Poppy Blue",
+      "matched_wheel_type": "standard",
+      "priority": 96
+    },
+    {
+      "regex_pattern": "kaza\\s*brown|kaza|marron",
+      "matched_variant": "Base",
+      "matched_color": "Kaza Brown",
+      "matched_wheel_type": "standard",
+      "priority": 95
+    },
+    {
+      "regex_pattern": "blanc|white",
+      "matched_variant": "Summit",
+      "matched_color": "Kamet White",
+      "matched_wheel_type": "tubeless",
+      "priority": 10
+    },
+    {
+      "regex_pattern": "noir|black",
+      "matched_variant": "Summit",
+      "matched_color": "Hanle Black",
+      "matched_wheel_type": null,
+      "priority": 9
+    },
+    {
+      "regex_pattern": "marron|brown",
+      "matched_variant": "Base",
+      "matched_color": "Kaza Brown",
+      "matched_wheel_type": "standard",
+      "priority": 8
+    },
+    {
+      "regex_pattern": "bleu|blue",
+      "matched_variant": "Pass",
+      "matched_color": "Slate Poppy Blue",
+      "matched_wheel_type": "standard",
+      "priority": 7
+    },
+    {
+      "regex_pattern": "gris|grey|gray",
+      "matched_variant": "Pass",
+      "matched_color": null,
+      "matched_wheel_type": "standard",
+      "priority": 6
+    },
+    {
+      "regex_pattern": "rouge|red",
+      "matched_variant": "Pass",
+      "matched_color": "Slate Himalayan Salt",
+      "matched_wheel_type": "standard",
+      "priority": 5
+    }
+  ],
+  "new_listing_patterns": [
+    {
+      "regex_pattern": "moteur\\s*sherpa",
+      "category": "model_spec",
+      "weight": 1.0
+    },
+    {
+      "regex_pattern": "sherpa\\s*45[02]|sherpa\\s*engine",
+      "category": "model_spec",
+      "weight": 1.0
+    },
+    {
+      "regex_pattern": "monocylindre\\s*45[02]|mono\\s*45[02]",
+      "category": "model_spec",
+      "weight": 1.0
+    },
+    {
+      "regex_pattern": "452\\s*cm[3³]|452\\s*cc",
+      "category": "model_spec",
+      "weight": 1.0
+    },
+    {
+      "regex_pattern": "40\\s*(?:cv|ch|hp|kw)[^\\d]",
+      "category": "model_spec",
+      "weight": 1.0
+    },
+    {
+      "regex_pattern": "8[,.]?000\\s*tr",
+      "category": "model_spec",
+      "weight": 1.0
+    },
+    {
+      "regex_pattern": "tripper\\s*(navigation|gps)?",
+      "category": "model_spec",
+      "weight": 1.0
+    },
+    {
+      "regex_pattern": "google\\s*maps\\s*(tableau\\s*de\\s*bord|intégré)",
+      "category": "model_spec",
+      "weight": 1.0
+    },
+    {
+      "regex_pattern": "abs\\s*(double|double\\s*canal|bi[\\s-]*canal)",
+      "category": "model_spec",
+      "weight": 1.0
+    },
+    {
+      "regex_pattern": "assist[eé]\\s*et\\s*(anti[\\s-]*patinag|bascul)",
+      "category": "model_spec",
+      "weight": 1.0
+    },
+    {
+      "regex_pattern": "suspension\\s*sherpa|fourche\\s*sherpa",
+      "category": "model_spec",
+      "weight": 1.0
+    },
+    {
+      "regex_pattern": "royal\\s*enfield\\s*genuine\\s*accessories",
+      "category": "model_spec",
+      "weight": 1.0
+    },
+    {
+      "regex_pattern": "\\b0\\s*km\\b|\\bzero\\s*km\\b",
+      "category": "generic",
+      "weight": 1.0
+    },
+    {
+      "regex_pattern": "jamais\\s*(circul[eé]|roul[eé]|immatricul[eé])",
+      "category": "generic",
+      "weight": 1.0
+    },
+    {
+      "regex_pattern": "neuf[^t]|flambant\\s*neuf|tout\\s*neuf",
+      "category": "generic",
+      "weight": 1.0
+    },
+    {
+      "regex_pattern": "v[eé]hicule\\s*de\\s*d[eé]monstration|demo",
+      "category": "generic",
+      "weight": 0.8
+    },
+    {
+      "regex_pattern": "livraison\\s*(incluse|offerte|possible)",
+      "category": "generic",
+      "weight": 0.8
+    },
+    {
+      "regex_pattern": "garantie\\s*(constructeur|fabricant|neuf)",
+      "category": "generic",
+      "weight": 0.8
+    },
+    {
+      "regex_pattern": "facture\\s*(d['\\s]?achat|origine|constructeur)",
+      "category": "generic",
+      "weight": 0.8
+    },
+    {
+      "regex_pattern": "concessionnaire\\s*agréé|revendeur\\s*officiel",
+      "category": "dealer",
+      "weight": 2.0
+    },
+    {
+      "regex_pattern": "réseau\\s*royal\\s*enfield|distributeur\\s*officiel",
+      "category": "dealer",
+      "weight": 2.0
+    },
+    {
+      "regex_pattern": "parc\\s*(moto|véhicule)[^\\n]*disponible[s]?",
+      "category": "dealer",
+      "weight": 2.0
+    },
+    {
+      "regex_pattern": "stock\\s*(disponible|immédiat)|en\\s*stock",
+      "category": "dealer",
+      "weight": 2.0
+    },
+    {
+      "regex_pattern": "essai\\s*(gratuit|sur\\s*rendez[\\s-]*vous)|reprise",
+      "category": "dealer",
+      "weight": 2.0
+    }
+  ],
+  "exclusion_patterns": [
+    {
+      "regex_pattern": "\\((?:[^)]*(?:pneumatique|vidange|service|atelier|réparation|entretien)[^)]*)\\)"
+    },
+    {
+      "regex_pattern": "service[s]?\\s*(rapide|moto|atelier)[^\\n]*"
+    },
+    {
+      "regex_pattern": "atelier\\s*(de\\s*)?(réparation|entretien|mécanique)[^\\n]*"
+    }
+  ],
+  "search_configs": [
+    {
+      "keyword": "Himalayan",
+      "min_cc": 420,
+      "max_cc": 99999
+    }
+  ]
+}

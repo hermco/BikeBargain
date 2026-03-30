@@ -1,7 +1,8 @@
 """
 API REST FastAPI pour le frontend BikeBargain.
 
-Expose les fonctions existantes (database, extractor, analyzer) via des endpoints JSON.
+Endpoints scopes par modele de moto : /api/bike-models/{slug}/...
+Aliases de compatibilite pour les anciennes routes (fonctionne si un seul modele actif).
 """
 
 import csv
@@ -20,16 +21,20 @@ from sqlalchemy.orm import selectinload
 from .models import (
     Ad, AdAttribute, AdImage, AdAccessory,
     CrawlSession, CrawlSessionAd, AdPriceHistory, AccessoryOverride,
+    BikeModel, BikeModelConfig, BikeVariant, BikeAccessoryPattern,
 )
 from .database import (
     get_session, run_migrations, upsert_ad, get_all_ads, get_ad_count,
     get_accessory_overrides, set_accessory_override, delete_accessory_override,
     refresh_accessories, _ad_to_dict, _replace_accessories,
+    get_bike_models, get_bike_model_by_slug, get_bike_model_config,
+    get_bike_variants, get_accessory_patterns, get_exclusion_patterns,
+    get_search_configs, get_new_listing_patterns, get_bike_consumables,
 )
 from lbc.exceptions import NotFoundError
 
 from .analyzer import rank_ads
-from .accessories import estimate_total_accessories_value, ACCESSORY_PATTERNS, DEPRECIATION_RATE
+from .accessories import estimate_total_accessories_value
 from .extractor import detect_new_listing_light, detect_new_listing
 from .config import get_settings
 
@@ -54,6 +59,27 @@ def on_startup():
     # avant uvicorn. En dev local, on les lance au startup.
     if settings.app_env != "production":
         run_migrations()
+
+
+# ─── Shared dependency ──────────────────────────────────────────────────────
+
+def resolve_bike_model(slug: str, session: Session = Depends(get_session)) -> BikeModel:
+    """Resout un slug en BikeModel ou leve 404."""
+    model = get_bike_model_by_slug(session, slug)
+    if not model:
+        raise HTTPException(status_code=404, detail=f"Modèle '{slug}' non trouvé")
+    return model
+
+
+def _resolve_single_model(session: Session) -> BikeModel:
+    """Retourne l'unique modele actif ou leve une erreur."""
+    models = get_bike_models(session)
+    if len(models) != 1:
+        raise HTTPException(
+            status_code=400,
+            detail="Plusieurs modèles actifs — utilisez /api/bike-models/{slug}/...",
+        )
+    return models[0]
 
 
 # ─── Schemas ─────────────────────────────────────────────────────────────────
@@ -110,10 +136,167 @@ class UpdateAdRequest(BaseModel):
     sold: int | None = None
 
 
-# ─── Endpoints ───────────────────────────────────────────────────────────────
+class MergeAdRequest(BaseModel):
+    new_ad_data: AdPayload
+    old_ad_id: int
 
-@app.get("/api/ads")
-def list_ads(
+
+class ConfirmPriceRequest(BaseModel):
+    new_price: float
+
+
+class UpdateCatalogPriceRequest(BaseModel):
+    estimated_new_price: int
+
+
+class ExtractRequest(BaseModel):
+    ad_id: int
+    url: str
+
+
+class UpdateCrawlAdAction(BaseModel):
+    action: str
+
+
+# ─── Bike Model Endpoints ───────────────────────────────────────────────────
+
+@app.get("/api/bike-models")
+def list_bike_models(session: Session = Depends(get_session)):
+    """Liste les modeles actifs avec stats resumees."""
+    models = get_bike_models(session)
+
+    # Stats agregees par modele en une seule requete
+    stats_rows = session.exec(
+        select(
+            Ad.bike_model_id,
+            func.count(Ad.id),
+            func.min(Ad.price),
+            func.max(Ad.price),
+        )
+        .where(Ad.superseded_by == None)  # noqa: E711
+        .group_by(Ad.bike_model_id)
+    ).all()
+    stats_by_model = {row[0]: {"count": row[1], "min_price": row[2], "max_price": row[3]} for row in stats_rows}
+
+    results = []
+    for m in models:
+        s = stats_by_model.get(m.id, {"count": 0, "min_price": None, "max_price": None})
+        results.append({
+            "id": m.id,
+            "slug": m.slug,
+            "brand": m.brand,
+            "name": m.name,
+            "engine_cc": m.engine_cc,
+            "image_url": m.image_url,
+            "active": m.active,
+            "ad_count": s["count"],
+            "min_price": s["min_price"],
+            "max_price": s["max_price"],
+        })
+    return results
+
+
+@app.get("/api/bike-models/{slug}")
+def get_bike_model(slug: str, session: Session = Depends(get_session)):
+    """Detail d'un modele avec sa config."""
+    model = get_bike_model_by_slug(session, slug)
+    if not model:
+        raise HTTPException(status_code=404, detail=f"Modèle '{slug}' non trouvé")
+
+    config = get_bike_model_config(session, model.id)
+    return {
+        "id": model.id,
+        "slug": model.slug,
+        "brand": model.brand,
+        "name": model.name,
+        "engine_cc": model.engine_cc,
+        "image_url": model.image_url,
+        "active": model.active,
+        "created_at": model.created_at,
+        "config": {
+            "warranty_years": config.warranty_years,
+            "warranty_value_per_year": config.warranty_value_per_year,
+            "mechanical_wear_per_km": config.mechanical_wear_per_km,
+            "condition_risk_per_km": config.condition_risk_per_km,
+            "short_term_km_threshold": config.short_term_km_threshold,
+        } if config else None,
+    }
+
+
+@app.get("/api/bike-models/{slug}/variants")
+def get_model_variants(slug: str, session: Session = Depends(get_session)):
+    """Catalogue des variantes d'un modele."""
+    model = resolve_bike_model(slug, session)
+    variants = get_bike_variants(session, model.id)
+    return [
+        {
+            "id": v.id,
+            "variant_name": v.variant_name,
+            "color": v.color,
+            "wheel_type": v.wheel_type,
+            "new_price": v.new_price,
+            "color_hex": v.color_hex,
+        }
+        for v in variants
+    ]
+
+
+@app.get("/api/bike-models/{slug}/accessories")
+def get_model_accessories(slug: str, session: Session = Depends(get_session)):
+    """Patterns d'accessoires d'un modele."""
+    model = resolve_bike_model(slug, session)
+    patterns = get_accessory_patterns(session, model.id)
+
+    seen_groups: set[str] = set()
+    result = []
+    for p in patterns:
+        group = p.dedup_group
+        if group and group in seen_groups:
+            continue
+        if group:
+            seen_groups.add(group)
+        result.append({
+            "id": p.id,
+            "name": p.name,
+            "category": p.category,
+            "regex_pattern": p.regex_pattern,
+            "new_price": p.new_price,
+            "depreciation_rate": p.depreciation_rate,
+            "dedup_group": p.dedup_group,
+            "sort_order": p.sort_order,
+        })
+    return result
+
+
+@app.get("/api/ads/{ad_id}/model-slug")
+def get_ad_model_slug(ad_id: int, session: Session = Depends(get_session)):
+    """Retourne le slug du modele d'une annonce (pour redirections frontend)."""
+    ad = session.get(Ad, ad_id)
+    if not ad:
+        raise HTTPException(status_code=404, detail="Annonce non trouvée")
+    if not ad.bike_model_id:
+        return {"ad_id": ad_id, "slug": None}
+    model = session.get(BikeModel, ad.bike_model_id)
+    return {"ad_id": ad_id, "slug": model.slug if model else None}
+
+
+@app.post("/api/bike-models/import")
+def import_bike_model(session: Session = Depends(get_session)):
+    """Placeholder: Import en masse d'un modele."""
+    raise HTTPException(status_code=501, detail="Pas encore implémenté")
+
+
+@app.post("/api/bike-models/{slug}/clone")
+def clone_bike_model(slug: str, session: Session = Depends(get_session)):
+    """Placeholder: Cloner un modele existant."""
+    raise HTTPException(status_code=501, detail="Pas encore implémenté")
+
+
+# ─── Model-scoped Ad Endpoints ──────────────────────────────────────────────
+
+@app.get("/api/bike-models/{slug}/ads")
+def list_ads_scoped(
+    slug: str,
     variant: Optional[str] = Query(None),
     min_price: Optional[float] = Query(None),
     max_price: Optional[float] = Query(None),
@@ -121,8 +304,12 @@ def list_ads(
     offset: int = Query(0, ge=0),
     session: Session = Depends(get_session),
 ):
-    # Construire les filtres WHERE
-    conditions = [Ad.superseded_by == None]  # noqa: E711
+    model = resolve_bike_model(slug, session)
+
+    conditions = [
+        Ad.superseded_by == None,  # noqa: E711
+        Ad.bike_model_id == model.id,
+    ]
     if variant:
         conditions.append(Ad.variant == variant)
     if min_price is not None:
@@ -130,11 +317,9 @@ def list_ads(
     if max_price is not None:
         conditions.append(Ad.price <= max_price)
 
-    # Requete count
     count_stmt = select(func.count()).select_from(Ad).where(*conditions)
     total = session.exec(count_stmt).one()
 
-    # Requete paginee avec relations
     stmt = (
         select(Ad)
         .options(selectinload(Ad.accessories), selectinload(Ad.images))
@@ -159,14 +344,14 @@ def list_ads(
     return {"total": total, "ads": results}
 
 
-@app.get("/api/ads/{ad_id}")
-def get_ad(ad_id: int, session: Session = Depends(get_session)):
+@app.get("/api/bike-models/{slug}/ads/{ad_id}")
+def get_ad_scoped(slug: str, ad_id: int, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
     ad = session.get(Ad, ad_id)
-    if not ad:
-        raise HTTPException(status_code=404, detail="Annonce non trouvee")
+    if not ad or ad.bike_model_id != model.id:
+        raise HTTPException(status_code=404, detail="Annonce non trouvée")
 
     result = _ad_to_dict(ad)
-
     result["accessories"] = [
         {"name": a.name, "category": a.category, "source": a.source,
          "estimated_new_price": a.estimated_new_price, "estimated_used_price": a.estimated_used_price}
@@ -174,26 +359,24 @@ def get_ad(ad_id: int, session: Session = Depends(get_session)):
             select(AdAccessory).where(AdAccessory.ad_id == ad_id).order_by(AdAccessory.category, AdAccessory.name)
         ).all()
     ]
-
     result["images"] = [
         img.url for img in session.exec(
             select(AdImage).where(AdImage.ad_id == ad_id).order_by(AdImage.position)
         ).all()
     ]
-
     result["attributes"] = [
         {"key": a.key, "value": a.value, "value_label": a.value_label}
         for a in session.exec(
             select(AdAttribute).where(AdAttribute.ad_id == ad_id).order_by(AdAttribute.key)
         ).all()
     ]
-
     return result
 
 
-@app.post("/api/ads/preview")
-def preview_ad(req: AddAdRequest, session: Session = Depends(get_session)):
-    overrides = get_accessory_overrides(session)
+@app.post("/api/bike-models/{slug}/ads/preview")
+def preview_ad_scoped(slug: str, req: AddAdRequest, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
+    overrides = get_accessory_overrides(session, model.id)
 
     try:
         if settings.lbc_service_url:
@@ -202,21 +385,23 @@ def preview_ad(req: AddAdRequest, session: Session = Depends(get_session)):
         else:
             from .extractor import fetch_ad, get_lbc_client
             client = get_lbc_client()
-            ad_data = fetch_ad(req.url, client=client, price_overrides=overrides)
+            ad_data = fetch_ad(req.url, model.id, session, client=client, price_overrides=overrides)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erreur extraction : {e}")
 
     return ad_data
 
 
-@app.post("/api/ads/confirm")
-def confirm_ad(req: ConfirmAdRequest, session: Session = Depends(get_session)):
+@app.post("/api/bike-models/{slug}/ads/confirm")
+def confirm_ad_scoped(slug: str, req: ConfirmAdRequest, session: Session = Depends(get_session)):
     from .extractor import _estimate_new_price
 
+    model = resolve_bike_model(slug, session)
     ad_data = req.ad_data.model_dump(exclude_unset=True)
+    ad_data["bike_model_id"] = model.id
 
     new_price = _estimate_new_price(
-        ad_data.get("variant"), ad_data.get("color"), ad_data.get("wheel_type")
+        model.id, ad_data.get("variant"), ad_data.get("color"), ad_data.get("wheel_type"), session
     )
     if new_price:
         ad_data["estimated_new_price"] = new_price
@@ -225,9 +410,10 @@ def confirm_ad(req: ConfirmAdRequest, session: Session = Depends(get_session)):
     return {"id": ad_id, "subject": ad_data.get("subject"), "price": ad_data.get("price")}
 
 
-@app.post("/api/ads")
-def add_ad(req: AddAdRequest, session: Session = Depends(get_session)):
-    overrides = get_accessory_overrides(session)
+@app.post("/api/bike-models/{slug}/ads")
+def add_ad_scoped(slug: str, req: AddAdRequest, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
+    overrides = get_accessory_overrides(session, model.id)
 
     try:
         if settings.lbc_service_url:
@@ -236,32 +422,34 @@ def add_ad(req: AddAdRequest, session: Session = Depends(get_session)):
         else:
             from .extractor import fetch_ad, get_lbc_client
             client = get_lbc_client()
-            ad_data = fetch_ad(req.url, client=client, price_overrides=overrides)
+            ad_data = fetch_ad(req.url, model.id, session, client=client, price_overrides=overrides)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erreur extraction : {e}")
 
+    ad_data["bike_model_id"] = model.id
     ad_id = upsert_ad(session, ad_data)
     return {"id": ad_id, "subject": ad_data.get("subject"), "price": ad_data.get("price")}
 
 
-@app.delete("/api/ads/{ad_id}")
-def delete_ad(ad_id: int, session: Session = Depends(get_session)):
+@app.delete("/api/bike-models/{slug}/ads/{ad_id}")
+def delete_ad_scoped(slug: str, ad_id: int, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
     ad = session.get(Ad, ad_id)
-    if not ad:
-        raise HTTPException(status_code=404, detail="Annonce non trouvee")
-
+    if not ad or ad.bike_model_id != model.id:
+        raise HTTPException(status_code=404, detail="Annonce non trouvée")
     session.delete(ad)
     session.commit()
     return {"deleted": ad_id}
 
 
-@app.patch("/api/ads/{ad_id}")
-def update_ad(ad_id: int, req: UpdateAdRequest, session: Session = Depends(get_session)):
+@app.patch("/api/bike-models/{slug}/ads/{ad_id}")
+def update_ad_scoped(slug: str, ad_id: int, req: UpdateAdRequest, session: Session = Depends(get_session)):
     from .extractor import _estimate_new_price
 
+    model = resolve_bike_model(slug, session)
     ad = session.get(Ad, ad_id)
-    if not ad:
-        raise HTTPException(status_code=404, detail="Annonce non trouvee")
+    if not ad or ad.bike_model_id != model.id:
+        raise HTTPException(status_code=404, detail="Annonce non trouvée")
 
     if req.color is not None:
         ad.color = req.color
@@ -272,17 +460,13 @@ def update_ad(ad_id: int, req: UpdateAdRequest, session: Session = Depends(get_s
     if req.sold is not None:
         ad.sold = req.sold
 
-    # Recalculer le prix neuf si variante/couleur/jantes modifiees
     if req.variant is not None or req.color is not None or req.wheel_type is not None:
-        new_price = _estimate_new_price(
-            ad.variant, ad.color, ad.wheel_type
-        )
+        new_price = _estimate_new_price(model.id, ad.variant, ad.color, ad.wheel_type, session)
         if new_price:
             ad.estimated_new_price = new_price
 
     ad.updated_at = datetime.now().isoformat()
 
-    # Mise a jour des accessoires
     if req.accessories is not None:
         _replace_accessories(session, ad_id, req.accessories)
         ad.accessories_manual = 1
@@ -291,29 +475,27 @@ def update_ad(ad_id: int, req: UpdateAdRequest, session: Session = Depends(get_s
     return {"updated": ad_id}
 
 
-# ─── Merge / Price History ──────────────────────────────────────────────────
+# ─── Model-scoped Merge / Price History ─────────────────────────────────────
 
-class MergeAdRequest(BaseModel):
-    new_ad_data: AdPayload
-    old_ad_id: int
-
-
-@app.post("/api/ads/merge")
-def merge_ad(req: MergeAdRequest, session: Session = Depends(get_session)):
+@app.post("/api/bike-models/{slug}/ads/merge")
+def merge_ad_scoped(slug: str, req: MergeAdRequest, session: Session = Depends(get_session)):
     from .extractor import _estimate_new_price
+
+    model = resolve_bike_model(slug, session)
 
     old_ad = session.get(Ad, req.old_ad_id)
     if not old_ad:
-        raise HTTPException(status_code=404, detail="Ancienne annonce non trouvee")
+        raise HTTPException(status_code=404, detail="Ancienne annonce non trouvée")
 
     new_data = req.new_ad_data.model_dump(exclude_unset=True)
+    new_data["bike_model_id"] = model.id
 
     new_id = new_data["id"]
     old_price = old_ad.price or 0
     new_price_val = new_data.get("price") or 0
 
     estimated = _estimate_new_price(
-        new_data.get("variant"), new_data.get("color"), new_data.get("wheel_type")
+        model.id, new_data.get("variant"), new_data.get("color"), new_data.get("wheel_type"), session
     )
     if estimated:
         new_data["estimated_new_price"] = estimated
@@ -342,7 +524,6 @@ def merge_ad(req: MergeAdRequest, session: Session = Depends(get_session)):
             note=f"Annonce #{req.old_ad_id}", recorded_at=old_pub_date or "",
         ))
 
-    # Enregistrer le nouveau prix (repost)
     price_delta = int(new_price_val - old_price) if (old_price and new_price_val) else 0
     note = f"Annonce #{new_id}"
     if price_delta < 0:
@@ -358,7 +539,6 @@ def merge_ad(req: MergeAdRequest, session: Session = Depends(get_session)):
         note=note, recorded_at=new_pub_date or "",
     ))
 
-    # Marquer l'ancienne annonce comme vendue et superseded
     old_ad.sold = 1
     old_ad.superseded_by = ad_id
     old_ad.updated_at = datetime.now().isoformat()
@@ -373,11 +553,12 @@ def merge_ad(req: MergeAdRequest, session: Session = Depends(get_session)):
     }
 
 
-@app.get("/api/ads/{ad_id}/price-history")
-def get_price_history(ad_id: int, session: Session = Depends(get_session)):
+@app.get("/api/bike-models/{slug}/ads/{ad_id}/price-history")
+def get_price_history_scoped(slug: str, ad_id: int, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
     ad = session.get(Ad, ad_id)
-    if not ad:
-        raise HTTPException(status_code=404, detail="Annonce non trouvee")
+    if not ad or ad.bike_model_id != model.id:
+        raise HTTPException(status_code=404, detail="Annonce non trouvée")
 
     history = [
         {"id": h.id, "ad_id": h.ad_id, "previous_ad_id": h.previous_ad_id,
@@ -395,22 +576,18 @@ def get_price_history(ad_id: int, session: Session = Depends(get_session)):
     }
 
 
-class ConfirmPriceRequest(BaseModel):
-    new_price: float
-
-
-@app.post("/api/ads/{ad_id}/confirm-price")
-def confirm_price(ad_id: int, req: ConfirmPriceRequest, session: Session = Depends(get_session)):
+@app.post("/api/bike-models/{slug}/ads/{ad_id}/confirm-price")
+def confirm_price_scoped(slug: str, ad_id: int, req: ConfirmPriceRequest, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
     ad = session.get(Ad, ad_id)
-    if not ad:
-        raise HTTPException(status_code=404, detail="Annonce non trouvee")
+    if not ad or ad.bike_model_id != model.id:
+        raise HTTPException(status_code=404, detail="Annonce non trouvée")
 
     old_price = ad.price or 0
     new_price = req.new_price
     if old_price == new_price:
-        return {"id": ad_id, "price_delta": 0, "message": "Prix inchange"}
+        return {"id": ad_id, "price_delta": 0, "message": "Prix inchangé"}
 
-    # Creer l'entree initiale si aucun historique n'existe
     existing_history = session.exec(
         select(AdPriceHistory).where(AdPriceHistory.ad_id == ad_id)
     ).first()
@@ -424,7 +601,6 @@ def confirm_price(ad_id: int, req: ConfirmPriceRequest, session: Session = Depen
             recorded_at=ad.first_publication_date or ad.extracted_at or "",
         ))
 
-    # Enregistrer le changement de prix
     price_delta = int(new_price - old_price)
     if price_delta < 0:
         note = f"Baisse de {abs(price_delta)}€"
@@ -446,60 +622,69 @@ def confirm_price(ad_id: int, req: ConfirmPriceRequest, session: Session = Depen
     return {"id": ad_id, "price_delta": price_delta, "new_price": new_price}
 
 
-@app.get("/api/accessory-catalog")
-def get_accessory_catalog(session: Session = Depends(get_session)):
-    overrides = get_accessory_overrides(session)
+# ─── Model-scoped Accessory Catalog ─────────────────────────────────────────
+
+@app.get("/api/bike-models/{slug}/accessory-catalog")
+def get_accessory_catalog_scoped(slug: str, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
+    overrides = get_accessory_overrides(session, model.id)
+    patterns = get_accessory_patterns(session, model.id)
 
     seen_groups: set[str] = set()
     catalog = []
-    for _pattern, name, category, price_new, group in ACCESSORY_PATTERNS:
-        if group not in seen_groups:
+    for p in patterns:
+        group = p.dedup_group
+        if group and group in seen_groups:
+            continue
+        if group:
             seen_groups.add(group)
-            effective_price = overrides.get(group, price_new)
-            catalog.append({
-                "name": name,
-                "category": category,
-                "estimated_new_price": effective_price,
-                "default_new_price": price_new,
-                "estimated_used_price": int(effective_price * DEPRECIATION_RATE),
-                "group": group,
-                "has_override": group in overrides,
-            })
+        effective_price = overrides.get(group, p.new_price) if group else p.new_price
+        catalog.append({
+            "name": p.name,
+            "category": p.category,
+            "estimated_new_price": effective_price,
+            "default_new_price": p.new_price,
+            "estimated_used_price": int(effective_price * p.depreciation_rate),
+            "group": group or p.name,
+            "has_override": (group in overrides) if group else False,
+        })
     return catalog
 
 
-class UpdateCatalogPriceRequest(BaseModel):
-    estimated_new_price: int
-
-
-@app.patch("/api/accessory-catalog/{group}")
-def update_catalog_price(group: str, req: UpdateCatalogPriceRequest, session: Session = Depends(get_session)):
-    valid_groups = {g for _, _, _, _, g in ACCESSORY_PATTERNS}
+@app.patch("/api/bike-models/{slug}/accessory-catalog/{group}")
+def update_catalog_price_scoped(slug: str, group: str, req: UpdateCatalogPriceRequest, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
+    patterns = get_accessory_patterns(session, model.id)
+    valid_groups = {p.dedup_group for p in patterns if p.dedup_group}
     if group not in valid_groups:
         raise HTTPException(status_code=404, detail=f"Groupe '{group}' inconnu")
 
-    set_accessory_override(session, group, req.estimated_new_price)
-    results = refresh_accessories(session)
+    set_accessory_override(session, model.id, group, req.estimated_new_price)
+    results = refresh_accessories(session, model.id)
     return {"group": group, "estimated_new_price": req.estimated_new_price, "ads_refreshed": len(results)}
 
 
-@app.delete("/api/accessory-catalog/{group}/override")
-def reset_catalog_price(group: str, session: Session = Depends(get_session)):
-    valid_groups = {g for _, _, _, _, g in ACCESSORY_PATTERNS}
+@app.delete("/api/bike-models/{slug}/accessory-catalog/{group}/override")
+def reset_catalog_price_scoped(slug: str, group: str, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
+    patterns = get_accessory_patterns(session, model.id)
+    valid_groups = {p.dedup_group for p in patterns if p.dedup_group}
     if group not in valid_groups:
         raise HTTPException(status_code=404, detail=f"Groupe '{group}' inconnu")
 
-    delete_accessory_override(session, group)
-    results = refresh_accessories(session)
+    delete_accessory_override(session, model.id, group)
+    results = refresh_accessories(session, model.id)
     return {"group": group, "reset": True, "ads_refreshed": len(results)}
 
 
-@app.post("/api/accessories/refresh")
-def refresh_all_accessories(session: Session = Depends(get_session)):
+@app.post("/api/bike-models/{slug}/accessories/refresh")
+def refresh_all_accessories_scoped(slug: str, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
     skipped = session.exec(
-        select(func.count()).select_from(Ad).where(Ad.accessories_manual == 1)
+        select(func.count()).select_from(Ad)
+        .where(Ad.bike_model_id == model.id, Ad.accessories_manual == 1)
     ).one()
-    results = refresh_accessories(session, skip_manual=True)
+    results = refresh_accessories(session, model.id, skip_manual=True)
     return {
         "ads_refreshed": len(results),
         "ads_skipped_manual": skipped,
@@ -507,23 +692,29 @@ def refresh_all_accessories(session: Session = Depends(get_session)):
     }
 
 
-@app.post("/api/ads/{ad_id}/refresh-accessories")
-def refresh_ad_accessories(ad_id: int, session: Session = Depends(get_session)):
+@app.post("/api/bike-models/{slug}/ads/{ad_id}/refresh-accessories")
+def refresh_ad_accessories_scoped(slug: str, ad_id: int, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
     ad = session.get(Ad, ad_id)
-    if not ad:
-        raise HTTPException(status_code=404, detail="Annonce non trouvee")
+    if not ad or ad.bike_model_id != model.id:
+        raise HTTPException(status_code=404, detail="Annonce non trouvée")
 
     ad.accessories_manual = 0
     session.commit()
 
-    results = refresh_accessories(session, ad_ids=[ad_id])
+    results = refresh_accessories(session, model.id, ad_ids=[ad_id])
     detail = results[0] if results else {"id": ad_id, "before": 0, "after": 0}
     return detail
 
 
-@app.post("/api/ads/check-online")
-def check_ads_online(session: Session = Depends(get_session)):
-    ads = session.exec(select(Ad).where(Ad.sold == 0)).all()
+# ─── Model-scoped Check Online / Check Prices ───────────────────────────────
+
+@app.post("/api/bike-models/{slug}/ads/check-online")
+def check_ads_online_scoped(slug: str, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
+    ads = session.exec(
+        select(Ad).where(Ad.sold == 0, Ad.bike_model_id == model.id)
+    ).all()
     results = []
 
     if settings.lbc_service_url:
@@ -563,11 +754,12 @@ def check_ads_online(session: Session = Depends(get_session)):
     return {"checked": len(results), "newly_sold": newly_sold, "details": results}
 
 
-@app.post("/api/ads/{ad_id}/check-online")
-def check_ad_online(ad_id: int, session: Session = Depends(get_session)):
+@app.post("/api/bike-models/{slug}/ads/{ad_id}/check-online")
+def check_ad_online_scoped(slug: str, ad_id: int, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
     ad = session.get(Ad, ad_id)
-    if not ad:
-        raise HTTPException(status_code=404, detail="Annonce non trouvee")
+    if not ad or ad.bike_model_id != model.id:
+        raise HTTPException(status_code=404, detail="Annonce non trouvée")
 
     if settings.lbc_service_url:
         from . import lbc_client
@@ -599,22 +791,39 @@ def check_ad_online(ad_id: int, session: Session = Depends(get_session)):
             return {"id": ad_id, "sold": False, "reason": "error", "error": str(e)}
 
 
-@app.post("/api/ads/check-prices")
-def check_prices(session: Session = Depends(get_session)):
-    ads = session.exec(select(Ad).where(Ad.sold == 0)).all()
+@app.post("/api/bike-models/{slug}/ads/check-prices")
+def check_prices_scoped(slug: str, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
+    ads = session.exec(
+        select(Ad).where(Ad.sold == 0, Ad.bike_model_id == model.id)
+    ).all()
     if not ads:
         return {"price_changes": [], "checked_count": 0, "unchanged_count": 0}
 
-    # Un seul appel search au lieu de N appels get_ad individuels
-    if settings.lbc_service_url:
-        from . import lbc_client
-        search_results = lbc_client.search()
-    else:
-        from .crawler import search_all_ads
-        search_results = search_all_ads()
+    # Charger les configs de recherche du modele
+    search_cfgs = get_search_configs(session, model.id)
 
-    # Indexer les prix LBC par ID
-    lbc_prices = {ad_data["id"]: ad_data.get("price") for ad_data in search_results.get("ads", [])}
+    all_search_results = []
+    for cfg in search_cfgs:
+        if settings.lbc_service_url:
+            from . import lbc_client
+            r = lbc_client.search(keyword=cfg.keyword, min_cc=cfg.min_cc, max_cc=cfg.max_cc)
+        else:
+            from .crawler import search_all_ads
+            r = search_all_ads(keyword=cfg.keyword, min_cc=cfg.min_cc, max_cc=cfg.max_cc)
+        all_search_results.extend(r.get("ads", []))
+
+    # Fallback si aucune config de recherche
+    if not search_cfgs:
+        if settings.lbc_service_url:
+            from . import lbc_client
+            r = lbc_client.search()
+        else:
+            from .crawler import search_all_ads
+            r = search_all_ads()
+        all_search_results.extend(r.get("ads", []))
+
+    lbc_prices = {ad_data["id"]: ad_data.get("price") for ad_data in all_search_results}
 
     price_changes = []
     for ad in ads:
@@ -638,13 +847,16 @@ def check_prices(session: Session = Depends(get_session)):
     }
 
 
-@app.get("/api/stats")
-def get_stats(session: Session = Depends(get_session)):
+# ─── Model-scoped Stats / Rankings ──────────────────────────────────────────
+
+@app.get("/api/bike-models/{slug}/stats")
+def get_stats_scoped(slug: str, session: Session = Depends(get_session)):
     import statistics as stats_mod
 
-    base_filter = Ad.superseded_by == None  # noqa: E711
+    model = resolve_bike_model(slug, session)
 
-    # Aggregats prix via SQL
+    base_conditions = [Ad.superseded_by == None, Ad.bike_model_id == model.id]  # noqa: E711
+
     price_row = session.exec(
         select(
             func.count(Ad.id),
@@ -652,64 +864,61 @@ def get_stats(session: Session = Depends(get_session)):
             func.min(Ad.price),
             func.max(Ad.price),
             func.avg(Ad.price),
-        ).where(base_filter)
+        ).where(*base_conditions)
     ).one()
     total_count, price_count, price_min, price_max, price_avg = price_row
 
-    # Prix individuels pour median et liste
-    price_rows = session.exec(
-        select(Ad.price).where(base_filter, Ad.price != None)  # noqa: E711
-    ).all()
-    prices = sorted([p if not isinstance(p, tuple) else p[0] for p in price_rows])
+    prices = sorted([
+        p for p in session.exec(
+            select(Ad.price).where(*base_conditions, Ad.price != None)  # noqa: E711
+        ).all()
+        if p is not None
+    ])
     price_median = stats_mod.median(prices) if prices else None
 
-    # Aggregats km via SQL
     km_row = session.exec(
         select(
             func.min(Ad.mileage_km),
             func.max(Ad.mileage_km),
             func.avg(Ad.mileage_km),
-        ).where(base_filter, Ad.mileage_km != None)  # noqa: E711
+        ).where(*base_conditions, Ad.mileage_km != None)  # noqa: E711
     ).one()
     km_min, km_max, km_avg = km_row
 
-    km_rows = session.exec(
-        select(Ad.mileage_km).where(base_filter, Ad.mileage_km != None)  # noqa: E711
-    ).all()
-    kms = sorted([k if not isinstance(k, tuple) else k[0] for k in km_rows])
+    kms = sorted([
+        k for k in session.exec(
+            select(Ad.mileage_km).where(*base_conditions, Ad.mileage_km != None)  # noqa: E711
+        ).all()
+    ])
 
-    # Annees via SQL
     year_row = session.exec(
         select(func.min(Ad.year), func.max(Ad.year))
-        .where(base_filter, Ad.year != None)  # noqa: E711
+        .where(*base_conditions, Ad.year != None)  # noqa: E711
     ).one()
     year_min, year_max = year_row
 
-    # Variants GROUP BY
     variant_rows = session.exec(
         select(
             func.coalesce(Ad.variant, "Non detectee"),
             func.count(Ad.id),
-        ).where(base_filter)
+        ).where(*base_conditions)
         .group_by(func.coalesce(Ad.variant, "Non detectee"))
     ).all()
 
-    # Departments GROUP BY (top 15)
     dept_rows = session.exec(
         select(
             func.coalesce(Ad.department, "Inconnu"),
             func.count(Ad.id),
-        ).where(base_filter)
+        ).where(*base_conditions)
         .group_by(func.coalesce(Ad.department, "Inconnu"))
         .order_by(func.count(Ad.id).desc())
         .limit(15)
     ).all()
 
-    # Top accessoires GROUP BY
     acc_rows = session.exec(
         select(AdAccessory.name, func.count(AdAccessory.id))
         .join(Ad, AdAccessory.ad_id == Ad.id)
-        .where(base_filter)
+        .where(*base_conditions)
         .group_by(AdAccessory.name)
         .order_by(func.count(AdAccessory.id).desc())
         .limit(15)
@@ -742,42 +951,69 @@ def get_stats(session: Session = Depends(get_session)):
     }
 
 
-@app.get("/api/rankings")
-def get_rankings(session: Session = Depends(get_session)):
-    return rank_ads(session)
+@app.get("/api/bike-models/{slug}/rankings")
+def get_rankings_scoped(slug: str, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
+    return rank_ads(model.id, session)
 
 
-# ─── Crawl ──────────────────────────────────────────────────────────────────
+# ─── Model-scoped Crawl ─────────────────────────────────────────────────────
 
-class ExtractRequest(BaseModel):
-    ad_id: int
-    url: str
+@app.get("/api/bike-models/{slug}/crawl/search")
+def crawl_search_scoped(slug: str, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
 
+    # Charger les configs de recherche du modele
+    search_cfgs = get_search_configs(session, model.id)
 
-@app.get("/api/crawl/search")
-def crawl_search(session: Session = Depends(get_session)):
+    # Charger les prix catalogue pour la detection d'annonces neuves
+    variants = get_bike_variants(session, model.id)
+    catalog_prices = [v.new_price for v in variants] if variants else None
+
+    all_results_ads = []
     try:
-        if settings.lbc_service_url:
-            from . import lbc_client
-            results = lbc_client.search()
-        else:
-            from .crawler import search_all_ads
-            results = search_all_ads()
+        for cfg in search_cfgs:
+            if settings.lbc_service_url:
+                from . import lbc_client
+                r = lbc_client.search(keyword=cfg.keyword, min_cc=cfg.min_cc, max_cc=cfg.max_cc)
+            else:
+                from .crawler import search_all_ads
+                r = search_all_ads(keyword=cfg.keyword, min_cc=cfg.min_cc, max_cc=cfg.max_cc)
+            all_results_ads.extend(r.get("ads", []))
+
+        # Fallback si aucune config
+        if not search_cfgs:
+            if settings.lbc_service_url:
+                from . import lbc_client
+                r = lbc_client.search()
+            else:
+                from .crawler import search_all_ads
+                r = search_all_ads()
+            all_results_ads.extend(r.get("ads", []))
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Erreur recherche LeBonCoin : {e}")
+
+    # Deduplication par ID (plusieurs configs peuvent ramener les memes annonces)
+    seen_ids = set()
+    unique_ads = []
+    for ad in all_results_ads:
+        if ad["id"] not in seen_ids:
+            seen_ids.add(ad["id"])
+            unique_ads.append(ad)
+    results = {"ads": unique_ads, "total": len(unique_ads)}
 
     existing_ids = {
         row for row in session.exec(select(Ad.id)).all()
     }
 
-    # Annonces qui ont ete remplacees par un repost connu (previous_ad_id pointe vers elles)
     superseded_ids = {
         row for row in session.exec(
             select(Ad.previous_ad_id).where(Ad.previous_ad_id.is_not(None))
         ).all()
     }
 
-    db_ads = session.exec(select(Ad)).all()
+    # Annonces du meme modele pour la detection de reposts
+    db_ads = session.exec(select(Ad).where(Ad.bike_model_id == model.id)).all()
     db_ads_data = [
         {"id": a.id, "city": a.city, "department": a.department,
          "price": a.price, "subject": a.subject, "sold": a.sold}
@@ -785,7 +1021,6 @@ def crawl_search(session: Session = Depends(get_session)):
         if a.id not in superseded_ids
     ]
 
-    # Index des prix en base pour detecter les changements
     db_prices = {a.id: a.price for a in db_ads}
 
     for ad in results["ads"]:
@@ -795,7 +1030,6 @@ def crawl_search(session: Session = Depends(get_session)):
         ad["current_db_price"] = None
         ad["price_delta"] = None
 
-        # Detecter les changements de prix sur les annonces deja en base
         if ad["id"] in existing_ids:
             db_price = db_prices.get(ad["id"])
             ad_price = ad.get("price")
@@ -836,15 +1070,17 @@ def crawl_search(session: Session = Depends(get_session)):
             if best_match:
                 ad["possible_repost_of"] = best_match
 
-    # Clore les sessions actives precedentes
+    # CRITICAL: Ne clore que les sessions actives de CE modele
     active_sessions = session.exec(
-        select(CrawlSession).where(CrawlSession.status == "active")
+        select(CrawlSession).where(
+            CrawlSession.status == "active",
+            CrawlSession.bike_model_id == model.id,
+        )
     ).all()
     for s in active_sessions:
         s.status = "done"
 
-    # Creer une nouvelle session
-    crawl_session = CrawlSession(status="active", total_ads=len(results["ads"]))
+    crawl_session = CrawlSession(status="active", total_ads=len(results["ads"]), bike_model_id=model.id)
     session.add(crawl_session)
     session.flush()
 
@@ -853,6 +1089,7 @@ def crawl_search(session: Session = Depends(get_session)):
             subject=ad.get("subject"),
             price=ad.get("price"),
             seller_type=ad.get("seller_type"),
+            catalog_prices=catalog_prices,
         )
         ad["is_new_listing"] = is_new
         session.add(CrawlSessionAd(
@@ -869,11 +1106,13 @@ def crawl_search(session: Session = Depends(get_session)):
     return {**results, "session_id": crawl_session.id}
 
 
-@app.get("/api/crawl/sessions/active")
-def get_active_crawl_session(session: Session = Depends(get_session)):
+@app.get("/api/bike-models/{slug}/crawl/sessions/active")
+def get_active_crawl_session_scoped(slug: str, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
+
     crawl_session = session.exec(
         select(CrawlSession)
-        .where(CrawlSession.status == "active")
+        .where(CrawlSession.status == "active", CrawlSession.bike_model_id == model.id)
         .order_by(CrawlSession.created_at.desc())
     ).first()
 
@@ -912,12 +1151,10 @@ def get_active_crawl_session(session: Session = Depends(get_session)):
     }
 
 
-class UpdateCrawlAdAction(BaseModel):
-    action: str
+@app.patch("/api/bike-models/{slug}/crawl/sessions/{session_id}/ads/{ad_id}")
+def update_crawl_session_ad_scoped(slug: str, session_id: int, ad_id: int, req: UpdateCrawlAdAction, session: Session = Depends(get_session)):
+    resolve_bike_model(slug, session)  # Validate slug
 
-
-@app.patch("/api/crawl/sessions/{session_id}/ads/{ad_id}")
-def update_crawl_session_ad(session_id: int, ad_id: int, req: UpdateCrawlAdAction, session: Session = Depends(get_session)):
     if req.action not in ('confirmed', 'skipped', 'error'):
         raise HTTPException(status_code=400, detail="Action invalide")
 
@@ -928,7 +1165,6 @@ def update_crawl_session_ad(session_id: int, ad_id: int, req: UpdateCrawlAdActio
     if crawl_ad:
         crawl_ad.action = req.action
 
-    # Verifier si toutes les annonces sont traitees
     pending = session.exec(
         select(func.count()).select_from(CrawlSessionAd)
         .where(CrawlSessionAd.session_id == session_id, CrawlSessionAd.action == "pending")
@@ -943,8 +1179,9 @@ def update_crawl_session_ad(session_id: int, ad_id: int, req: UpdateCrawlAdActio
     return {"updated": True}
 
 
-@app.delete("/api/crawl/sessions/{session_id}")
-def close_crawl_session(session_id: int, session: Session = Depends(get_session)):
+@app.delete("/api/bike-models/{slug}/crawl/sessions/{session_id}")
+def close_crawl_session_scoped(slug: str, session_id: int, session: Session = Depends(get_session)):
+    resolve_bike_model(slug, session)  # Validate slug
     cs = session.get(CrawlSession, session_id)
     if cs:
         cs.status = "done"
@@ -952,8 +1189,10 @@ def close_crawl_session(session_id: int, session: Session = Depends(get_session)
     return {"closed": session_id}
 
 
-@app.delete("/api/crawl/sessions/{session_id}/ads/{ad_id}")
-def remove_crawl_session_ad(session_id: int, ad_id: int, session: Session = Depends(get_session)):
+@app.delete("/api/bike-models/{slug}/crawl/sessions/{session_id}/ads/{ad_id}")
+def remove_crawl_session_ad_scoped(slug: str, session_id: int, ad_id: int, session: Session = Depends(get_session)):
+    resolve_bike_model(slug, session)  # Validate slug
+
     crawl_ad = session.exec(
         select(CrawlSessionAd)
         .where(CrawlSessionAd.session_id == session_id, CrawlSessionAd.ad_id == ad_id)
@@ -974,7 +1213,164 @@ def remove_crawl_session_ad(session_id: int, ad_id: int, session: Session = Depe
     return {"removed": ad_id}
 
 
-def _extract_significant_words(text: str, min_len: int = 4) -> set[str]:
+@app.post("/api/bike-models/{slug}/crawl/extract")
+def crawl_extract_scoped(slug: str, req: ExtractRequest, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
+    overrides = get_accessory_overrides(session, model.id)
+
+    try:
+        if settings.lbc_service_url:
+            from . import lbc_client
+            ad_data = lbc_client.fetch_ad(req.url, price_overrides=overrides)
+        else:
+            from .extractor import fetch_ad, get_lbc_client
+            client = get_lbc_client()
+            ad_data = fetch_ad(req.url, model.id, session, client=client, price_overrides=overrides)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erreur extraction : {e}")
+
+    existing = session.get(Ad, req.ad_id)
+    existing_data = None
+    diffs = []
+
+    if existing:
+        existing_data = _ad_to_dict(existing)
+        existing_data["accessories"] = [
+            {"name": a.name, "category": a.category, "source": a.source,
+             "estimated_new_price": a.estimated_new_price, "estimated_used_price": a.estimated_used_price}
+            for a in session.exec(
+                select(AdAccessory).where(AdAccessory.ad_id == req.ad_id)
+                .order_by(AdAccessory.category, AdAccessory.name)
+            ).all()
+        ]
+
+        compare_fields = [
+            ("price", "Prix"), ("year", "Annee"), ("mileage_km", "Kilometrage"),
+            ("variant", "Variante"), ("color", "Couleur"), ("wheel_type", "Jantes"),
+            ("city", "Ville"), ("department", "Departement"), ("seller_type", "Vendeur"),
+            ("estimated_new_price", "Prix neuf ref."),
+        ]
+
+        for field, label in compare_fields:
+            old_val = existing_data.get(field)
+            new_val = ad_data.get(field)
+            if old_val != new_val:
+                diffs.append({"field": field, "label": label, "old": old_val, "new": new_val})
+
+        old_acc_names = sorted([a["name"] for a in existing_data.get("accessories", [])])
+        new_acc_names = sorted([a["name"] for a in ad_data.get("accessories", [])])
+        if old_acc_names != new_acc_names:
+            added = [n for n in new_acc_names if n not in old_acc_names]
+            removed = [n for n in old_acc_names if n not in new_acc_names]
+            diffs.append({
+                "field": "accessories", "label": "Accessoires",
+                "old": f"{len(old_acc_names)} accessoires",
+                "new": f"{len(new_acc_names)} accessoires",
+                "added": added, "removed": removed,
+            })
+
+    potential_duplicates = _find_potential_duplicates(session, ad_data, req.ad_id, model.id)
+
+    # Detection complete annonce neuve concessionnaire
+    is_new = detect_new_listing(
+        seller_type=ad_data.get("seller_type"),
+        price=ad_data.get("price"),
+        mileage_km=ad_data.get("mileage_km"),
+        subject=ad_data.get("subject"),
+        body=ad_data.get("body"),
+        variant=ad_data.get("variant"),
+        color=ad_data.get("color"),
+        wheel_type=ad_data.get("wheel_type"),
+        bike_model_id=model.id,
+        session=session,
+    )
+
+    # Mettre a jour le CrawlSessionAd
+    active_cs = session.exec(
+        select(CrawlSession).where(
+            CrawlSession.status == "active",
+            CrawlSession.bike_model_id == model.id,
+        )
+        .order_by(CrawlSession.created_at.desc())
+    ).first()
+    if active_cs:
+        crawl_ad = session.exec(
+            select(CrawlSessionAd)
+            .where(CrawlSessionAd.session_id == active_cs.id, CrawlSessionAd.ad_id == req.ad_id)
+        ).first()
+        if crawl_ad:
+            crawl_ad.is_new_listing = 1 if is_new else 0
+            session.add(crawl_ad)
+            session.commit()
+
+    return {
+        "ad_data": ad_data,
+        "exists_in_db": existing is not None,
+        "existing": existing_data,
+        "diffs": diffs,
+        "potential_duplicates": potential_duplicates,
+        "is_new_listing": is_new,
+    }
+
+
+# ─── Model-scoped Export ────────────────────────────────────────────────────
+
+@app.get("/api/bike-models/{slug}/export")
+def export_csv_scoped(slug: str, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
+
+    # Charger les annonces du modele
+    statement = (
+        select(Ad)
+        .options(selectinload(Ad.accessories), selectinload(Ad.images))
+        .where(Ad.bike_model_id == model.id, Ad.superseded_by == None)  # noqa: E711
+        .order_by(Ad.price)
+    )
+    ads_orm = session.exec(statement).all()
+
+    ads = []
+    for ad in ads_orm:
+        d = _ad_to_dict(ad)
+        d["accessories"] = [
+            {"name": a.name, "category": a.category, "source": a.source,
+             "estimated_new_price": a.estimated_new_price, "estimated_used_price": a.estimated_used_price}
+            for a in ad.accessories
+        ]
+        d["images"] = [img.url for img in sorted(ad.images, key=lambda x: x.position)]
+        ads.append(d)
+
+    output = io.StringIO()
+    fieldnames = [
+        "id", "url", "subject", "price", "year", "mileage_km",
+        "color", "variant", "wheel_type", "estimated_new_price",
+        "city", "department", "seller_type", "nb_accessories",
+    ]
+    writer = csv.DictWriter(output, fieldnames=fieldnames, delimiter=";")
+    writer.writeheader()
+
+    for ad in ads:
+        writer.writerow({
+            "id": ad["id"], "url": ad["url"], "subject": ad["subject"],
+            "price": ad["price"], "year": ad.get("year"),
+            "mileage_km": ad.get("mileage_km"), "color": ad.get("color"),
+            "variant": ad.get("variant"), "wheel_type": ad.get("wheel_type"),
+            "estimated_new_price": ad.get("estimated_new_price"),
+            "city": ad.get("city"), "department": ad.get("department"),
+            "seller_type": ad.get("seller_type"),
+            "nb_accessories": len(ad.get("accessories", [])),
+        })
+
+    output.seek(0)
+    return StreamingResponse(
+        output,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=export_{slug}.csv"},
+    )
+
+
+# ─── Duplicate Detection (scoped by model) ──────────────────────────────────
+
+def _extract_significant_words(text: str, min_len: int = 4, extra_stopwords: set[str] | None = None) -> set[str]:
     import re
     if not text:
         return set()
@@ -986,18 +1382,24 @@ def _extract_significant_words(text: str, min_len: int = 4) -> set[str]:
         "merci", "prix", "euros", "cause", "neuf", "neuve", "occasion",
         "kilometres", "premiere", "main", "excellent", "parfait",
     }
+    if extra_stopwords:
+        stopwords |= extra_stopwords
     return {w for w in words if len(w) >= min_len and w not in stopwords}
 
 
-def _find_potential_duplicates(session: Session, ad_data: dict, exclude_id: int) -> list[dict]:
+def _find_potential_duplicates(session: Session, ad_data: dict, exclude_id: int, bike_model_id: int) -> list[dict]:
     new_price = ad_data.get("price") or 0
     new_city = (ad_data.get("city") or "").lower().strip()
 
     if not new_city:
         return []
 
-    # Pre-filtre SQL : meme ville + prix ±15%
-    city_conditions = [Ad.id != exclude_id, func.lower(Ad.city) == new_city]
+    # Pre-filtre SQL : meme ville + prix ±15% + meme modele
+    city_conditions = [
+        Ad.id != exclude_id,
+        func.lower(Ad.city) == new_city,
+        Ad.bike_model_id == bike_model_id,
+    ]
     if new_price:
         city_conditions.append(Ad.price >= new_price * 0.85)
         city_conditions.append(Ad.price <= new_price * 1.15)
@@ -1006,7 +1408,17 @@ def _find_potential_duplicates(session: Session, ad_data: dict, exclude_id: int)
     if not ads:
         return []
 
-    # Charger les accessoires uniquement pour les candidats
+    # Charger les mots-cles dynamiques du modele pour les stopwords
+    model = session.get(BikeModel, bike_model_id)
+    extra_stops = set()
+    if model:
+        for word in (model.brand or "").lower().split():
+            if len(word) >= 3:
+                extra_stops.add(word)
+        for word in (model.name or "").lower().split():
+            if len(word) >= 3:
+                extra_stops.add(word)
+
     candidate_ids = [ad.id for ad in ads]
     candidate_accs = session.exec(
         select(AdAccessory).where(AdAccessory.ad_id.in_(candidate_ids))
@@ -1017,7 +1429,7 @@ def _find_potential_duplicates(session: Session, ad_data: dict, exclude_id: int)
     new_color = (ad_data.get("color") or "").lower()
     new_km = ad_data.get("mileage_km") or 0
     new_acc_names = {a["name"] for a in ad_data.get("accessories", [])}
-    new_body_words = _extract_significant_words(ad_data.get("body") or "")
+    new_body_words = _extract_significant_words(ad_data.get("body") or "", extra_stopwords=extra_stops)
 
     candidates = []
 
@@ -1049,7 +1461,7 @@ def _find_potential_duplicates(session: Session, ad_data: dict, exclude_id: int)
                 continue
 
         if new_body_words:
-            db_body_words = _extract_significant_words(ad.body or "")
+            db_body_words = _extract_significant_words(ad.body or "", extra_stopwords=extra_stops)
             if db_body_words:
                 common_words = new_body_words & db_body_words
                 union_words = new_body_words | db_body_words
@@ -1118,128 +1530,201 @@ def _find_potential_duplicates(session: Session, ad_data: dict, exclude_id: int)
     return candidates[:3]
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Backward-compatible route aliases
+#
+# Ces routes fonctionnent quand un seul modele actif existe.
+# Si plusieurs modeles sont actifs, elles renvoient 400 avec un message
+# invitant a utiliser /api/bike-models/{slug}/...
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/api/ads")
+def list_ads_compat(
+    variant: Optional[str] = Query(None),
+    min_price: Optional[float] = Query(None),
+    max_price: Optional[float] = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    session: Session = Depends(get_session),
+):
+    model = _resolve_single_model(session)
+    return list_ads_scoped(model.slug, variant, min_price, max_price, limit, offset, session)
+
+
+@app.get("/api/ads/{ad_id}")
+def get_ad_compat(ad_id: int, session: Session = Depends(get_session)):
+    ad = session.get(Ad, ad_id)
+    if not ad:
+        raise HTTPException(status_code=404, detail="Annonce non trouvée")
+
+    # Route non scopee : pas de check bike_model_id
+    result = _ad_to_dict(ad)
+    result["accessories"] = [
+        {"name": a.name, "category": a.category, "source": a.source,
+         "estimated_new_price": a.estimated_new_price, "estimated_used_price": a.estimated_used_price}
+        for a in session.exec(
+            select(AdAccessory).where(AdAccessory.ad_id == ad_id).order_by(AdAccessory.category, AdAccessory.name)
+        ).all()
+    ]
+    result["images"] = [
+        img.url for img in session.exec(
+            select(AdImage).where(AdImage.ad_id == ad_id).order_by(AdImage.position)
+        ).all()
+    ]
+    result["attributes"] = [
+        {"key": a.key, "value": a.value, "value_label": a.value_label}
+        for a in session.exec(
+            select(AdAttribute).where(AdAttribute.ad_id == ad_id).order_by(AdAttribute.key)
+        ).all()
+    ]
+    return result
+
+
+@app.post("/api/ads/preview")
+def preview_ad_compat(req: AddAdRequest, session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return preview_ad_scoped(model.slug, req, session)
+
+
+@app.post("/api/ads/confirm")
+def confirm_ad_compat(req: ConfirmAdRequest, session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return confirm_ad_scoped(model.slug, req, session)
+
+
+@app.post("/api/ads")
+def add_ad_compat(req: AddAdRequest, session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return add_ad_scoped(model.slug, req, session)
+
+
+@app.delete("/api/ads/{ad_id}")
+def delete_ad_compat(ad_id: int, session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return delete_ad_scoped(model.slug, ad_id, session)
+
+
+@app.patch("/api/ads/{ad_id}")
+def update_ad_compat(ad_id: int, req: UpdateAdRequest, session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return update_ad_scoped(model.slug, ad_id, req, session)
+
+
+@app.post("/api/ads/merge")
+def merge_ad_compat(req: MergeAdRequest, session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return merge_ad_scoped(model.slug, req, session)
+
+
+@app.get("/api/ads/{ad_id}/price-history")
+def get_price_history_compat(ad_id: int, session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return get_price_history_scoped(model.slug, ad_id, session)
+
+
+@app.post("/api/ads/{ad_id}/confirm-price")
+def confirm_price_compat(ad_id: int, req: ConfirmPriceRequest, session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return confirm_price_scoped(model.slug, ad_id, req, session)
+
+
+@app.get("/api/accessory-catalog")
+def get_accessory_catalog_compat(session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return get_accessory_catalog_scoped(model.slug, session)
+
+
+@app.patch("/api/accessory-catalog/{group}")
+def update_catalog_price_compat(group: str, req: UpdateCatalogPriceRequest, session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return update_catalog_price_scoped(model.slug, group, req, session)
+
+
+@app.delete("/api/accessory-catalog/{group}/override")
+def reset_catalog_price_compat(group: str, session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return reset_catalog_price_scoped(model.slug, group, session)
+
+
+@app.post("/api/accessories/refresh")
+def refresh_all_accessories_compat(session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return refresh_all_accessories_scoped(model.slug, session)
+
+
+@app.post("/api/ads/{ad_id}/refresh-accessories")
+def refresh_ad_accessories_compat(ad_id: int, session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return refresh_ad_accessories_scoped(model.slug, ad_id, session)
+
+
+@app.post("/api/ads/check-online")
+def check_ads_online_compat(session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return check_ads_online_scoped(model.slug, session)
+
+
+@app.post("/api/ads/{ad_id}/check-online")
+def check_ad_online_compat(ad_id: int, session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return check_ad_online_scoped(model.slug, ad_id, session)
+
+
+@app.post("/api/ads/check-prices")
+def check_prices_compat(session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return check_prices_scoped(model.slug, session)
+
+
+@app.get("/api/stats")
+def get_stats_compat(session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return get_stats_scoped(model.slug, session)
+
+
+@app.get("/api/rankings")
+def get_rankings_compat(session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return get_rankings_scoped(model.slug, session)
+
+
+@app.get("/api/crawl/search")
+def crawl_search_compat(session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return crawl_search_scoped(model.slug, session)
+
+
+@app.get("/api/crawl/sessions/active")
+def get_active_crawl_session_compat(session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return get_active_crawl_session_scoped(model.slug, session)
+
+
+@app.patch("/api/crawl/sessions/{session_id}/ads/{ad_id}")
+def update_crawl_session_ad_compat(session_id: int, ad_id: int, req: UpdateCrawlAdAction, session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return update_crawl_session_ad_scoped(model.slug, session_id, ad_id, req, session)
+
+
+@app.delete("/api/crawl/sessions/{session_id}")
+def close_crawl_session_compat(session_id: int, session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return close_crawl_session_scoped(model.slug, session_id, session)
+
+
+@app.delete("/api/crawl/sessions/{session_id}/ads/{ad_id}")
+def remove_crawl_session_ad_compat(session_id: int, ad_id: int, session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return remove_crawl_session_ad_scoped(model.slug, session_id, ad_id, session)
+
+
 @app.post("/api/crawl/extract")
-def crawl_extract(req: ExtractRequest, session: Session = Depends(get_session)):
-    overrides = get_accessory_overrides(session)
-
-    try:
-        if settings.lbc_service_url:
-            from . import lbc_client
-            ad_data = lbc_client.fetch_ad(req.url, price_overrides=overrides)
-        else:
-            from .extractor import fetch_ad, get_lbc_client
-            client = get_lbc_client()
-            ad_data = fetch_ad(req.url, client=client, price_overrides=overrides)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Erreur extraction : {e}")
-
-    existing = session.get(Ad, req.ad_id)
-    existing_data = None
-    diffs = []
-
-    if existing:
-        existing_data = _ad_to_dict(existing)
-        existing_data["accessories"] = [
-            {"name": a.name, "category": a.category, "source": a.source,
-             "estimated_new_price": a.estimated_new_price, "estimated_used_price": a.estimated_used_price}
-            for a in session.exec(
-                select(AdAccessory).where(AdAccessory.ad_id == req.ad_id)
-                .order_by(AdAccessory.category, AdAccessory.name)
-            ).all()
-        ]
-
-        compare_fields = [
-            ("price", "Prix"), ("year", "Annee"), ("mileage_km", "Kilometrage"),
-            ("variant", "Variante"), ("color", "Couleur"), ("wheel_type", "Jantes"),
-            ("city", "Ville"), ("department", "Departement"), ("seller_type", "Vendeur"),
-            ("estimated_new_price", "Prix neuf ref."),
-        ]
-
-        for field, label in compare_fields:
-            old_val = existing_data.get(field)
-            new_val = ad_data.get(field)
-            if old_val != new_val:
-                diffs.append({"field": field, "label": label, "old": old_val, "new": new_val})
-
-        old_acc_names = sorted([a["name"] for a in existing_data.get("accessories", [])])
-        new_acc_names = sorted([a["name"] for a in ad_data.get("accessories", [])])
-        if old_acc_names != new_acc_names:
-            added = [n for n in new_acc_names if n not in old_acc_names]
-            removed = [n for n in old_acc_names if n not in new_acc_names]
-            diffs.append({
-                "field": "accessories", "label": "Accessoires",
-                "old": f"{len(old_acc_names)} accessoires",
-                "new": f"{len(new_acc_names)} accessoires",
-                "added": added, "removed": removed,
-            })
-
-    potential_duplicates = _find_potential_duplicates(session, ad_data, req.ad_id)
-
-    # Detection complete annonce neuve concessionnaire
-    is_new = detect_new_listing(
-        seller_type=ad_data.get("seller_type"),
-        price=ad_data.get("price"),
-        mileage_km=ad_data.get("mileage_km"),
-        subject=ad_data.get("subject"),
-        body=ad_data.get("body"),
-        variant=ad_data.get("variant"),
-        color=ad_data.get("color"),
-        wheel_type=ad_data.get("wheel_type"),
-    )
-
-    # Mettre a jour le CrawlSessionAd
-    active_cs = session.exec(
-        select(CrawlSession).where(CrawlSession.status == "active")
-        .order_by(CrawlSession.created_at.desc())
-    ).first()
-    if active_cs:
-        crawl_ad = session.exec(
-            select(CrawlSessionAd)
-            .where(CrawlSessionAd.session_id == active_cs.id, CrawlSessionAd.ad_id == req.ad_id)
-        ).first()
-        if crawl_ad:
-            crawl_ad.is_new_listing = 1 if is_new else 0
-            session.add(crawl_ad)
-            session.commit()
-
-    return {
-        "ad_data": ad_data,
-        "exists_in_db": existing is not None,
-        "existing": existing_data,
-        "diffs": diffs,
-        "potential_duplicates": potential_duplicates,
-        "is_new_listing": is_new,
-    }
+def crawl_extract_compat(req: ExtractRequest, session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return crawl_extract_scoped(model.slug, req, session)
 
 
 @app.get("/api/export")
-def export_csv(session: Session = Depends(get_session)):
-    ads = get_all_ads(session)
-
-    output = io.StringIO()
-    fieldnames = [
-        "id", "url", "subject", "price", "year", "mileage_km",
-        "color", "variant", "wheel_type", "estimated_new_price",
-        "city", "department", "seller_type", "nb_accessories",
-    ]
-    writer = csv.DictWriter(output, fieldnames=fieldnames, delimiter=";")
-    writer.writeheader()
-
-    for ad in ads:
-        writer.writerow({
-            "id": ad["id"], "url": ad["url"], "subject": ad["subject"],
-            "price": ad["price"], "year": ad.get("year"),
-            "mileage_km": ad.get("mileage_km"), "color": ad.get("color"),
-            "variant": ad.get("variant"), "wheel_type": ad.get("wheel_type"),
-            "estimated_new_price": ad.get("estimated_new_price"),
-            "city": ad.get("city"), "department": ad.get("department"),
-            "seller_type": ad.get("seller_type"),
-            "nb_accessories": len(ad.get("accessories", [])),
-        })
-
-    output.seek(0)
-    return StreamingResponse(
-        output,
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=export_annonces.csv"},
-    )
+def export_csv_compat(session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return export_csv_scoped(model.slug, session)

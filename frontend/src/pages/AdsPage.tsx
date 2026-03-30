@@ -10,6 +10,7 @@ import { EmptyState } from '../components/EmptyState'
 import { CardSkeleton } from '../components/LoadingSkeleton'
 import { Button } from '../components/ui/Button'
 import { useToast } from '../components/Toast'
+import { useCurrentModel } from '../hooks/useCurrentModel'
 import type { Ad } from '../types'
 
 function sortAds(ads: Ad[], sort: SortOption): Ad[] {
@@ -35,13 +36,14 @@ function sortAds(ads: Ad[], sort: SortOption): Ad[] {
 
 export function AdsPage() {
   const { t } = useTranslation()
+  const { slug } = useCurrentModel()
   const [searchParams, setSearchParams] = useSearchParams()
   const [variant, setVariant] = useState('')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortOption>('recent')
   const [autoOpenAdd, setAutoOpenAdd] = useState(false)
-  const { data, isLoading } = useAds()
-  const checkOnlineMut = useCheckAdsOnline()
+  const { data, isLoading } = useAds(slug)
+  const checkOnlineMut = useCheckAdsOnline(slug)
   const { toast } = useToast()
 
   useEffect(() => {

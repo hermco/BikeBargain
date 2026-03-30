@@ -1,27 +1,29 @@
 #!/usr/bin/env python3
 """
-BikeBargain - CLI pour extraire et stocker les annonces LeBonCoin.
+BikeBargain CLI - Scraper et analyseur d'annonces moto LeBonCoin.
 
 Usage:
-    python main.py add <url>              Ajouter une annonce depuis un lien LeBonCoin
-    python main.py add <url1> <url2> ...  Ajouter plusieurs annonces
-    python main.py list                   Lister toutes les annonces stockees
-    python main.py show <id>              Afficher le detail d'une annonce
-    python main.py stats                  Afficher les statistiques globales
-    python main.py export                 Exporter toutes les annonces en CSV
+    python main.py [--model <slug>] add <url> [<url2> ...]   Ajouter une ou plusieurs annonces
+    python main.py [--model <slug>] list                      Lister toutes les annonces stockees
+    python main.py [--model <slug>] show <id>                 Afficher le detail d'une annonce
+    python main.py [--model <slug>] stats                     Afficher les statistiques globales
+    python main.py [--model <slug>] export                    Exporter toutes les annonces en CSV
+    python main.py import-model <fichier.json>                Importer un modele depuis un fichier JSON
 """
 
 import sys
 import csv
+import argparse
 from pathlib import Path
 
 from sqlmodel import Session, select
 from sqlalchemy.orm import selectinload
 
 from src.database import engine, run_migrations, upsert_ad, get_all_ads, get_ad_count, get_accessory_overrides
+from src.database import get_bike_models, get_bike_model_by_slug
 from src.models import Ad, AdAttribute, AdAccessory, AdImage
 from src.extractor import fetch_ad, _estimate_new_price
-from src.accessories import estimate_total_accessories_value, ACCESSORY_PATTERNS
+from src.accessories import estimate_total_accessories_value
 
 
 def _format_price(price) -> str:
@@ -39,12 +41,39 @@ def _format_diff(price, new_price) -> str:
     return f"{sign}{diff:,.0f} EUR ({sign}{pct:.1f}%)".replace(",", " ")
 
 
-def _get_available_colors() -> list[str]:
-    from src.extractor import NEW_PRICES
-    return sorted(set(info["color"] for info in NEW_PRICES.values()))
+def _resolve_bike_model(session: Session, model_slug: str | None):
+    """Resout le modele de moto a utiliser.
+
+    Si --model est fourni, le recherche par slug.
+    Si non fourni et qu'il n'y a qu'un seul modele, l'utilise automatiquement.
+    Si non fourni et qu'il y en a plusieurs, affiche la liste et quitte.
+    """
+    if model_slug:
+        bike_model = get_bike_model_by_slug(session, model_slug)
+        if not bike_model:
+            models = get_bike_models(session)
+            slugs = [m.slug for m in models]
+            print(f"Erreur : modele '{model_slug}' introuvable.")
+            if slugs:
+                print(f"Modeles disponibles : {', '.join(slugs)}")
+            sys.exit(1)
+        return bike_model
+
+    # Pas de slug specifie : detection automatique
+    models = get_bike_models(session)
+    if len(models) == 1:
+        return models[0]
+    elif len(models) == 0:
+        print("Erreur : aucun modele configure en base.")
+        sys.exit(1)
+    else:
+        slugs = [m.slug for m in models]
+        print("Erreur : plusieurs modeles disponibles, specifiez --model <slug>.")
+        print(f"Modeles disponibles : {', '.join(slugs)}")
+        sys.exit(1)
 
 
-def _confirm_extraction(ad_data: dict) -> dict | None:
+def _confirm_extraction(ad_data: dict, bike_model_id: int, session: Session) -> dict | None:
     """
     Demande confirmation a l'utilisateur avant insertion.
     Permet de corriger la couleur et retirer des accessoires.
@@ -68,7 +97,10 @@ def _confirm_extraction(ad_data: dict) -> dict | None:
             return None
 
         elif choix == "c":
-            colors = _get_available_colors()
+            # Charger les couleurs disponibles depuis les variantes du modele
+            from src.database import get_bike_variants
+            variants = get_bike_variants(session, bike_model_id)
+            colors = sorted(set(v.color for v in variants if v.color))
             print(f"\n  Couleurs disponibles :")
             for i, color in enumerate(colors, 1):
                 print(f"    {i}. {color}")
@@ -95,7 +127,7 @@ def _confirm_extraction(ad_data: dict) -> dict | None:
                     break
 
             new_price = _estimate_new_price(
-                ad_data.get("variant"), ad_data.get("color"), ad_data.get("wheel_type")
+                bike_model_id, ad_data.get("variant"), ad_data.get("color"), ad_data.get("wheel_type"), session
             )
             if new_price:
                 ad_data["estimated_new_price"] = new_price
@@ -148,77 +180,75 @@ def _confirm_extraction(ad_data: dict) -> dict | None:
         print(f"\n  [o] Valider  [c] Corriger couleur  {'[r] Retirer accessoire  ' if accessories else ''}[n] Annuler")
 
 
-def cmd_add(urls: list[str]) -> None:
+def cmd_add(urls: list[str], bike_model_id: int, session: Session) -> None:
     """Ajoute une ou plusieurs annonces a la base."""
     from src.extractor import get_lbc_client
     client = get_lbc_client()
 
-    with Session(engine) as session:
-        for url in urls:
-            url = url.strip()
-            if not url:
+    for url in urls:
+        url = url.strip()
+        if not url:
+            continue
+
+        print(f"\n{'='*60}")
+        print(f"Extraction : {url}")
+        print(f"{'='*60}")
+
+        try:
+            overrides = get_accessory_overrides(session, bike_model_id)
+            ad_data = fetch_ad(url, bike_model_id, session, client=client, price_overrides=overrides)
+
+            print(f"  ID          : {ad_data['id']}")
+            print(f"  Titre       : {ad_data['subject']}")
+            print(f"  Prix        : {_format_price(ad_data['price'])}")
+            print(f"  Annee       : {ad_data.get('year', 'N/A')}")
+            print(f"  Kilometrage : {ad_data.get('mileage_km', 'N/A')} km")
+            print(f"  Couleur     : {ad_data.get('color', 'N/A')}")
+            print(f"  Variante    : {ad_data.get('variant', 'Non detectee')}")
+            print(f"  Jantes      : {ad_data.get('wheel_type', 'N/A')}")
+            print(f"  Localisation: {ad_data.get('city', '?')}, {ad_data.get('department', '?')}")
+
+            if ad_data.get("estimated_new_price"):
+                print(f"  Prix neuf   : {_format_price(ad_data['estimated_new_price'])}")
+                print(f"  Ecart       : {_format_diff(ad_data['price'], ad_data['estimated_new_price'])}")
+
+            accessories = ad_data.get("accessories", [])
+            if accessories:
+                valuation = estimate_total_accessories_value(accessories)
+                print(f"  Accessoires ({len(accessories)}) - Valeur neuf: {_format_price(valuation['total_new_price'])} / Occasion: ~{_format_price(valuation['total_used_price'])} :")
+                for i, acc in enumerate(accessories, 1):
+                    print(f"    {i}. [{acc['category']:>11}] {acc['name']:<40} (neuf ~{acc['estimated_new_price']} EUR)")
+            else:
+                print("  Accessoires : Aucun detecte")
+
+            if ad_data.get("price") and accessories:
+                valuation = estimate_total_accessories_value(accessories)
+                adjusted = ad_data["price"] - valuation["total_used_price"]
+                print(f"\n  >> Prix moto seule (estime) : {_format_price(adjusted)}  (prix annonce - valeur accessoires occasion)")
+                if ad_data.get("estimated_new_price"):
+                    diff_adjusted = adjusted - ad_data["estimated_new_price"]
+                    pct_adjusted = (diff_adjusted / ad_data["estimated_new_price"]) * 100
+                    print(f"  >> Ecart vs neuf (moto seule): {diff_adjusted:+,.0f} EUR ({pct_adjusted:+.1f}%)".replace(",", " "))
+
+            ad_data = _confirm_extraction(ad_data, bike_model_id, session)
+            if ad_data is None:
+                print("  >> Annonce ignoree.")
                 continue
 
-            print(f"\n{'='*60}")
-            print(f"Extraction : {url}")
-            print(f"{'='*60}")
+            ad_id = upsert_ad(session, ad_data)
+            print(f"\n  Stocke en base (ID: {ad_id})")
 
-            try:
-                overrides = get_accessory_overrides(session)
-                ad_data = fetch_ad(url, client=client, price_overrides=overrides)
+        except Exception as e:
+            print(f"  ERREUR : {e}")
 
-                print(f"  ID          : {ad_data['id']}")
-                print(f"  Titre       : {ad_data['subject']}")
-                print(f"  Prix        : {_format_price(ad_data['price'])}")
-                print(f"  Annee       : {ad_data.get('year', 'N/A')}")
-                print(f"  Kilometrage : {ad_data.get('mileage_km', 'N/A')} km")
-                print(f"  Couleur     : {ad_data.get('color', 'N/A')}")
-                print(f"  Variante    : {ad_data.get('variant', 'Non detectee')}")
-                print(f"  Jantes      : {ad_data.get('wheel_type', 'N/A')}")
-                print(f"  Localisation: {ad_data.get('city', '?')}, {ad_data.get('department', '?')}")
-
-                if ad_data.get("estimated_new_price"):
-                    print(f"  Prix neuf   : {_format_price(ad_data['estimated_new_price'])}")
-                    print(f"  Ecart       : {_format_diff(ad_data['price'], ad_data['estimated_new_price'])}")
-
-                accessories = ad_data.get("accessories", [])
-                if accessories:
-                    valuation = estimate_total_accessories_value(accessories)
-                    print(f"  Accessoires ({len(accessories)}) - Valeur neuf: {_format_price(valuation['total_new_price'])} / Occasion: ~{_format_price(valuation['total_used_price'])} :")
-                    for i, acc in enumerate(accessories, 1):
-                        print(f"    {i}. [{acc['category']:>11}] {acc['name']:<40} (neuf ~{acc['estimated_new_price']} EUR)")
-                else:
-                    print("  Accessoires : Aucun detecte")
-
-                if ad_data.get("price") and accessories:
-                    valuation = estimate_total_accessories_value(accessories)
-                    adjusted = ad_data["price"] - valuation["total_used_price"]
-                    print(f"\n  >> Prix moto seule (estime) : {_format_price(adjusted)}  (prix annonce - valeur accessoires occasion)")
-                    if ad_data.get("estimated_new_price"):
-                        diff_adjusted = adjusted - ad_data["estimated_new_price"]
-                        pct_adjusted = (diff_adjusted / ad_data["estimated_new_price"]) * 100
-                        print(f"  >> Ecart vs neuf (moto seule): {diff_adjusted:+,.0f} EUR ({pct_adjusted:+.1f}%)".replace(",", " "))
-
-                ad_data = _confirm_extraction(ad_data)
-                if ad_data is None:
-                    print("  >> Annonce ignoree.")
-                    continue
-
-                ad_id = upsert_ad(session, ad_data)
-                print(f"\n  Stocke en base (ID: {ad_id})")
-
-            except Exception as e:
-                print(f"  ERREUR : {e}")
-
-        total = get_ad_count(session)
+    total = get_ad_count(session)
     print(f"\n{'='*60}")
     print(f"Total annonces en base : {total}")
 
 
-def cmd_list() -> None:
+def cmd_list(session: Session) -> None:
     """Liste toutes les annonces stockees."""
-    with Session(engine) as session:
-        ads = get_all_ads(session)
+    ads = get_all_ads(session)
 
     if not ads:
         print("Aucune annonce en base. Utilisez 'python main.py add <url>' pour en ajouter.")
@@ -244,89 +274,87 @@ def cmd_list() -> None:
     print(f"\nTotal : {len(ads)} annonce(s)")
 
 
-def cmd_show(ad_id: str) -> None:
+def cmd_show(ad_id: str, session: Session) -> None:
     """Affiche le detail d'une annonce."""
-    with Session(engine) as session:
-        ad = session.get(Ad, int(ad_id))
-        if not ad:
-            print(f"Annonce {ad_id} non trouvee.")
-            return
+    ad = session.get(Ad, int(ad_id))
+    if not ad:
+        print(f"Annonce {ad_id} non trouvee.")
+        return
 
-        print(f"\n{'='*60}")
-        print(f"  {ad.subject}")
-        print(f"{'='*60}")
-        print(f"  URL           : {ad.url}")
-        print(f"  Prix          : {_format_price(ad.price)}")
-        print(f"  Annee         : {ad.year or 'N/A'}")
-        print(f"  Kilometrage   : {ad.mileage_km or 'N/A'} km")
-        print(f"  Cylindree     : {ad.engine_size_cc or 'N/A'} cc")
-        print(f"  Carburant     : {ad.fuel_type or 'N/A'}")
-        print(f"  Couleur       : {ad.color or 'N/A'}")
-        print(f"  Variante      : {ad.variant or 'Non detectee'}")
-        print(f"  Jantes        : {ad.wheel_type or 'N/A'}")
-        print(f"  Vendeur       : {ad.seller_type or 'N/A'}")
-        print(f"  Localisation  : {ad.city or '?'}, {ad.zipcode or '?'} ({ad.department or '?'})")
-        print(f"  Publication   : {ad.first_publication_date or 'N/A'}")
+    print(f"\n{'='*60}")
+    print(f"  {ad.subject}")
+    print(f"{'='*60}")
+    print(f"  URL           : {ad.url}")
+    print(f"  Prix          : {_format_price(ad.price)}")
+    print(f"  Annee         : {ad.year or 'N/A'}")
+    print(f"  Kilometrage   : {ad.mileage_km or 'N/A'} km")
+    print(f"  Cylindree     : {ad.engine_size_cc or 'N/A'} cc")
+    print(f"  Carburant     : {ad.fuel_type or 'N/A'}")
+    print(f"  Couleur       : {ad.color or 'N/A'}")
+    print(f"  Variante      : {ad.variant or 'Non detectee'}")
+    print(f"  Jantes        : {ad.wheel_type or 'N/A'}")
+    print(f"  Vendeur       : {ad.seller_type or 'N/A'}")
+    print(f"  Localisation  : {ad.city or '?'}, {ad.zipcode or '?'} ({ad.department or '?'})")
+    print(f"  Publication   : {ad.first_publication_date or 'N/A'}")
 
-        if ad.estimated_new_price:
-            print(f"  Prix neuf ref : {_format_price(ad.estimated_new_price)}")
-            print(f"  Ecart neuf    : {_format_diff(ad.price, ad.estimated_new_price)}")
+    if ad.estimated_new_price:
+        print(f"  Prix neuf ref : {_format_price(ad.estimated_new_price)}")
+        print(f"  Ecart neuf    : {_format_diff(ad.price, ad.estimated_new_price)}")
 
-        # Attributs
-        attrs = session.exec(
-            select(AdAttribute).where(AdAttribute.ad_id == ad.id).order_by(AdAttribute.key)
-        ).all()
-        if attrs:
-            print(f"\n  Attributs LBC ({len(attrs)}) :")
-            for a in attrs:
-                label = a.value_label or a.value or ""
-                print(f"    {a.key:<25} : {label}")
+    # Attributs
+    attrs = session.exec(
+        select(AdAttribute).where(AdAttribute.ad_id == ad.id).order_by(AdAttribute.key)
+    ).all()
+    if attrs:
+        print(f"\n  Attributs LBC ({len(attrs)}) :")
+        for a in attrs:
+            label = a.value_label or a.value or ""
+            print(f"    {a.key:<25} : {label}")
 
-        # Accessoires
-        accessories = session.exec(
-            select(AdAccessory).where(AdAccessory.ad_id == ad.id).order_by(AdAccessory.category, AdAccessory.name)
-        ).all()
-        if accessories:
-            total_new = sum(a.estimated_new_price or 0 for a in accessories)
-            total_used = sum(a.estimated_used_price or 0 for a in accessories)
-            print(f"\n  Accessoires detectes ({len(accessories)}) — Valeur neuf: {_format_price(total_new)} / Occasion: ~{_format_price(total_used)}")
-            current_cat = None
-            for a in accessories:
-                if a.category != current_cat:
-                    current_cat = a.category
-                    print(f"    [{current_cat}]")
-                price_str = f"~{a.estimated_new_price} EUR neuf" if a.estimated_new_price else ""
-                print(f"      - {a.name:<40} {price_str}")
+    # Accessoires
+    accessories = session.exec(
+        select(AdAccessory).where(AdAccessory.ad_id == ad.id).order_by(AdAccessory.category, AdAccessory.name)
+    ).all()
+    if accessories:
+        total_new = sum(a.estimated_new_price or 0 for a in accessories)
+        total_used = sum(a.estimated_used_price or 0 for a in accessories)
+        print(f"\n  Accessoires detectes ({len(accessories)}) — Valeur neuf: {_format_price(total_new)} / Occasion: ~{_format_price(total_used)}")
+        current_cat = None
+        for a in accessories:
+            if a.category != current_cat:
+                current_cat = a.category
+                print(f"    [{current_cat}]")
+            price_str = f"~{a.estimated_new_price} EUR neuf" if a.estimated_new_price else ""
+            print(f"      - {a.name:<40} {price_str}")
 
-            if ad.price and total_used > 0:
-                adjusted = ad.price - total_used
-                print(f"\n  >> Prix moto seule (estime) : {_format_price(adjusted)}")
-                if ad.estimated_new_price:
-                    diff_adj = adjusted - ad.estimated_new_price
-                    pct_adj = (diff_adj / ad.estimated_new_price) * 100
-                    print(f"  >> Ecart vs neuf (moto seule): {diff_adj:+,.0f} EUR ({pct_adj:+.1f}%)".replace(",", " "))
+        if ad.price and total_used > 0:
+            adjusted = ad.price - total_used
+            print(f"\n  >> Prix moto seule (estime) : {_format_price(adjusted)}")
+            if ad.estimated_new_price:
+                diff_adj = adjusted - ad.estimated_new_price
+                pct_adj = (diff_adj / ad.estimated_new_price) * 100
+                print(f"  >> Ecart vs neuf (moto seule): {diff_adj:+,.0f} EUR ({pct_adj:+.1f}%)".replace(",", " "))
 
-        # Images
-        images = session.exec(
-            select(AdImage).where(AdImage.ad_id == ad.id).order_by(AdImage.position)
-        ).all()
-        if images:
-            print(f"\n  Images ({len(images)}) :")
-            for img in images:
-                print(f"    {img.url}")
+    # Images
+    images = session.exec(
+        select(AdImage).where(AdImage.ad_id == ad.id).order_by(AdImage.position)
+    ).all()
+    if images:
+        print(f"\n  Images ({len(images)}) :")
+        for img in images:
+            print(f"    {img.url}")
 
-        # Description
-        if ad.body:
-            print(f"\n  Description :")
-            print(f"  {'-'*50}")
-            for line in ad.body.splitlines():
-                print(f"    {line}")
+    # Description
+    if ad.body:
+        print(f"\n  Description :")
+        print(f"  {'-'*50}")
+        for line in ad.body.splitlines():
+            print(f"    {line}")
 
 
-def cmd_stats() -> None:
+def cmd_stats(session: Session) -> None:
     """Affiche des statistiques sur les annonces stockees."""
-    with Session(engine) as session:
-        ads = get_all_ads(session)
+    ads = get_all_ads(session)
 
     if not ads:
         print("Aucune annonce en base.")
@@ -387,10 +415,9 @@ def cmd_stats() -> None:
             print(f"    {name:<35} : {count:>3} ({pct:.0f}%)")
 
 
-def cmd_export() -> None:
+def cmd_export(session: Session) -> None:
     """Exporte toutes les annonces en CSV."""
-    with Session(engine) as session:
-        ads = get_all_ads(session)
+    ads = get_all_ads(session)
 
     if not ads:
         print("Aucune annonce a exporter.")
@@ -436,35 +463,105 @@ def cmd_export() -> None:
     print(f"{len(ads)} annonce(s) exportee(s).")
 
 
+def cmd_import_model(fichier: str) -> None:
+    """Importe un modele de moto depuis un fichier JSON via l'API."""
+    import json
+    import urllib.request
+    import urllib.error
+
+    chemin = Path(fichier)
+    if not chemin.exists():
+        print(f"Erreur : fichier introuvable : {fichier}")
+        sys.exit(1)
+
+    with open(chemin, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    # Appel a l'API locale
+    api_url = "http://localhost:8000/api/bike-models/import"
+    payload = json.dumps(data).encode("utf-8")
+
+    try:
+        req = urllib.request.Request(
+            api_url,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req) as resp:
+            result = json.loads(resp.read().decode("utf-8"))
+            print(f"Modele importe avec succes : {result}")
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8")
+        print(f"Erreur HTTP {e.code} : {body}")
+        sys.exit(1)
+    except urllib.error.URLError as e:
+        print(f"Erreur de connexion a l'API : {e.reason}")
+        print("Verifiez que le backend tourne sur localhost:8000.")
+        sys.exit(1)
+
+
 def main():
+    # Parser principal avec argument global --model
+    parser = argparse.ArgumentParser(
+        description="BikeBargain CLI - Scraper et analyseur d'annonces moto LeBonCoin.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__,
+    )
+    parser.add_argument(
+        "--model", "-m",
+        metavar="SLUG",
+        help="Slug du modele de moto a utiliser (ex: himalayan-450). "
+             "Optionnel si un seul modele est configure en base.",
+    )
+
+    subparsers = parser.add_subparsers(dest="command", metavar="<commande>")
+
+    # Sous-commandes
+    sp_add = subparsers.add_parser("add", help="Ajouter une ou plusieurs annonces")
+    sp_add.add_argument("urls", nargs="+", metavar="url", help="URL(s) LeBonCoin")
+
+    subparsers.add_parser("list", help="Lister toutes les annonces stockees")
+
+    sp_show = subparsers.add_parser("show", help="Afficher le detail d'une annonce")
+    sp_show.add_argument("id", help="ID de l'annonce")
+
+    subparsers.add_parser("stats", help="Afficher les statistiques globales")
+    subparsers.add_parser("export", help="Exporter toutes les annonces en CSV")
+
+    sp_import = subparsers.add_parser("import-model", help="Importer un modele depuis un fichier JSON")
+    sp_import.add_argument("fichier", help="Chemin vers le fichier JSON du modele")
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    # import-model ne necessite pas de session ni de migration
+    if args.command == "import-model":
+        cmd_import_model(args.fichier)
+        return
+
+    # Toutes les autres commandes necessitent les migrations et une session
     run_migrations()
 
-    if len(sys.argv) < 2:
-        print(__doc__)
-        sys.exit(1)
-
-    command = sys.argv[1].lower()
-
-    if command == "add":
-        if len(sys.argv) < 3:
-            print("Usage: python main.py add <url> [<url2> ...]")
+    with Session(engine) as session:
+        # Resolution du modele (sauf pour les commandes qui n'en ont pas besoin)
+        if args.command in ("add",):
+            bike_model = _resolve_bike_model(session, args.model)
+            cmd_add(args.urls, bike_model.id, session)
+        elif args.command == "list":
+            cmd_list(session)
+        elif args.command == "show":
+            cmd_show(args.id, session)
+        elif args.command == "stats":
+            cmd_stats(session)
+        elif args.command == "export":
+            cmd_export(session)
+        else:
+            parser.print_help()
             sys.exit(1)
-        cmd_add(sys.argv[2:])
-    elif command == "list":
-        cmd_list()
-    elif command == "show":
-        if len(sys.argv) < 3:
-            print("Usage: python main.py show <id>")
-            sys.exit(1)
-        cmd_show(sys.argv[2])
-    elif command == "stats":
-        cmd_stats()
-    elif command == "export":
-        cmd_export()
-    else:
-        print(f"Commande inconnue : {command}")
-        print(__doc__)
-        sys.exit(1)
 
 
 if __name__ == "__main__":

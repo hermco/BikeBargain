@@ -7,11 +7,10 @@ import { useToast } from '../components/Toast'
 import { useCrawlSearch, useCrawlExtract, useCrawlConfirm, useMergeAd, useAccessoryCatalog, useActiveCrawlSession, useUpdateCrawlAdAction, useCloseCrawlSession, useRemoveCrawlSessionAd, useCheckPrices, useConfirmPrice } from '../hooks/queries'
 import { variantColor } from '../lib/utils'
 import { useFormatters } from '../hooks/useFormatters'
+import { useCurrentModel, useVariantOptions } from '../hooks/useCurrentModel'
 import type { CrawlAdSummary, CrawlDiff, Accessory, PotentialDuplicate, PriceChangeEntry } from '../types'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-
-import { VARIANTS, COLORS, WHEEL_TYPES } from '../lib/constants'
 
 const CRAWL_DELAY_MS = 5000
 
@@ -32,6 +31,8 @@ interface AdState {
 export function CrawlPage() {
   const { t } = useTranslation()
   const { formatPrice } = useFormatters()
+  const { slug, modelUrl } = useCurrentModel()
+  const { variantNames, wheelTypes, colorsForVariant } = useVariantOptions()
   const [status, setStatus] = useState<CrawlStatus>('idle')
   const [adStates, setAdStates] = useState<AdState[]>([])
   const [currentIndex, setCurrentIndex] = useState(-1)
@@ -65,18 +66,18 @@ export function CrawlPage() {
   const sessionIdRef = useRef(sessionId)
   useEffect(() => { sessionIdRef.current = sessionId }, [sessionId])
 
-  const searchMut = useCrawlSearch()
-  const extractMut = useCrawlExtract()
-  const confirmMut = useCrawlConfirm()
-  const mergeMut = useMergeAd()
-  const updateActionMut = useUpdateCrawlAdAction()
-  const closeSessionMut = useCloseCrawlSession()
-  const removeAdMut = useRemoveCrawlSessionAd()
-  const { data: catalog } = useAccessoryCatalog()
-  const { data: activeSession, isLoading: isLoadingSession } = useActiveCrawlSession()
+  const searchMut = useCrawlSearch(slug)
+  const extractMut = useCrawlExtract(slug)
+  const confirmMut = useCrawlConfirm(slug)
+  const mergeMut = useMergeAd(slug)
+  const updateActionMut = useUpdateCrawlAdAction(slug)
+  const closeSessionMut = useCloseCrawlSession(slug)
+  const removeAdMut = useRemoveCrawlSessionAd(slug)
+  const { data: catalog } = useAccessoryCatalog(slug)
+  const { data: activeSession, isLoading: isLoadingSession } = useActiveCrawlSession(slug)
   const { toast } = useToast()
-  const checkPricesMut = useCheckPrices()
-  const confirmPriceMut = useConfirmPrice()
+  const checkPricesMut = useCheckPrices(slug)
+  const confirmPriceMut = useConfirmPrice(slug)
 
   // Keep ref in sync for use inside processNext callback
   useEffect(() => { showInDbRef.current = showInDb }, [showInDb])
@@ -580,7 +581,7 @@ export function CrawlPage() {
   })
   const newCount = adStates.filter((s) => !s.summary.exists_in_db && s.action === 'pending').length
   const variant = currentExtract?.variant as string | null
-  const availableColors = variant ? COLORS[variant] ?? [] : Object.values(COLORS).flat()
+  const availableColors = colorsForVariant(variant)
   const accessories = (currentExtract?.accessories ?? []) as Accessory[]
   const catalogFiltered = (catalog ?? []).filter((c) => {
     if (accessories.some((a) => a.name === c.name)) return false
@@ -752,7 +753,7 @@ export function CrawlPage() {
                   <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <Link to={`/ads/${pc.id}`} className="text-sm font-medium text-text-primary hover:text-amber-400 transition-colors truncate">
+                        <Link to={modelUrl(`/ads/${pc.id}`)} className="text-sm font-medium text-text-primary hover:text-amber-400 transition-colors truncate">
                           {pc.subject || `#${pc.id}`}
                         </Link>
                         {pc.city && (
@@ -952,7 +953,7 @@ export function CrawlPage() {
                         {t('crawl.mergeWith')}
                       </Button>
                       <Link
-                        to={`/ads/${dup.id}`}
+                        to={modelUrl(`/ads/${dup.id}`)}
                         target="_blank"
                         className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] text-text-muted text-xs font-medium hover:bg-white/[0.08] hover:text-text-secondary transition-all"
                       >
@@ -1090,7 +1091,7 @@ export function CrawlPage() {
                   <span className="text-text-muted">{t('common.variant')}</span>
                   {editingField === 'variant' ? (
                     <div className="flex flex-wrap gap-1.5">
-                      {VARIANTS.map((v) => (
+                      {variantNames.map((v) => (
                         <button key={v} onClick={() => updateExtractField('variant', v)}
                           className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${v === variant ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40' : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'}`}>
                           {v}
@@ -1126,7 +1127,7 @@ export function CrawlPage() {
                   <span className="text-text-muted">{t('common.wheels')}</span>
                   {editingField === 'wheel_type' ? (
                     <div className="flex gap-1.5">
-                      {WHEEL_TYPES.map((w) => (
+                      {wheelTypes.map((w) => (
                         <button key={w} onClick={() => updateExtractField('wheel_type', w)}
                           className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${w === currentExtract.wheel_type ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40' : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'}`}>
                           {w}
@@ -1413,7 +1414,7 @@ export function CrawlPage() {
                       <Badge className="bg-amber-500/10 text-amber-300 text-[10px]">{t('crawl.existed')}</Badge>
                     )}
                     {state.potentialDuplicates && state.potentialDuplicates.length > 0 && (
-                      <Link to={`/ads/${state.potentialDuplicates[0].id}`} target="_blank">
+                      <Link to={modelUrl(`/ads/${state.potentialDuplicates[0].id}`)} target="_blank">
                         <Badge className="bg-purple-500/10 text-purple-300 text-[10px] hover:bg-purple-500/20 transition-colors">
                           {t('crawl.repostOf', { id: state.potentialDuplicates[0].id })}
                         </Badge>
@@ -1595,7 +1596,7 @@ export function CrawlPage() {
                       <div className="flex items-center gap-1.5 text-[11px] text-purple-300/80 flex-wrap">
                         <Copy className="h-3 w-3 shrink-0" />
                         <span>{t('crawl.possibleRepost')} </span>
-                        <Link to={`/ads/${repost.id}`} target="_blank" className="text-purple-300 underline hover:text-purple-200" onClick={(e) => e.stopPropagation()}>
+                        <Link to={modelUrl(`/ads/${repost.id}`)} target="_blank" className="text-purple-300 underline hover:text-purple-200" onClick={(e) => e.stopPropagation()}>
                           #{repost.id}
                         </Link>
                         {repost.sold && <span className="text-red-400">({t('common.sold').toLowerCase()})</span>}

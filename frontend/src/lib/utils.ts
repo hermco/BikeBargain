@@ -20,6 +20,7 @@ export function formatDate(dateStr: string | null | undefined, locale = 'fr-FR')
   return new Date(dateStr).toLocaleDateString(locale, { day: 'numeric', month: 'short' })
 }
 
+/** Hardcoded fallback — prefer useVariantOptions().variantColor() when model context is available */
 export function variantColor(variant: string | null): string {
   switch (variant) {
     case 'Base':
@@ -35,7 +36,7 @@ export function variantColor(variant: string | null): string {
   }
 }
 
-/** Chart fill color per variant (for pie/bar charts) */
+/** Hardcoded fallback — prefer useVariantOptions().variantChartColor() when model context is available */
 export function variantChartColor(variant: string): string {
   switch (variant) {
     case 'Base':

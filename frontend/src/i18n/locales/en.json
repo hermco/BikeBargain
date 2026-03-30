@@ -44,12 +44,23 @@
     "select": "Select...",
     "backToListings": "Back to listings"
   },
+  "landing": {
+    "title": "BikeBargain",
+    "empty": "No bike models configured.",
+    "noAds": "No listings yet",
+    "ads": "listings"
+  },
   "nav": {
     "ads": "Listings",
     "stats": "Statistics",
     "ranking": "Ranking",
     "search": "Search",
-    "accessories": "Accessories"
+    "accessories": "Accessories",
+    "allModels": "All models"
+  },
+  "model": {
+    "noSearchConfig": "No search configuration for this model.",
+    "noVariants": "No variants configured for this model."
   },
   "sidebar": {
     "summary": "Summary",

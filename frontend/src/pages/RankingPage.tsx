@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, AlertTriangle, ExternalLink, Search, X, Wifi, Car } from 'lucide-react'
 import { useRankings, useCheckAdsOnline } from '../hooks/queries'
+import { useCurrentModel } from '../hooks/useCurrentModel'
 import { useToast } from '../components/Toast'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
@@ -44,6 +45,7 @@ function TravelBadge({ travel, loading }: { travel?: TravelInfo; loading?: boole
 function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
   const { t } = useTranslation()
   const { formatPrice } = useFormatters()
+  const { modelUrl } = useCurrentModel()
   return (
     <motion.div
       initial={{ height: 0, opacity: 0 }}
@@ -122,7 +124,7 @@ function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
           )}
 
           <div className="mt-3 pt-2 border-t border-white/[0.04] flex gap-3">
-            <Link to={`/ads/${r.id}`} className="text-xs text-amber-400 hover:text-amber-300 transition-colors">
+            <Link to={modelUrl(`/ads/${r.id}`)} className="text-xs text-amber-400 hover:text-amber-300 transition-colors">
               {t('ranking.viewAd')}
             </Link>
             <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-xs text-text-dim hover:text-text-secondary flex items-center gap-0.5 transition-colors">
@@ -194,8 +196,9 @@ type SortKey = 'rank' | 'price' | 'km' | 'effective_price' | 'decote_pct' | 'acc
 export function RankingPage() {
   const { t } = useTranslation()
   const { formatPrice, formatKm } = useFormatters()
-  const { data: rankings, isLoading } = useRankings()
-  const checkOnlineMut = useCheckAdsOnline()
+  const { slug, modelUrl } = useCurrentModel()
+  const { data: rankings, isLoading } = useRankings(slug)
+  const checkOnlineMut = useCheckAdsOnline(slug)
   const { toast } = useToast()
   const [newlySoldIds, setNewlySoldIds] = useState<Set<number>>(new Set())
   const [expanded, setExpanded] = useState<number | null>(null)
@@ -278,6 +281,24 @@ export function RankingPage() {
     return map
   }, [rankings])
 
+  function handleSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortAsc(!sortAsc)
+    } else {
+      setSortKey(key)
+      setSortAsc(key === 'price' || key === 'km' || key === 'distance')
+    }
+  }
+
+  function clearFilters() {
+    setSearch('')
+    setFilterColors(new Set())
+    setFilterWheel('')
+    setMaxKm('')
+    setMaxPrice('')
+    setMaxTrajet('')
+  }
+
   const filtered = useMemo(() => (rankings ?? []).filter((r) => {
     if (search) {
       const q = search.toLowerCase()
@@ -317,24 +338,6 @@ export function RankingPage() {
 
   if (isLoading) return <TableSkeleton rows={10} />
   if (!rankings?.length) return <EmptyState title={t('ranking.emptyTitle')} description={t('ranking.emptyDescription')} />
-
-  function handleSort(key: SortKey) {
-    if (key === sortKey) {
-      setSortAsc(!sortAsc)
-    } else {
-      setSortKey(key)
-      setSortAsc(key === 'price' || key === 'km' || key === 'distance')
-    }
-  }
-
-  function clearFilters() {
-    setSearch('')
-    setFilterColors(new Set())
-    setFilterWheel('')
-    setMaxKm('')
-    setMaxPrice('')
-    setMaxTrajet('')
-  }
 
   const hasLocation = userLoc != null
   const colSpan = hasLocation ? 9 : 8
@@ -417,7 +420,7 @@ export function RankingPage() {
                     return (
                       <Link
                         key={r.id}
-                        to={`/ads/${r.id}`}
+                        to={modelUrl(`/ads/${r.id}`)}
                         className="inline-flex items-center gap-2 rounded-lg bg-white/[0.04] border border-white/[0.06] px-3 py-2 text-sm hover:bg-white/[0.08] transition-colors"
                       >
                         <span className="text-text-dim font-fraunces">#{origRank}</span>

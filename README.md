@@ -1,13 +1,14 @@
 # BikeBargain
 
-Outil d'analyse des annonces de seconde main pour la **Royal Enfield Himalayan 450** sur LeBonCoin.
+Marketplace d'analyse des annonces de seconde main pour **motos multi-marques** sur LeBonCoin. Supporte plusieurs modèles configurables (ex: Royal Enfield Himalayan 450).
 
 ## Fonctionnalités
 
+- **Multi-modèles** : chaque moto est un modèle configurable en base (variantes, accessoires, consommables, config recherche)
 - **Extraction** d'annonces LeBonCoin via un simple lien
-- **Détection automatique** de la variante (Base / Pass / Summit / Mana Black Edition), couleur et type de jantes
-- **Détection des accessoires** mentionnés dans la description (86 patterns, 51 accessoires distincts)
-- **Comparaison au prix neuf** de référence (catalogue France mars 2026)
+- **Détection automatique** de la variante, couleur et type de jantes (patterns par modèle)
+- **Détection des accessoires** mentionnés dans la description (patterns par modèle)
+- **Comparaison au prix neuf** de référence (catalogue par modèle)
 - **Algorithme de classement** par décote réelle (prix effectif tenant compte des accessoires, usure, garantie)
 - **Crawl LeBonCoin** avec détection de doublons/reposts et workflow d'import par lot
 - **Détection de reposts** par scoring multi-critères (ville, prix, description, accessoires, kilométrage)
@@ -24,7 +25,7 @@ Outil d'analyse des annonces de seconde main pour la **Royal Enfield Himalayan 4
 ## Installation
 
 ```bash
-cd ~/Work/bikebargain
+cd ~/Work/bikebargain  # ou le répertoire du worktree
 python3 -m venv .venv
 source .venv/bin/activate
 make install
@@ -97,12 +98,16 @@ Ouvre http://localhost:5173 dans le navigateur. Le backend API tourne sur le por
 ```bash
 source .venv/bin/activate
 
+# Le flag --model / -m sélectionne le modèle (auto si un seul modèle)
 python main.py add https://www.leboncoin.fr/motos/2849506789.htm
-python main.py add https://www.leboncoin.fr/motos/111.htm https://www.leboncoin.fr/motos/222.htm
+python main.py add -m himalayan-450 https://www.leboncoin.fr/motos/111.htm https://www.leboncoin.fr/motos/222.htm
 python main.py list
 python main.py show 2849506789
 python main.py stats
 python main.py export
+
+# Importer un nouveau modèle depuis un fichier de config JSON
+python main.py import-model mon-modele.json
 ```
 
 ### Rapport de classement
@@ -117,20 +122,21 @@ Affiche un rapport détaillé de toutes les annonces classées par décote (meil
 
 ```
 bikebargain/
-├── main.py                  # CLI principal (add/list/show/stats/export)
+├── main.py                  # CLI principal (add/list/show/stats/export/import-model)
 ├── .env.example             # Documentation des variables d'environnement
 ├── src/
 │   ├── config.py            # Configuration centralisee (pydantic-settings)
-│   ├── api.py               # API REST FastAPI (25 endpoints)
+│   ├── api.py               # API REST FastAPI — endpoints sous /api/bike-models/{slug}/...
 │   ├── database.py          # Engine PostgreSQL, sessions et CRUD
-│   ├── extractor.py         # Extraction LBC + détection variante/couleur
-│   ├── analyzer.py          # Algorithme de scoring et classement
-│   ├── accessories.py       # Détection des accessoires (86 patterns)
+│   ├── extractor.py         # Extraction LBC + détection variante/couleur (config DB par modèle)
+│   ├── analyzer.py          # Algorithme de scoring et classement (constantes DB par modèle)
+│   ├── accessories.py       # Détection des accessoires (patterns DB par modèle)
 │   └── crawler.py           # Crawl/recherche LeBonCoin
 ├── frontend/                # Interface React (Vite + TypeScript + Tailwind)
 │   ├── src/
 │   │   ├── components/      # Composants UI (cards, sidebar, filtres, etc.)
-│   │   ├── pages/           # Pages (annonces, détail, stats, classement)
+│   │   ├── pages/           # Landing (/) + pages sous /models/:slug/...
+│   │   ├── layouts/         # ModelLayout — fournit le contexte du modèle actif
 │   │   ├── hooks/           # TanStack Query hooks
 │   │   ├── i18n/            # Internationalisation (react-i18next)
 │   │   │   ├── index.ts     # Configuration i18n
@@ -140,8 +146,8 @@ bikebargain/
 │   └── ...
 ├── Makefile                 # dev / install / build / db
 ├── docker-compose.yml       # Container PostgreSQL local
-├── modeles-prix-neuf.md     # Catalogue des prix neuf de référence
-├── alembic/                 # Migrations + seed data
+├── modeles-prix-neuf.md     # Catalogue des prix neuf de référence (Himalayan 450)
+├── alembic/                 # Migrations + seed data (inclut config bike models)
 ├── requirements.txt
 └── README.md
 ```
@@ -190,52 +196,61 @@ Le système de crawl permet de scanner LeBonCoin et traiter les résultats par l
 
 ## API REST
 
-### Annonces
+### Modèles de motos
 
 | Endpoint | Méthode | Description |
 |---|---|---|
-| `/api/ads` | GET | Liste les annonces (filtres : `variant`, `min_price`, `max_price`, `limit`, `offset`) |
-| `/api/ads/{id}` | GET | Détail complet d'une annonce (accessoires, images, attributs) |
-| `/api/ads` | POST | Ajouter une annonce via URL (sans preview) |
-| `/api/ads/preview` | POST | Extraire une annonce sans sauvegarder (pour vérification) |
-| `/api/ads/confirm` | POST | Sauvegarder une annonce après vérification/modification |
-| `/api/ads/{id}` | PATCH | Modifier une annonce (couleur, variante, jantes, accessoires, sold) |
-| `/api/ads/{id}` | DELETE | Supprimer une annonce |
-| `/api/ads/merge` | POST | Fusionner un repost avec une annonce existante |
-| `/api/ads/check-online` | POST | Vérifier si les annonces non vendues sont toujours en ligne |
-| `/api/ads/{id}/check-online` | POST | Vérifier si une annonce est toujours en ligne |
-| `/api/ads/{id}/price-history` | GET | Historique des prix (inclut les reposts) |
+| `/api/bike-models` | GET | Liste tous les modèles configurés |
+| `/api/bike-models/{slug}` | GET | Détail d'un modèle (variantes, config) |
+
+### Annonces (scoped par modèle)
+
+Les endpoints ci-dessous sont préfixés par `/api/bike-models/{slug}/`. Les anciennes URL sans préfixe (`/api/ads`, etc.) restent disponibles en alias de compatibilité (modèle unique uniquement).
+
+| Endpoint | Méthode | Description |
+|---|---|---|
+| `/api/bike-models/{slug}/ads` | GET | Liste les annonces (filtres : `variant`, `min_price`, `max_price`, `limit`, `offset`) |
+| `/api/bike-models/{slug}/ads/{id}` | GET | Détail complet d'une annonce (accessoires, images, attributs) |
+| `/api/bike-models/{slug}/ads` | POST | Ajouter une annonce via URL (sans preview) |
+| `/api/bike-models/{slug}/ads/preview` | POST | Extraire une annonce sans sauvegarder (pour vérification) |
+| `/api/bike-models/{slug}/ads/confirm` | POST | Sauvegarder une annonce après vérification/modification |
+| `/api/bike-models/{slug}/ads/{id}` | PATCH | Modifier une annonce (couleur, variante, jantes, accessoires, sold) |
+| `/api/bike-models/{slug}/ads/{id}` | DELETE | Supprimer une annonce |
+| `/api/bike-models/{slug}/ads/merge` | POST | Fusionner un repost avec une annonce existante |
+| `/api/bike-models/{slug}/ads/check-online` | POST | Vérifier si les annonces non vendues sont toujours en ligne |
+| `/api/bike-models/{slug}/ads/{id}/check-online` | POST | Vérifier si une annonce est toujours en ligne |
+| `/api/bike-models/{slug}/ads/{id}/price-history` | GET | Historique des prix (inclut les reposts) |
 
 ### Statistiques et classement
 
 | Endpoint | Méthode | Description |
 |---|---|---|
-| `/api/stats` | GET | Statistiques agrégées (prix, km, variantes, départements, accessoires) |
-| `/api/rankings` | GET | Classement par décote (prix effectif) |
-| `/api/export` | GET | Télécharger le CSV |
+| `/api/bike-models/{slug}/stats` | GET | Statistiques agrégées (prix, km, variantes, départements, accessoires) |
+| `/api/bike-models/{slug}/rankings` | GET | Classement par décote (prix effectif) |
+| `/api/bike-models/{slug}/export` | GET | Télécharger le CSV |
 
 ### Catalogue accessoires
 
 | Endpoint | Méthode | Description |
 |---|---|---|
-| `/api/accessory-catalog` | GET | Catalogue complet avec surcharges utilisateur |
-| `/api/accessory-catalog/{group}` | PATCH | Surcharger le prix neuf d'un groupe d'accessoires |
-| `/api/accessory-catalog/{group}/override` | DELETE | Réinitialiser au prix par défaut |
-| `/api/accessories/refresh` | POST | Re-détecter les accessoires de toutes les annonces |
-| `/api/ads/{id}/refresh-accessories` | POST | Re-détecter les accessoires d'une annonce |
+| `/api/bike-models/{slug}/accessory-catalog` | GET | Catalogue complet avec surcharges utilisateur |
+| `/api/bike-models/{slug}/accessory-catalog/{group}` | PATCH | Surcharger le prix neuf d'un groupe d'accessoires |
+| `/api/bike-models/{slug}/accessory-catalog/{group}/override` | DELETE | Réinitialiser au prix par défaut |
+| `/api/bike-models/{slug}/accessories/refresh` | POST | Re-détecter les accessoires de toutes les annonces |
+| `/api/bike-models/{slug}/ads/{id}/refresh-accessories` | POST | Re-détecter les accessoires d'une annonce |
 
 ### Crawl
 
 | Endpoint | Méthode | Description |
 |---|---|---|
-| `/api/crawl/search` | GET | Lancer une recherche LeBonCoin et créer une session |
-| `/api/crawl/sessions/active` | GET | Session de crawl active (la plus récente) |
-| `/api/crawl/sessions/{id}/ads/{ad_id}` | PATCH | Mettre à jour le statut d'une annonce dans la session |
-| `/api/crawl/sessions/{id}` | DELETE | Clôturer une session de crawl |
-| `/api/crawl/sessions/{id}/ads/{ad_id}` | DELETE | Retirer une annonce de la session |
-| `/api/crawl/extract` | POST | Extraire une annonce complète (avec diff et détection de doublons) |
+| `/api/bike-models/{slug}/crawl/search` | GET | Lancer une recherche LeBonCoin et créer une session |
+| `/api/bike-models/{slug}/crawl/sessions/active` | GET | Session de crawl active (la plus récente) |
+| `/api/bike-models/{slug}/crawl/sessions/{id}/ads/{ad_id}` | PATCH | Mettre à jour le statut d'une annonce dans la session |
+| `/api/bike-models/{slug}/crawl/sessions/{id}` | DELETE | Clôturer une session de crawl |
+| `/api/bike-models/{slug}/crawl/sessions/{id}/ads/{ad_id}` | DELETE | Retirer une annonce de la session |
+| `/api/bike-models/{slug}/crawl/extract` | POST | Extraire une annonce complète (avec diff et détection de doublons) |
 
-## Catalogue des variantes (prix neuf France, mars 2026)
+## Catalogue des variantes — Royal Enfield Himalayan 450 (prix neuf France, mars 2026)
 
 | Variante | Couleur | Jantes | Prix |
 |----------|---------|--------|-----:|

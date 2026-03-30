@@ -21,6 +21,12 @@ app.add_middleware(
 )
 
 
+class SearchRequest(BaseModel):
+    keyword: str = "Himalayan"
+    min_cc: int | None = None
+    max_cc: int | None = None
+
+
 class FetchAdRequest(BaseModel):
     url: str
     price_overrides: dict | None = None
@@ -40,12 +46,12 @@ def health():
 
 
 @app.post("/search")
-def search():
+def search(req: SearchRequest):
     """Lance la recherche LeBonCoin et retourne les resultats bruts."""
     from .crawler import search_all_ads
 
     try:
-        return search_all_ads()
+        return search_all_ads(keyword=req.keyword, min_cc=req.min_cc, max_cc=req.max_cc)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Erreur recherche LeBonCoin : {e}")
 

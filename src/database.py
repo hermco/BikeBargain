@@ -14,6 +14,9 @@ from sqlalchemy.orm import selectinload
 from .models import (  # noqa: F401
     Ad, AdAttribute, AdImage, AdAccessory,
     CrawlSession, CrawlSessionAd, AdPriceHistory, AccessoryOverride,
+    BikeModel, BikeModelConfig, BikeVariant, BikeConsumable,
+    BikeAccessoryPattern, BikeVariantPattern, BikeExclusionPattern,
+    BikeNewListingPattern, BikeSearchConfig,
 )
 from .config import get_settings
 
@@ -55,7 +58,7 @@ _AD_FIELDS = [
     "city", "zipcode", "department", "region", "lat", "lng",
     "seller_type", "first_publication_date", "expiration_date",
     "variant", "wheel_type", "estimated_new_price",
-    "previous_ad_id",
+    "previous_ad_id", "bike_model_id",
 ]
 
 _SENTINEL = object()
@@ -167,16 +170,21 @@ def _ad_to_dict(ad: Ad) -> dict:
 
 def refresh_accessories(
     session: Session,
+    bike_model_id: int,
     *,
     skip_manual: bool = False,
     ad_ids: list[int] | None = None,
 ) -> list[dict]:
-    """Re-detecte les accessoires en base."""
+    """Re-detecte les accessoires en base pour un modele donne."""
     from .accessories import detect_accessories
 
-    overrides = get_accessory_overrides(session)
+    overrides = get_accessory_overrides(session, bike_model_id)
 
-    statement = select(Ad)
+    # Pre-charger les patterns une seule fois pour toutes les annonces
+    patterns = get_accessory_patterns(session, bike_model_id)
+    exclusions = get_exclusion_patterns(session, bike_model_id)
+
+    statement = select(Ad).where(Ad.bike_model_id == bike_model_id)
     if skip_manual:
         statement = statement.where(Ad.accessories_manual == 0)
     if ad_ids is not None:
@@ -187,7 +195,11 @@ def refresh_accessories(
 
     for ad in ads:
         before = len(ad.accessories)
-        detected = detect_accessories(ad.body or "", price_overrides=overrides)
+        detected = detect_accessories(
+            ad.body or "", bike_model_id, session,
+            patterns=patterns, exclusions=exclusions,
+            price_overrides=overrides,
+        )
 
         # Supprimer les anciens
         session.exec(delete(AdAccessory).where(AdAccessory.ad_id == ad.id))
@@ -211,25 +223,27 @@ def refresh_accessories(
     return results
 
 
-def get_accessory_overrides(session: Session) -> dict[str, int]:
-    """Retourne les surcharges de prix {group_key: estimated_new_price}."""
-    rows = session.exec(select(AccessoryOverride)).all()
-    return {r.group_key: r.estimated_new_price for r in rows}
+def get_accessory_overrides(session: Session, bike_model_id: int) -> dict[str, int]:
+    """Retourne les surcharges de prix {group_key: estimated_new_price} pour un modele."""
+    overrides = session.exec(
+        select(AccessoryOverride).where(AccessoryOverride.bike_model_id == bike_model_id)
+    ).all()
+    return {o.group_key: o.estimated_new_price for o in overrides}
 
 
-def set_accessory_override(session: Session, group_key: str, estimated_new_price: int) -> None:
+def set_accessory_override(session: Session, bike_model_id: int, group_key: str, estimated_new_price: int) -> None:
     """Enregistre ou met a jour la surcharge de prix d'un groupe d'accessoires."""
-    existing = session.get(AccessoryOverride, group_key)
+    existing = session.get(AccessoryOverride, (bike_model_id, group_key))
     if existing:
         existing.estimated_new_price = estimated_new_price
     else:
-        session.add(AccessoryOverride(group_key=group_key, estimated_new_price=estimated_new_price))
+        session.add(AccessoryOverride(bike_model_id=bike_model_id, group_key=group_key, estimated_new_price=estimated_new_price))
     session.commit()
 
 
-def delete_accessory_override(session: Session, group_key: str) -> None:
+def delete_accessory_override(session: Session, bike_model_id: int, group_key: str) -> None:
     """Supprime la surcharge de prix d'un groupe."""
-    existing = session.get(AccessoryOverride, group_key)
+    existing = session.get(AccessoryOverride, (bike_model_id, group_key))
     if existing:
         session.delete(existing)
         session.commit()
@@ -241,3 +255,75 @@ def get_ad_count(session: Session) -> int:
     return session.exec(
         select(func.count()).select_from(Ad).where(Ad.superseded_by == None)  # noqa: E711
     ).one()
+
+
+# ─── BIKE MODELS ─────────────────────────────────────────────────────────────
+
+def get_bike_models(session: Session) -> list[BikeModel]:
+    """Retourne tous les modeles actifs."""
+    return session.exec(select(BikeModel).where(BikeModel.active == True)).all()  # noqa: E712
+
+
+def get_bike_model_by_slug(session: Session, slug: str) -> BikeModel | None:
+    """Retourne un modele par son slug."""
+    return session.exec(select(BikeModel).where(BikeModel.slug == slug)).first()
+
+
+def get_bike_model_config(session: Session, bike_model_id: int) -> BikeModelConfig | None:
+    """Retourne la config analyseur d'un modele."""
+    return session.exec(
+        select(BikeModelConfig).where(BikeModelConfig.bike_model_id == bike_model_id)
+    ).first()
+
+
+def get_bike_variants(session: Session, bike_model_id: int) -> list[BikeVariant]:
+    """Retourne les variantes d'un modele."""
+    return session.exec(
+        select(BikeVariant).where(BikeVariant.bike_model_id == bike_model_id)
+    ).all()
+
+
+def get_bike_consumables(session: Session, bike_model_id: int) -> list[BikeConsumable]:
+    """Retourne les consommables d'un modele."""
+    return session.exec(
+        select(BikeConsumable).where(BikeConsumable.bike_model_id == bike_model_id)
+    ).all()
+
+
+def get_accessory_patterns(session: Session, bike_model_id: int) -> list[BikeAccessoryPattern]:
+    """Retourne les patterns d'accessoires, ordonnes par sort_order."""
+    return session.exec(
+        select(BikeAccessoryPattern)
+        .where(BikeAccessoryPattern.bike_model_id == bike_model_id)
+        .order_by(BikeAccessoryPattern.sort_order)
+    ).all()
+
+
+def get_variant_patterns(session: Session, bike_model_id: int) -> list[BikeVariantPattern]:
+    """Retourne les patterns de detection de variante, ordonnes par priorite desc."""
+    return session.exec(
+        select(BikeVariantPattern)
+        .where(BikeVariantPattern.bike_model_id == bike_model_id)
+        .order_by(BikeVariantPattern.priority.desc())
+    ).all()
+
+
+def get_exclusion_patterns(session: Session, bike_model_id: int) -> list[BikeExclusionPattern]:
+    """Retourne les patterns d'exclusion."""
+    return session.exec(
+        select(BikeExclusionPattern).where(BikeExclusionPattern.bike_model_id == bike_model_id)
+    ).all()
+
+
+def get_new_listing_patterns(session: Session, bike_model_id: int) -> list[BikeNewListingPattern]:
+    """Retourne les patterns de detection de nouvelles annonces."""
+    return session.exec(
+        select(BikeNewListingPattern).where(BikeNewListingPattern.bike_model_id == bike_model_id)
+    ).all()
+
+
+def get_search_configs(session: Session, bike_model_id: int) -> list[BikeSearchConfig]:
+    """Retourne les configs de recherche."""
+    return session.exec(
+        select(BikeSearchConfig).where(BikeSearchConfig.bike_model_id == bike_model_id)
+    ).all()

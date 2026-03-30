@@ -1,10 +1,10 @@
 """
 Crawling des annonces LeBonCoin pour BikeBargain.
 
-Recherche avec criteres fixes :
+Recherche avec criteres parametrables :
   - Categorie : motos
-  - Cylindree minimum : 420 cm3
-  - Mot-cle : "Himalayan"
+  - Cylindree minimum/maximum optionnels
+  - Mot-cle configurable
   - Toute la France
 """
 
@@ -14,11 +14,7 @@ import lbc
 
 from .config import get_settings
 
-# Criteres de recherche fixes
-SEARCH_TEXT = "Himalayan"
 SEARCH_CATEGORY = lbc.Category.VEHICULES_MOTOS
-SEARCH_CC_MIN = 420
-SEARCH_CC_MAX = 99999  # pas de max
 RESULTS_PER_PAGE = 35
 
 # Delai entre les requetes de pagination (secondes)
@@ -73,12 +69,17 @@ def _parse_search_ads(results) -> list[dict]:
     return ads
 
 
-def search_all_ads() -> dict:
+def search_all_ads(keyword: str = "Himalayan", min_cc: int | None = None, max_cc: int | None = None) -> dict:
     """
     Lance la recherche sur toutes les pages et retourne tous les resultats.
 
     Utilise un seul client (meme session/cookies) et respecte un delai
     entre les pages pour eviter le blocage DataDome.
+
+    Args:
+        keyword: Mot-cle de recherche.
+        min_cc: Cylindree minimum (optionnel, pas de filtre si None).
+        max_cc: Cylindree maximum (optionnel, pas de filtre si None).
 
     Returns:
         dict avec total et liste complete d'annonces legeres.
@@ -86,14 +87,20 @@ def search_all_ads() -> dict:
     from .extractor import get_lbc_client
     client = get_lbc_client()
 
+    # Construire les kwargs de recherche
+    search_kwargs = {
+        "text": keyword,
+        "category": SEARCH_CATEGORY,
+        "limit": RESULTS_PER_PAGE,
+        "page": 1,
+    }
+    if min_cc is not None or max_cc is not None:
+        cc_min = min_cc or 0
+        cc_max = max_cc or 99999
+        search_kwargs["cubic_capacity"] = (cc_min, cc_max)
+
     # Premiere page
-    results = client.search(
-        text=SEARCH_TEXT,
-        category=SEARCH_CATEGORY,
-        cubic_capacity=(SEARCH_CC_MIN, SEARCH_CC_MAX),
-        limit=RESULTS_PER_PAGE,
-        page=1,
-    )
+    results = client.search(**search_kwargs)
 
     all_ads = _parse_search_ads(results)
     total = results.total
@@ -103,13 +110,8 @@ def search_all_ads() -> dict:
     delay = PAGE_DELAY_LOCAL if not get_settings().lbc_proxy_url else PAGE_DELAY_DATACENTER
     for p in range(2, max_pages + 1):
         time.sleep(delay)
-        page_results = client.search(
-            text=SEARCH_TEXT,
-            category=SEARCH_CATEGORY,
-            cubic_capacity=(SEARCH_CC_MIN, SEARCH_CC_MAX),
-            limit=RESULTS_PER_PAGE,
-            page=p,
-        )
+        search_kwargs["page"] = p
+        page_results = client.search(**search_kwargs)
         all_ads.extend(_parse_search_ads(page_results))
 
     return {

@@ -40,11 +40,13 @@ Approche envisagee pour detecter les fautes de frappe automatiquement.
 
 **Pourquoi rejetee :** risque eleve de faux positifs, non deterministe, difficile a debugger, plus lent. Le rapport benefice/risque ne justifie pas la complexite.
 
-### Suggestion de synonymes par LLM
+### Suggestion de synonymes par LLM a chaque creation
 
-Appeler Claude Haiku a chaque creation d'accessoire pour suggerer des synonymes.
+Appeler Claude Haiku automatiquement a chaque creation d'accessoire pour suggerer des synonymes.
 
-**Pourquoi rejetee :** cout non nul (meme faible). Remplace par des regles linguistiques hardcodees (prefixes interchangeables + equivalences domaine moto) qui couvrent 90% des cas gratuitement.
+**Pourquoi rejetee comme mecanisme automatique :** ajouterait une dependance reseau/API dans le flow de creation UI. Les regles hardcodees (prefixes interchangeables + equivalences domaine moto) couvrent les cas courants sans latence ni cout.
+
+**Ce qu'on en a garde :** enrichissement ponctuel du catalogue par Claude Code. L'utilisateur demande periodiquement a Claude (dans le terminal) d'analyser le catalogue et de suggerer des synonymes manquants. Claude lit les groupes en DB, compare avec sa connaissance du vocabulaire moto francais, et propose des ajouts. L'utilisateur valide et les synonymes sont ajoutes via l'API. Pas d'automatisation — c'est une revue manuelle assistee.
 
 ## Architecture des synonymes a 3 niveaux
 
@@ -471,6 +473,69 @@ Quand un groupe est supprime :
 - Les `ad_accessories` existantes qui referenceaient ce groupe conservent leur `name` (str) en base — elles ne sont pas supprimees. C'est un orphelin volontaire : l'accessoire a ete detecte historiquement, il reste dans les donnees de l'annonce
 - Un refresh automatique est declenche : les annonces non-manuelles sont re-scannees avec le catalogue mis a jour, ce qui supprime les accessoires qui ne matchent plus
 
+## Crosscheck accessoires par Claude Code
+
+### Principe
+
+Certaines annonces contiennent des accessoires non detectes par le catalogue regex (accessoires mentionnes de facon inhabituelle, abbreviations rares, ou simplement absents du catalogue). Plutot que d'automatiser un appel LLM a chaque annonce, le systeme offre un mecanisme de crosscheck ponctuel pilote par l'utilisateur depuis le terminal Claude Code.
+
+### Flag `needs_crosscheck` sur la table `ad`
+
+Ajout d'un champ `needs_crosscheck: bool = False` sur la table `ad`. Ce flag est mis a `True` dans les cas suivants :
+
+- **A l'insertion** : quand une annonce est ajoutee et que le nombre d'accessoires detectes est faible (< 2) malgre une description longue (> 200 chars). Heuristique simple : probablement des accessoires non detectes
+- **Manuellement** : l'utilisateur peut marquer une annonce comme "a crosscheck" depuis l'UI (toggle)
+- **Apres un refresh** : si un refresh supprime des accessoires d'une annonce (regression), elle est automatiquement flaguee
+
+### Workflow terminal
+
+L'utilisateur demande a Claude Code dans le terminal : "crosscheck les annonces" (ou formulation equivalente). Claude :
+
+1. Appelle `GET /api/ads?needs_crosscheck=true` pour recuperer les annonces flaguees
+2. Pour chaque annonce, lit la description + les accessoires deja detectes
+3. Analyse le texte et identifie les accessoires mentionnes mais non detectes
+4. Produit un rapport :
+   ```
+   Annonce #42 "Himalayan 450 full equip" :
+     Detectes : crash bars sw-motech, top case givi
+     Manques : rehausse guidon (mentionne "rehausse de guidon Touratech")
+              protege-chaine (mentionne "protection chaine")
+     → Suggestion : ajouter "rehausse guidon" au catalogue (groupe: confort)
+     → Suggestion : ajouter "protege-chaine" comme synonyme du groupe "protection chaine"
+   ```
+5. L'utilisateur valide les suggestions, Claude les applique via l'API catalogue
+6. Les annonces crosscheckees sont marquees `needs_crosscheck = False`
+
+### Endpoint filtre
+
+```
+GET /api/ads?needs_crosscheck=true    → annonces a crosscheck (filtre existant etendu)
+PATCH /api/ads/{id}                   → body: { "needs_crosscheck": false } (reset apres crosscheck)
+```
+
+### Ce que ce n'est PAS
+
+- Pas un appel LLM automatique a chaque insertion — c'est trop lent et non deterministe pour le flow temps reel
+- Pas un remplacement du catalogue regex — le regex reste le moteur principal de detection, Claude Code sert a decouvrir les trous du catalogue
+- Pas un mecanisme de detection — Claude ne detecte pas les accessoires en production, il aide a ameliorer le catalogue pour que le regex les detecte ensuite
+
+## Generation assistee de regex_override
+
+### Principe
+
+Les ~5-6 variantes necessitant un `regex_override` (GPS, WRS, etc.) utilisent des constructions regex complexes (lookbehinds, lookaheads negatifs). Ecrire ces regex a la main est error-prone. A la place, l'utilisateur decrit en francais ce qu'il veut matcher/exclure, et Claude Code genere la regex.
+
+### Workflow terminal
+
+L'utilisateur dit a Claude : "genere un regex override pour la variante GPS qui matche 'gps' mais pas 'support gps' ni 'gps/telephone'". Claude :
+
+1. Genere la regex : `(?<!support\s)\bgps\b(?!\s*/\s*telephone)(?!\s*/\s*smartphone)`
+2. Appelle `POST /api/catalog/preview-regex` avec la regex pour valider sur le corpus
+3. Affiche le resultat : "3 annonces matchees, 0 faux positif apparent"
+4. L'utilisateur valide, Claude applique via `PATCH /api/catalog/variants/{id}` avec `regex_override`
+
+Le champ `regex_override` dans l'UI reste un champ texte (pour les experts), mais le workflow recommande est de passer par Claude Code pour la generation.
+
 ## Ce qui ne change pas
 
 - `detect_accessories()` : meme signature et meme output (liste de dicts)
@@ -674,3 +739,309 @@ Ce cas illustre pourquoi le `regex_override` est necessaire : certains patterns 
 | Breaking change API frontend (group string → id int) | Moyenne | Garder `group_key` string dans les reponses API pour compatibilite. Adapter le frontend progressivement |
 | Variantes avec regex_override necessaires pour cas complexes | Basse | Identifies : GPS (lookbehind/lookahead), WRS (qualificatifs optionnels avant marque), top case 40L RE, stickers/deco. ~5-6 variantes sur ~88 |
 | Absence de FK `ad_accessories → catalog_variant` | Basse | Dette technique documentee. Les noms (str) restent le lien. A adresser en v2 |
+
+## Review multi-perspective
+
+Spec reviewee par 4 personas : product manager, architecte logiciel, lead UX, et utilisateur final. Voici la synthese des feedbacks et les solutions retenues.
+
+### Problemes identifies (consensus multi-persona)
+
+#### P0 — Regression silencieuse apres edition du catalogue
+
+**Constat (PM + UX + User)** : quand l'utilisateur modifie un groupe ou une variante, le refresh recalcule les accessoires de toutes les annonces. Des annonces qui etaient detectees avant peuvent perdre un accessoire. Rien ne signale cette regression. L'utilisateur ne le decouvre que manuellement — ou jamais.
+
+**Solution — Preview diff avant/apres** : l'endpoint `preview-regex` est etendu pour retourner un diff quand le contexte d'une variante existante est fourni. Le frontend affiche :
+
+```
+Avant : 8 annonces detectees
+Apres : 11 annonces detectees (+3)
+Nouvelles detections : [annonce A, annonce B, annonce C]
+Detections perdues : [annonce D]
+```
+
+L'utilisateur voit immediatement l'impact de sa modification. Si des detections sont perdues, un avertissement explicite s'affiche avant la sauvegarde.
+
+**Ajout endpoint** :
+```
+POST /api/catalog/preview-diff
+Body: { "variant_id": 42, ...memes champs que preview-regex... }
+Response: {
+  "before": { "matching_ads_count": 8, "ad_ids": [...] },
+  "after": { "matching_ads_count": 11, "ad_ids": [...] },
+  "gained": [{ "id": 15, "title": "..." }],
+  "lost": [{ "id": 7, "title": "..." }]
+}
+```
+
+#### P0 — Reset destructif sans garde-fou
+
+**Constat (PM + Archi + UX)** : le bouton reset reecrit tout le catalogue. Un clic accidentel detruit des semaines de personnalisation. Aucune friction, aucun undo.
+
+**Solution — Export automatique avant reset** :
+
+1. Le bouton "Reset" ouvre une modale de confirmation avec le message : "Ceci remplacera vos X groupes personnalises (dont Y modifies). Voulez-vous d'abord exporter votre catalogue ?"
+2. Bouton "Exporter puis reset" : telecharge un JSON du catalogue actuel, puis reset
+3. Bouton "Reset sans export" : reset direct apres confirmation textuelle ("tapez RESET pour confirmer")
+4. **Nouvel endpoint** : `GET /api/catalog/export` → JSON du catalogue complet (groupes + variantes)
+5. **Nouvel endpoint** : `POST /api/catalog/import` → restaure un catalogue depuis un JSON exporte
+
+#### P1 — Modele mental trop abstrait
+
+**Constat (PM + UX + User)** : la distinction Groupe / Variante / Expression / Qualificatif / Marque / Product Alias / Mots optionnels est trop granulaire. L'utilisateur doit memoriser 7 concepts avant de creer quoi que ce soit. La terminologie est celle de l'ingenieur, pas du domaine moto.
+
+**Solution — Renommage des concepts dans l'UI** :
+
+| Terme technique (code/DB) | Terme UI (affiche) |
+|---|---|
+| Groupe | Accessoire |
+| Variante | Declinaison |
+| Expressions | Synonymes |
+| Qualificatifs | Mots-cles |
+| Brands | Marques |
+| Product aliases | Noms de produits |
+| Optional words | *(masque par defaut, mode avance)* |
+| regex_override | *(masque par defaut, mode avance)* |
+
+Les termes techniques restent dans le code et l'API. Seule l'UI utilise les termes domaine. Le code ne change pas.
+
+**Solution — Creation unifiee groupe + premiere variante** : le flow de creation fusionne les etapes 2 et 3 en un seul formulaire a deux sections. L'utilisateur cree un accessoire complet (nom, synonymes, premiere declinaison) en une seule action. L'ajout de declinaisons supplementaires reste un acte separe.
+
+#### P1 — Feedback refresh manquant
+
+**Constat (Archi + UX)** : le refresh en background (202 Accepted) ne donne aucun feedback a l'utilisateur. Il ne sait pas si ses changements ont ete pris en compte, si le refresh est en cours, ou s'il a echoue.
+
+**Solution — Indicateur de statut dans le header catalogue** :
+
+- Badge "Mise a jour en cours..." (spinner) pendant le refresh
+- Badge "A jour" (vert) quand le refresh est termine
+- Badge "Erreur de mise a jour" (rouge) si le refresh echoue
+
+Implementation : le refresh ecrit son statut dans un champ global (ex: variable module ou table `system_status`). Le frontend poll `GET /api/catalog/refresh-status` toutes les 2 secondes pendant un refresh, puis arrete.
+
+```
+GET /api/catalog/refresh-status
+Response: { "status": "running" | "idle" | "error", "updated_ads_count": 45, "last_refresh": "2026-03-29T14:30:00Z" }
+```
+
+### Problemes techniques (architecte)
+
+#### Cache applicatif inadapte au multi-process
+
+**Constat** : `@lru_cache` module-level n'a pas de TTL natif et ne fonctionne pas en multi-worker. L'invalidation explicite ne fonctionne que si le process qui ecrit est le meme que celui qui lit.
+
+**Solution** : dictionnaire global `_catalog_cache: dict | None = None` avec fonction `invalidate_catalog_cache()` appelee dans chaque endpoint d'ecriture. Documenter explicitement que le deploiement doit rester single-worker (Railway actuel). Si multi-worker devient necessaire, migrer vers un cache Redis partage.
+
+#### Refresh concurrent sans debounce
+
+**Constat** : si l'utilisateur modifie 3 variantes en 2 secondes, 3 BackgroundTasks de refresh sont lances en parallele. Transactions concurrentes risquent des etats incoherents.
+
+**Solution — Debounce avec flag global** :
+
+```python
+_refresh_lock = asyncio.Lock()
+
+async def debounced_refresh():
+    async with _refresh_lock:
+        # Un seul refresh a la fois
+        await refresh_accessories(skip_manual=True)
+```
+
+Si un refresh est deja en cours, le nouveau attend la fin du courant puis s'execute. En pratique, le lock serialise les refreshes sans les perdre.
+
+#### Colonnes JSON vs ARRAY(TEXT) PostgreSQL
+
+**Constat** : les colonnes `expressions`, `qualifiers`, `brands`, `product_aliases`, `optional_words` sont en JSON. PostgreSQL dispose d'un type `ARRAY(TEXT)` natif indexable et queryable avec `@>`.
+
+**Decision** : garder JSON pour l'instant. SQLModel gere JSON nativement, ARRAY(TEXT) necessite des adaptations SQLAlchemy. Le gain de queryabilite est marginal pour le volume actuel (<100 groupes). A reconsiderer si besoin de recherche "trouver tous les groupes avec l'expression X".
+
+#### sort_order non recalcule a la modification
+
+**Constat** : si l'utilisateur ajoute un qualificatif via PATCH, le sort_order devient stale.
+
+**Solution** : recalcul automatique du sort_order a chaque PATCH sur une variante, sauf si l'utilisateur a explicitement surcharge le sort_order (flag `sort_order_manual: bool` sur la variante).
+
+#### Migration seed sous-specifiee
+
+**Constat** : parser les 70+ regex existantes pour en extraire des donnees structurees est non trivial et fragile. Un script de parsing classique est cassant face a la variete des constructions regex (classes de caracteres, lookbehinds, alternations imbriquees, troncs).
+
+**Decision** : utiliser Claude pour convertir les patterns. Claude comprend l'**intention** de chaque regex (pas juste sa syntaxe) et peut produire le JSON structure correspondant. Le workflow :
+
+1. Fournir a Claude le fichier `accessories.py` complet + le schema cible (groupe + variantes)
+2. Claude genere `alembic/seed_accessory_catalog.json` avec les 70+ patterns convertis
+3. Valider le seed avec l'evaluation corpus existante (test side-by-side sur les annonces reelles, 0 regressions attendues)
+4. Corrections manuelles ponctuelles si necessaire
+
+L'avantage : Claude gere nativement les cas complexes (lookbehinds GPS, alternations imbriquees, troncs `prot`/`renforc`) sans ecrire de parser ad-hoc. Le filet de securite reste l'evaluation corpus.
+
+#### Deploiement API non atomique
+
+**Constat** : la suppression des anciens endpoints (`PATCH /api/accessory-catalog/{group}`, `DELETE /api/accessory-catalog/{group}/override`) casse le frontend si les deploys ne sont pas simultanes.
+
+**Solution — Sequence de deploiement** :
+1. Deploy backend avec anciens ET nouveaux endpoints (les anciens retournent un deprecation warning en header)
+2. Deploy frontend adapte aux nouveaux endpoints
+3. Deploy backend qui supprime les anciens endpoints
+
+### Ameliorations UX (lead UX + utilisateur final)
+
+#### Indicateur de sante par groupe
+
+Dans la liste des groupes, afficher pour chaque groupe : "12 annonces detectees" avec variation depuis la derniere modification (+2 / -3). Donne une existence concrete au groupe au-dela de sa configuration.
+
+Stocke dans un champ `last_match_count: int` sur `accessory_catalog_group`, mis a jour a chaque refresh.
+
+#### Mode "tester sur une annonce"
+
+Un champ de recherche en haut de la page catalogue : l'utilisateur saisit un ID d'annonce ou colle un extrait de texte. Le systeme affiche quels groupes/variantes matchent et surligne les passages detectes. Complement essentiel du preview-regex (qui teste un pattern) — celui-ci teste une annonce.
+
+```
+POST /api/catalog/test-on-ad
+Body: { "ad_id": 42 }
+  ou
+Body: { "text": "himalayan 450 avec crash bars sw-motech et top case givi alaska..." }
+Response: {
+  "matches": [
+    { "group": "Crash bars", "variant": "Crash bars SW-Motech", "matched_text": "crash bars sw-motech" },
+    { "group": "Top case", "variant": "Top case Givi Alaska", "matched_text": "top case givi alaska" }
+  ]
+}
+```
+
+#### Descriptions des categories
+
+Chaque categorie affiche une description courte et des exemples dans l'UI :
+
+| Categorie | Description | Exemples |
+|---|---|---|
+| protection | Pieces de protection moto et pilote | Crash bars, sabot moteur, protege-mains |
+| bagagerie | Rangement et transport | Top case, sacoches, porte-bagages |
+| confort | Confort de conduite | Selle, bulle, poignees chauffantes |
+| navigation | GPS et electronique | GPS, support telephone |
+| eclairage | Feux et eclairage | Feux additionnels, phare LED |
+| esthetique | Apparence et decoration | Stickers, selle custom |
+| performance | Moteur et suspension | Echappement, filtre a air |
+| autre | Divers | Antivol, bequille centrale |
+
+Stockees en constante dans le code (pas en DB), affichees dans le select de creation.
+
+#### Champ notes sur la variante
+
+Texte libre non utilise par le compilateur, pour documenter pourquoi un regex_override existe ou pourquoi un alias particulier est la. Evite que les decisions s'oublient.
+
+Ajout dans `accessory_catalog_variant` : `notes: str | None = None`
+
+#### Immutabilite du group_key
+
+Le `group_key` est genere automatiquement a la creation (slugify du nom) et ne peut plus etre modifie ensuite. Le renommage du `name` ne touche pas le `group_key`. L'UI n'expose pas ce champ en edition.
+
+#### Champs updated_at
+
+Ajout de `created_at: datetime` et `updated_at: datetime` sur `accessory_catalog_group` et `accessory_catalog_variant`. Permet de tracer l'historique et de detecter un cache stale.
+
+### Ameliorations non retenues (et pourquoi)
+
+| Suggestion | Persona | Pourquoi non retenue |
+|---|---|---|
+| Soft-delete sur les variantes | Architecte | Sur-ingenierie pour le volume actuel (<100 variantes). Le reset au catalogue par defaut couvre le cas d'erreur |
+| Taux de depreciation par accessoire | User | Complexifie le modele pour un gain marginal. Le taux global 65% est une approximation acceptable. A reconsiderer si le ranking montre des biais systematiques |
+| Indicateur de confiance de detection | User | Necessiterait un corpus annote de faux positifs. Pas de donnees disponibles. Le preview-diff couvre le besoin immediate |
+| Vue "termes non couverts" | PM | Feature interessante mais hors scope de cette spec. A considerer en v2 comme outil de decouverte |
+| Stored compiled regex (last_regex) | Architecte | Le compilateur est rapide (<1ms par variante). Stocker la regex cree un risque de desynchronisation avec les donnees structurees. Le preview-regex recompile a la volee |
+| ARRAY(TEXT) au lieu de JSON | Architecte | Gain marginal pour le volume. SQLModel gere mieux JSON nativement |
+
+### Flow UI revise
+
+```
+1. Page "Catalogue accessoires" → liste par categorie
+   Chaque accessoire affiche : nom, categorie, nb declinaisons, synonymes,
+   badge "12 annonces detectees" avec variation (+2/-1)
+
+2. Creer un accessoire (formulaire unifie) :
+
+   Section "Accessoire" :
+   - Nom : "Protection radiateur"
+   - Categorie : [protection ▾] (avec description et exemples)
+   - Prix neuf par defaut : 69€
+   - Synonymes : saisir le terme principal → suggestions auto
+     ┌─────────────────────────────────────────────┐
+     │ Suggestions :                               │
+     │  ☑ protege-radiateur    (tres probable)     │
+     │  ☑ grille radiateur     (tres probable)     │
+     │  ☐ pare-radiateur       (possible)          │
+     │                                              │
+     │ + Ajouter un synonyme manuellement           │
+     └─────────────────────────────────────────────┘
+
+   Section "Premiere declinaison" (optionnelle, depliee) :
+   - Nom : "Protection radiateur alu aftermarket"
+   - Mots-cles : ["alu"] → "aluminium" ajoute automatiquement
+   - Marques : ["sw-motech", "givi"]
+   - Noms de produits : []
+   - Prix neuf : 80€
+   - Apercu : "11 annonces detectees" + echantillon
+
+   [Mode avance ▾] (replie par defaut) :
+   - Mots intercalables : ["de", "du"]
+   - Regex manuelle : (vide)
+   - Notes : (vide)
+
+   [Sauvegarder]
+
+3. Modifier un accessoire/declinaison existant :
+   - Meme formulaire, avec preview diff :
+     "Avant : 8 annonces / Apres : 11 annonces (+3, -0)"
+     Si detections perdues : avertissement orange
+   - [Sauvegarder] → refresh en background
+   - Badge "Mise a jour en cours..." → "A jour"
+
+4. Tester le catalogue :
+   - Champ "Tester sur une annonce" en haut de page
+   - Saisir ID ou coller un texte
+   - Affiche les accessoires detectes avec le texte matche surligne
+
+5. Reset :
+   - Modale de confirmation avec option export
+   - "Exporter puis reset" ou "Reset sans export" (confirmation textuelle)
+```
+
+### Modele de donnees revise
+
+#### Table `accessory_catalog_group` (modifications)
+
+Ajouts :
+| Champ | Type | Description |
+|---|---|---|
+| `created_at` | datetime | NOT NULL, DEFAULT now() |
+| `updated_at` | datetime | NOT NULL, DEFAULT now(), auto-update |
+| `last_match_count` | int | DEFAULT 0, mis a jour a chaque refresh |
+
+Contrainte ajoutee : `group_key` est immutable apres creation (enforce au niveau applicatif, pas DB).
+
+#### Table `accessory_catalog_variant` (modifications)
+
+Ajouts :
+| Champ | Type | Description |
+|---|---|---|
+| `notes` | str | NULLABLE, texte libre pour documenter les decisions |
+| `sort_order_manual` | bool | DEFAULT false, true si l'utilisateur a surcharge le sort_order |
+| `created_at` | datetime | NOT NULL, DEFAULT now() |
+| `updated_at` | datetime | NOT NULL, DEFAULT now(), auto-update |
+
+### Endpoints API revises
+
+Ajouts :
+```
+POST   /api/catalog/preview-diff              → diff avant/apres modification (variante existante)
+GET    /api/catalog/export                     → export JSON du catalogue complet
+POST   /api/catalog/import                     → import JSON d'un catalogue exporte
+GET    /api/catalog/refresh-status             → statut du refresh en cours
+POST   /api/catalog/test-on-ad                 → tester le catalogue sur une annonce ou un texte
+```
+
+### Risques revises
+
+| Risque | Severite | Mitigation |
+|---|---|---|
+| Cache desynchronise en multi-process | **Haute** (reclasse) | Dict global + invalidation explicite + doc single-worker. Redis si multi-worker |
+| Refresh concurrent (BackgroundTasks en parallele) | **Haute** (nouveau) | asyncio.Lock() pour serialiser les refreshes |
+| Renommage variante orpheline les ad_accessories manuelles | **Moyenne** (nouveau) | Interdit au niveau applicatif : le `name` d'une variante ne peut pas etre modifie apres creation si des ad_accessories le referencent. L'utilisateur doit supprimer et recreer |
