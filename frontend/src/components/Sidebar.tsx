@@ -96,15 +96,20 @@ export function Sidebar() {
   const navigate = useNavigate()
   const ctx = useContext(ModelCtx)
 
-  const navKeys = ctx
+  const primaryNav = ctx
+    ? [
+        { to: ctx.modelUrl('/rankings'), icon: Trophy, labelKey: 'nav.ranking' },
+        { to: ctx.modelUrl('/crawl'), icon: Search, labelKey: 'nav.search' },
+      ]
+    : []
+  const secondaryNav = ctx
     ? [
         { to: ctx.modelUrl('/ads'), icon: LayoutGrid, labelKey: 'nav.ads' },
         { to: ctx.modelUrl('/stats'), icon: BarChart3, labelKey: 'nav.stats' },
-        { to: ctx.modelUrl('/rankings'), icon: Trophy, labelKey: 'nav.ranking' },
-        { to: ctx.modelUrl('/crawl'), icon: Search, labelKey: 'nav.search' },
         { to: ctx.modelUrl('/catalog'), icon: Wrench, labelKey: 'nav.accessories' },
       ]
     : []
+  const allNav = [...primaryNav, ...secondaryNav]
 
   return (
     <>
@@ -136,9 +141,23 @@ export function Sidebar() {
           </div>
         )}
 
+        {ctx?.model.image_url && (
+          <div className="mx-3 mb-3 rounded-xl overflow-hidden border border-white/[0.06]">
+            <img
+              src={ctx.model.image_url}
+              alt={`${ctx.model.brand} ${ctx.model.name}`}
+              className="w-full h-28 object-cover"
+            />
+          </div>
+        )}
+
         <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent mx-4" />
         <nav className="flex flex-col gap-1 p-3 mt-3">
-          {navKeys.map((n) => (
+          {primaryNav.map((n) => (
+            <NavItem key={n.to} to={n.to} icon={n.icon} label={t(n.labelKey)} />
+          ))}
+          <div className="h-px bg-white/[0.04] mx-2 my-1" />
+          {secondaryNav.map((n) => (
             <NavItem key={n.to} to={n.to} icon={n.icon} label={t(n.labelKey)} />
           ))}
         </nav>
@@ -174,7 +193,7 @@ export function Sidebar() {
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-bg/90 backdrop-blur-xl border-t border-white/[0.06] z-30 flex justify-around py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-4">
-        {navKeys.map((n) => (
+        {allNav.map((n) => (
           <NavLink
             key={n.to}
             to={n.to}
