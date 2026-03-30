@@ -46,9 +46,11 @@
   },
   "landing": {
     "title": "BikeBargain",
+    "subtitle": "Compare second-hand listings and find the best value for your money.",
     "empty": "No bike models configured.",
     "noAds": "No listings yet",
-    "ads": "listings"
+    "ads": "listings",
+    "medianPrice": "Median"
   },
   "nav": {
     "ads": "Listings",
@@ -56,7 +58,9 @@
     "ranking": "Ranking",
     "search": "Search",
     "accessories": "Accessories",
-    "allModels": "All models"
+    "allModels": "All models",
+    "main": "Main",
+    "explore": "Explore"
   },
   "model": {
     "noSearchConfig": "No search configuration for this model.",
@@ -160,6 +164,7 @@
   },
   "stats": {
     "title": "Statistics",
+    "subtitle": "Second-hand market overview: prices, mileage, variants and equipment",
     "ads": "Listings",
     "avgPrice": "Avg. price",
     "medianPrice": "Median price",

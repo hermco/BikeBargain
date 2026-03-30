@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Loader2 } from 'lucide-react'
+import { Loader2, ArrowRight } from 'lucide-react'
 import { useBikeModels } from '../hooks/queries'
 import { useFormatters } from '../hooks/useFormatters'
 
@@ -41,62 +41,129 @@ export function LandingPage() {
   if (!browsing && models.length === 1) return null
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
+    <div className="relative min-h-screen flex flex-col items-center justify-center px-6 py-16 overflow-hidden">
+
+      {/* Page-level ambient radial glow */}
+      <div
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          background:
+            'radial-gradient(ellipse 80% 50% at 50% 0%, color-mix(in srgb, var(--color-amber-500) 8%, transparent) 0%, transparent 70%)',
+        }}
+      />
+
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
         className="w-full max-w-4xl"
       >
-        <div className="text-center mb-12">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20 mx-auto mb-4">
-            <span className="text-bg font-bold text-xl font-fraunces">B</span>
-          </div>
-          <h1 className="text-3xl font-semibold tracking-tight font-fraunces text-text-primary">
+        {/* Hero */}
+        <div className="text-center mb-14">
+          <motion.div
+            initial={{ scale: 0.7, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.55, ease: [0.34, 1.56, 0.64, 1] }}
+            className="w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-xl shadow-amber-500/30 mx-auto mb-6"
+          >
+            <span className="text-bg font-bold text-3xl font-fraunces">B</span>
+          </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.45 }}
+            className="text-4xl font-semibold tracking-tight font-fraunces text-text-primary"
+          >
             {t('landing.title')}
-          </h1>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.18, duration: 0.45 }}
+            className="mt-3 text-base text-text-muted max-w-md mx-auto"
+          >
+            {t('landing.subtitle')}
+          </motion.p>
         </div>
 
+        {/* Model cards grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {models.map((model, i) => (
-            <motion.div
-              key={model.id}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08, duration: 0.4 }}
-            >
-              <Link
-                to={`/models/${model.slug}/rankings`}
-                className="group block rounded-2xl border border-white/[0.06] bg-surface/80 backdrop-blur-sm hover:border-amber-500/20 hover:shadow-2xl hover:shadow-amber-500/[0.05] transition-all duration-300 overflow-hidden"
+          {models.map((model, i) => {
+            const medianPrice = (model as typeof model & { median_price?: number }).median_price
+            return (
+              <motion.div
+                key={model.id}
+                initial={{ opacity: 0, scale: 0.93, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ delay: 0.22 + i * 0.09, duration: 0.45, ease: 'easeOut' }}
+                whileHover={{ y: -4 }}
               >
-                {model.image_url && (
-                  <div className="h-40 bg-bg overflow-hidden">
-                    <img
-                      src={model.image_url}
-                      alt={model.name}
-                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
-                    />
+                <Link
+                  to={`/models/${model.slug}/rankings`}
+                  className="group block rounded-2xl border border-white/[0.06] bg-surface/80 backdrop-blur-sm overflow-hidden transition-all duration-300 hover:border-amber-500/25 hover:shadow-2xl hover:shadow-amber-500/10"
+                >
+                  {/* Card image with gradient overlay */}
+                  {model.image_url && (
+                    <div className="relative h-44 bg-bg overflow-hidden">
+                      <img
+                        src={model.image_url}
+                        alt={model.name}
+                        className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500 ease-out"
+                      />
+                      {/* Bottom-to-surface gradient */}
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          background:
+                            'linear-gradient(to bottom, transparent 40%, color-mix(in srgb, var(--color-surface) 90%, transparent) 100%)',
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Card body */}
+                  <div className="p-5 space-y-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-amber-500/70 uppercase tracking-widest font-semibold mb-0.5">
+                          {model.brand}
+                        </p>
+                        <h2 className="text-xl font-semibold text-text-primary font-fraunces leading-tight group-hover:text-amber-200 transition-colors duration-200">
+                          {model.name}
+                        </h2>
+                      </div>
+
+                      {/* Arrow indicator — fades in on hover */}
+                      <div className="shrink-0 mt-1 w-7 h-7 rounded-full border border-white/[0.08] bg-white/[0.04] flex items-center justify-center opacity-0 group-hover:opacity-100 group-hover:border-amber-500/30 group-hover:bg-amber-500/10 transition-all duration-200">
+                        <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
+                      </div>
+                    </div>
+
+                    {/* Stats row */}
+                    <div className="flex items-center justify-between text-xs text-text-muted border-t border-white/[0.05] pt-3">
+                      {model.ad_count > 0 ? (
+                        <span>{model.ad_count} {t('landing.ads')}</span>
+                      ) : (
+                        <span className="text-text-dim">{t('landing.noAds')}</span>
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        {medianPrice != null ? (
+                          <span className="text-amber-400/80 font-medium">
+                            {t('landing.medianPrice')} {formatPrice(medianPrice)}
+                          </span>
+                        ) : model.min_price != null && model.max_price != null ? (
+                          <span>{formatPrice(model.min_price)} — {formatPrice(model.max_price)}</span>
+                        ) : null}
+                      </div>
+                    </div>
                   </div>
-                )}
-                <div className="p-5 space-y-3">
-                  <div>
-                    <p className="text-[10px] text-text-dim uppercase tracking-widest font-semibold">{model.brand}</p>
-                    <h2 className="text-lg font-semibold text-text-primary font-fraunces group-hover:text-amber-200 transition-colors">
-                      {model.name}
-                    </h2>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-text-muted">
-                    <span>{model.ad_count} {t('landing.ads')}</span>
-                    {model.min_price != null && model.max_price != null && (
-                      <span>{formatPrice(model.min_price)} — {formatPrice(model.max_price)}</span>
-                    )}
-                    {model.ad_count === 0 && (
-                      <span className="text-text-dim">{t('landing.noAds')}</span>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            </motion.div>
-          ))}
+                </Link>
+              </motion.div>
+            )
+          })}
         </div>
       </motion.div>
     </div>

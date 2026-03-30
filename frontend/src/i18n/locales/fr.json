@@ -46,9 +46,11 @@
   },
   "landing": {
     "title": "BikeBargain",
+    "subtitle": "Comparez les annonces d'occasion et trouvez le meilleur rapport qualite-prix.",
     "empty": "Aucun modele de moto configure.",
     "noAds": "Aucune annonce",
-    "ads": "annonces"
+    "ads": "annonces",
+    "medianPrice": "Mediane"
   },
   "nav": {
     "ads": "Annonces",
@@ -56,7 +58,9 @@
     "ranking": "Classement",
     "search": "Recherche",
     "accessories": "Accessoires",
-    "allModels": "Tous les modeles"
+    "allModels": "Tous les modeles",
+    "main": "Principal",
+    "explore": "Explorer"
   },
   "model": {
     "noSearchConfig": "Aucune configuration de recherche pour ce modele.",
@@ -160,6 +164,7 @@
   },
   "stats": {
     "title": "Statistiques",
+    "subtitle": "Aperçu du marché de l'occasion : prix, kilométrages, variantes et équipements",
     "ads": "Annonces",
     "avgPrice": "Prix moyen",
     "medianPrice": "Prix médian",
