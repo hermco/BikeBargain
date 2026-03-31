@@ -172,6 +172,12 @@ class BikeSearchConfig(SQLModel, table=True):
     keyword: str
     min_cc: int | None = None
     max_cc: int | None = None
+    locations: list[str] | None = Field(default=None, sa_column=Column(JSON, nullable=True))
+    owner_type: str | None = None
+    price_min: int | None = None
+    price_max: int | None = None
+    sort: str | None = None
+    search_in_title_only: bool = Field(default=False)
 
     bike_model: BikeModel | None = Relationship(back_populates="search_configs")
 
