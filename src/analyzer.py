@@ -239,7 +239,7 @@ def rank_ads(bike_model_id: int, session: Session, today: Optional[date] = None)
         results.append({
             "id": ad["id"],
             "url": ad.get("url", ""),
-            "sold": bool(ad.get("sold", 0)),
+            "listing_status": ad.get("listing_status", "online"),
             "city": ad.get("city", "?"),
             "lat": ad.get("lat"),
             "lng": ad.get("lng"),

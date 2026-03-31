@@ -54,6 +54,32 @@ from .config import get_settings
 
 settings = get_settings()
 
+
+def _map_lbc_status(reason: str) -> str:
+    """Map LBC check result reason to app listing_status."""
+    if reason.startswith("status="):
+        lbc_status = reason.split("=", 1)[1]
+        if lbc_status == "paused":
+            return "paused"
+    return "sold"
+
+
+def _log_status_change(session: Session, ad: Ad, new_status: str, reason: str | None = None):
+    """Log a status transition to ad_status_history if status actually changed."""
+    old_status = ad.listing_status
+    if old_status == new_status:
+        return False
+    session.add(AdStatusHistory(
+        ad_id=ad.id,
+        old_status=old_status,
+        new_status=new_status,
+        reason=reason,
+    ))
+    ad.listing_status = new_status
+    ad.updated_at = datetime.now().isoformat()
+    return True
+
+
 app = FastAPI(
     title="BikeBargain API",
     debug=settings.debug,
@@ -286,7 +312,7 @@ class UpdateAdRequest(BaseModel):
     variant: str | None = None
     wheel_type: str | None = None
     accessories: list[dict] | None = None
-    sold: int | None = None
+    listing_status: str | None = None
 
 
 class MergeAdRequest(BaseModel):
@@ -632,8 +658,8 @@ def update_ad_scoped(slug: str, ad_id: int, req: UpdateAdRequest, session: Sessi
         ad.variant = req.variant
     if req.wheel_type is not None:
         ad.wheel_type = req.wheel_type
-    if req.sold is not None:
-        ad.sold = req.sold
+    if req.listing_status is not None:
+        _log_status_change(session, ad, req.listing_status, reason="manual")
 
     if req.variant is not None or req.color is not None or req.wheel_type is not None:
         new_price = _estimate_new_price(model.id, ad.variant, ad.color, ad.wheel_type, session)
@@ -714,9 +740,8 @@ def merge_ad_scoped(slug: str, req: MergeAdRequest, session: Session = Depends(g
         note=note, recorded_at=new_pub_date or "",
     ))
 
-    old_ad.sold = 1
+    _log_status_change(session, old_ad, "sold", reason="merged")
     old_ad.superseded_by = ad_id
-    old_ad.updated_at = datetime.now().isoformat()
 
     session.commit()
 
@@ -748,6 +773,32 @@ def get_price_history_scoped(slug: str, ad_id: int, session: Session = Depends(g
         "current_price": ad.price,
         "previous_ad_id": ad.previous_ad_id,
         "history": history,
+    }
+
+
+@app.get("/api/bike-models/{slug}/ads/{ad_id}/status-history")
+def get_status_history_scoped(slug: str, ad_id: int, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
+    ad = session.get(Ad, ad_id)
+    if not ad or ad.bike_model_id != model.id:
+        raise HTTPException(status_code=404, detail="Annonce non trouvée")
+    entries = session.exec(
+        select(AdStatusHistory)
+        .where(AdStatusHistory.ad_id == ad_id)
+        .order_by(AdStatusHistory.changed_at.desc())
+    ).all()
+    return {
+        "ad_id": ad_id,
+        "current_status": ad.listing_status,
+        "history": [
+            {
+                "old_status": e.old_status,
+                "new_status": e.new_status,
+                "reason": e.reason,
+                "changed_at": e.changed_at,
+            }
+            for e in entries
+        ],
     }
 
 
@@ -889,10 +940,30 @@ def refresh_ad_accessories_scoped(slug: str, ad_id: int, session: Session = Depe
 
 @app.post("/api/bike-models/{slug}/ads/check-online")
 def check_ads_online_scoped(slug: str, session: Session = Depends(get_session)):
+    """Quick check: only verifies 'online' ads."""
+    return _check_ads(slug, session, full=False)
+
+
+@app.post("/api/bike-models/{slug}/ads/check-online-full")
+def check_ads_online_full_scoped(slug: str, session: Session = Depends(get_session)):
+    """Full check: verifies ALL ads, can detect returns to online."""
+    return _check_ads(slug, session, full=True)
+
+
+def _check_ads(slug: str, session: Session, full: bool):
     model = resolve_bike_model(slug, session)
-    ads = session.exec(
-        select(Ad).where(Ad.sold == 0, Ad.bike_model_id == model.id)
-    ).all()
+    if full:
+        ads = session.exec(
+            select(Ad).where(Ad.bike_model_id == model.id)
+        ).all()
+    else:
+        ads = session.exec(
+            select(Ad).where(Ad.listing_status == "online", Ad.bike_model_id == model.id)
+        ).all()
+
+    if not ads:
+        return {"checked": 0, "changes": 0, "back_online": 0, "details": []}
+
     results = []
 
     if settings.lbc_service_url:
@@ -901,12 +972,18 @@ def check_ads_online_scoped(slug: str, session: Session = Depends(get_session)):
         ads_by_id = {ad.id: ad for ad in ads}
         for r in lbc_results:
             ad = ads_by_id[r["ad_id"]]
-            if not r["online"]:
-                ad.sold = 1
-                ad.updated_at = datetime.now().isoformat()
-                results.append({"id": r["ad_id"], "sold": True, "reason": r.get("reason", "")})
+            if r["online"] is None:
+                results.append({"id": r["ad_id"], "listing_status": ad.listing_status, "reason": "error", "error": r.get("error", "")})
+            elif r["online"]:
+                old_status = ad.listing_status
+                changed = _log_status_change(session, ad, "online", reason="check")
+                results.append({"id": r["ad_id"], "listing_status": "online", "previous_status": old_status if changed else None, "changed": changed})
             else:
-                results.append({"id": r["ad_id"], "sold": False})
+                reason = r.get("reason", "")
+                new_status = _map_lbc_status(reason)
+                old_status = ad.listing_status
+                changed = _log_status_change(session, ad, new_status, reason=reason)
+                results.append({"id": r["ad_id"], "listing_status": new_status, "previous_status": old_status if changed else None, "changed": changed, "reason": reason})
     else:
         from .extractor import get_lbc_client
         client = get_lbc_client()
@@ -915,21 +992,26 @@ def check_ads_online_scoped(slug: str, session: Session = Depends(get_session)):
                 lbc_ad = client.get_ad(ad.id)
                 ad_status = getattr(lbc_ad, "status", None)
                 if ad_status and ad_status not in ("active",):
-                    ad.sold = 1
-                    ad.updated_at = datetime.now().isoformat()
-                    results.append({"id": ad.id, "sold": True, "reason": f"status={ad_status}"})
+                    reason = f"status={ad_status}"
+                    new_status = _map_lbc_status(reason)
+                    old_status = ad.listing_status
+                    changed = _log_status_change(session, ad, new_status, reason=reason)
+                    results.append({"id": ad.id, "listing_status": new_status, "previous_status": old_status if changed else None, "changed": changed, "reason": reason})
                 else:
-                    results.append({"id": ad.id, "sold": False})
+                    old_status = ad.listing_status
+                    changed = _log_status_change(session, ad, "online", reason="check")
+                    results.append({"id": ad.id, "listing_status": "online", "previous_status": old_status if changed else None, "changed": changed})
             except NotFoundError:
-                ad.sold = 1
-                ad.updated_at = datetime.now().isoformat()
-                results.append({"id": ad.id, "sold": True, "reason": "inaccessible"})
+                old_status = ad.listing_status
+                changed = _log_status_change(session, ad, "sold", reason="inaccessible")
+                results.append({"id": ad.id, "listing_status": "sold", "previous_status": old_status if changed else None, "changed": changed, "reason": "inaccessible"})
             except Exception as e:
-                results.append({"id": ad.id, "sold": False, "reason": "error", "error": str(e)})
+                results.append({"id": ad.id, "listing_status": ad.listing_status, "reason": "error", "error": str(e)})
 
     session.commit()
-    newly_sold = sum(1 for r in results if r["sold"])
-    return {"checked": len(results), "newly_sold": newly_sold, "details": results}
+    changes = sum(1 for r in results if r.get("changed"))
+    back_online = sum(1 for r in results if r.get("changed") and r["listing_status"] == "online")
+    return {"checked": len(results), "changes": changes, "back_online": back_online, "details": results}
 
 
 @app.post("/api/bike-models/{slug}/ads/{ad_id}/check-online")
@@ -942,12 +1024,20 @@ def check_ad_online_scoped(slug: str, ad_id: int, session: Session = Depends(get
     if settings.lbc_service_url:
         from . import lbc_client
         r = lbc_client.check_ad(ad_id)
-        if not r["online"]:
-            ad.sold = 1
-            ad.updated_at = datetime.now().isoformat()
+        if r["online"] is None:
+            return {"id": ad_id, "listing_status": ad.listing_status, "reason": "error", "error": r.get("error", "")}
+        elif r["online"]:
+            old_status = ad.listing_status
+            changed = _log_status_change(session, ad, "online", reason="check")
             session.commit()
-            return {"id": ad_id, "sold": True, "reason": r.get("reason", "")}
-        return {"id": ad_id, "sold": False}
+            return {"id": ad_id, "listing_status": "online", "previous_status": old_status if changed else None, "changed": changed}
+        else:
+            reason = r.get("reason", "")
+            new_status = _map_lbc_status(reason)
+            old_status = ad.listing_status
+            changed = _log_status_change(session, ad, new_status, reason=reason)
+            session.commit()
+            return {"id": ad_id, "listing_status": new_status, "previous_status": old_status if changed else None, "changed": changed, "reason": reason}
     else:
         from .extractor import get_lbc_client
         client = get_lbc_client()
@@ -955,25 +1045,30 @@ def check_ad_online_scoped(slug: str, ad_id: int, session: Session = Depends(get
             lbc_ad = client.get_ad(ad_id)
             ad_status = getattr(lbc_ad, "status", None)
             if ad_status and ad_status not in ("active",):
-                ad.sold = 1
-                ad.updated_at = datetime.now().isoformat()
+                reason = f"status={ad_status}"
+                new_status = _map_lbc_status(reason)
+                old_status = ad.listing_status
+                changed = _log_status_change(session, ad, new_status, reason=reason)
                 session.commit()
-                return {"id": ad_id, "sold": True, "reason": f"status={ad_status}"}
-            return {"id": ad_id, "sold": False}
-        except NotFoundError:
-            ad.sold = 1
-            ad.updated_at = datetime.now().isoformat()
+                return {"id": ad_id, "listing_status": new_status, "previous_status": old_status if changed else None, "changed": changed, "reason": reason}
+            old_status = ad.listing_status
+            changed = _log_status_change(session, ad, "online", reason="check")
             session.commit()
-            return {"id": ad_id, "sold": True, "reason": "inaccessible"}
+            return {"id": ad_id, "listing_status": "online", "previous_status": old_status if changed else None, "changed": changed}
+        except NotFoundError:
+            old_status = ad.listing_status
+            changed = _log_status_change(session, ad, "sold", reason="inaccessible")
+            session.commit()
+            return {"id": ad_id, "listing_status": "sold", "previous_status": old_status if changed else None, "changed": changed, "reason": "inaccessible"}
         except Exception as e:
-            return {"id": ad_id, "sold": False, "reason": "error", "error": str(e)}
+            return {"id": ad_id, "listing_status": ad.listing_status, "reason": "error", "error": str(e)}
 
 
 @app.post("/api/bike-models/{slug}/ads/check-prices")
 def check_prices_scoped(slug: str, session: Session = Depends(get_session)):
     model = resolve_bike_model(slug, session)
     ads = session.exec(
-        select(Ad).where(Ad.sold == 0, Ad.bike_model_id == model.id)
+        select(Ad).where(Ad.listing_status == "online", Ad.bike_model_id == model.id)
     ).all()
     if not ads:
         return {"price_changes": [], "checked_count": 0, "unchanged_count": 0}
@@ -1622,7 +1717,7 @@ def crawl_search_scoped(slug: str, session: Session = Depends(get_session)):
     db_ads = session.exec(select(Ad).where(Ad.bike_model_id == model.id)).all()
     db_ads_data = [
         {"id": a.id, "city": a.city, "department": a.department,
-         "price": a.price, "subject": a.subject, "sold": a.sold}
+         "price": a.price, "subject": a.subject, "listing_status": a.listing_status}
         for a in db_ads
         if a.id not in superseded_ids
     ]
@@ -1660,7 +1755,7 @@ def crawl_search_scoped(slug: str, session: Session = Depends(get_session)):
                 if ratio > 0.15:
                     continue
                 score = 55
-                if db_ad.get("sold"):
+                if db_ad.get("listing_status") in ("sold", "paused"):
                     score += 15
                 if score > best_score:
                     best_score = score
@@ -1670,7 +1765,7 @@ def crawl_search_scoped(slug: str, session: Session = Depends(get_session)):
                         "subject": db_ad.get("subject"),
                         "price": db_ad.get("price"),
                         "city": db_ad.get("city"),
-                        "sold": bool(db_ad.get("sold", 0)),
+                        "listing_status": db_ad.get("listing_status", "online"),
                         "price_delta": price_delta,
                     }
             if best_match:
@@ -2146,9 +2241,12 @@ def _find_potential_duplicates(session: Session, ad_data: dict, exclude_id: int,
             score += 5
             reasons.append("meme couleur")
 
-        if ad.sold:
+        if ad.listing_status == "sold":
             score += 10
             reasons.append("annonce en base marquee vendue")
+        elif ad.listing_status == "paused":
+            score += 5
+            reasons.append("annonce en base en pause")
 
         if score >= 80:
             price_delta = None
@@ -2164,7 +2262,7 @@ def _find_potential_duplicates(session: Session, ad_data: dict, exclude_id: int,
                 "department": ad.department,
                 "variant": ad.variant,
                 "color": ad.color,
-                "sold": bool(ad.sold),
+                "listing_status": ad.listing_status,
                 "mileage_km": ad.mileage_km,
                 "score": score,
                 "reasons": reasons,
@@ -2173,7 +2271,7 @@ def _find_potential_duplicates(session: Session, ad_data: dict, exclude_id: int,
 
     candidates.sort(key=lambda x: (
         -x["score"],
-        0 if not x["sold"] else 1,
+        {"online": 0, "paused": 1, "sold": 2}.get(x["listing_status"], 2),
         abs(x.get("price_delta") or 999999),
     ))
     return candidates[:3]
@@ -2311,6 +2409,12 @@ def refresh_ad_accessories_compat(ad_id: int, session: Session = Depends(get_ses
 def check_ads_online_compat(session: Session = Depends(get_session)):
     model = _resolve_single_model(session)
     return check_ads_online_scoped(model.slug, session)
+
+
+@app.post("/api/ads/check-online-full")
+def check_ads_online_full_compat(session: Session = Depends(get_session)):
+    model = _resolve_single_model(session)
+    return check_ads_online_full_scoped(model.slug, session)
 
 
 @app.post("/api/ads/{ad_id}/check-online")
