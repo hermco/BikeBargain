@@ -23,6 +23,7 @@ from .models import (
     Ad, AdAttribute, AdImage, AdAccessory,
     CrawlSession, CrawlSessionAd, AdPriceHistory, AccessoryOverride,
     BikeModel, BikeModelConfig, BikeVariant, BikeAccessoryPattern,
+    BikeSearchConfig,
     AccessoryCatalogGroup, AccessoryCatalogVariant,
 )
 from .database import (
@@ -32,6 +33,7 @@ from .database import (
     get_bike_variants, get_accessory_patterns, get_exclusion_patterns,
     get_search_configs, get_new_listing_patterns, get_bike_consumables,
     get_accessory_overrides, set_accessory_override, delete_accessory_override,
+    create_search_config, update_search_config, delete_search_config,
     get_catalog_groups, create_catalog_group, update_catalog_group,
     delete_catalog_group, create_catalog_variant, update_catalog_variant,
     delete_catalog_variant, reset_catalog_to_seed, export_catalog,
@@ -306,6 +308,30 @@ class ExtractRequest(BaseModel):
 
 class UpdateCrawlAdAction(BaseModel):
     action: str
+
+
+class SearchConfigCreate(SQLModel):
+    keyword: str
+    min_cc: int | None = None
+    max_cc: int | None = None
+    locations: list[str] | None = None
+    owner_type: str | None = None
+    price_min: int | None = None
+    price_max: int | None = None
+    sort: str | None = None
+    search_in_title_only: bool = False
+
+
+class SearchConfigUpdate(SQLModel):
+    keyword: str | None = None
+    min_cc: int | None = None
+    max_cc: int | None = None
+    locations: list[str] | None = None
+    owner_type: str | None = None
+    price_min: int | None = None
+    price_max: int | None = None
+    sort: str | None = None
+    search_in_title_only: bool | None = None
 
 
 # ─── Bike Model Endpoints ───────────────────────────────────────────────────
@@ -956,12 +982,23 @@ def check_prices_scoped(slug: str, session: Session = Depends(get_session)):
 
     all_search_results = []
     for cfg in search_cfgs:
+        search_params = dict(
+            keyword=cfg.keyword,
+            min_cc=cfg.min_cc,
+            max_cc=cfg.max_cc,
+            locations=cfg.locations,
+            owner_type=cfg.owner_type,
+            price_min=cfg.price_min,
+            price_max=cfg.price_max,
+            sort=cfg.sort,
+            search_in_title_only=cfg.search_in_title_only,
+        )
         if settings.lbc_service_url:
             from . import lbc_client
-            r = lbc_client.search(keyword=cfg.keyword, min_cc=cfg.min_cc, max_cc=cfg.max_cc)
+            r = lbc_client.search(**search_params)
         else:
             from .crawler import search_all_ads
-            r = search_all_ads(keyword=cfg.keyword, min_cc=cfg.min_cc, max_cc=cfg.max_cc)
+            r = search_all_ads(**search_params)
         all_search_results.extend(r.get("ads", []))
 
     # Fallback si aucune config de recherche
@@ -1430,6 +1467,90 @@ def get_refresh_status():
     return _refresh_status
 
 
+# ─── Search Config CRUD ──────────────────────────────────────────────────────
+
+
+@app.get("/api/bike-models/{slug}/search-configs")
+def list_search_configs(slug: str, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
+    configs = get_search_configs(session, model.id)
+    return [
+        {
+            "id": c.id,
+            "keyword": c.keyword,
+            "min_cc": c.min_cc,
+            "max_cc": c.max_cc,
+            "locations": c.locations,
+            "owner_type": c.owner_type,
+            "price_min": c.price_min,
+            "price_max": c.price_max,
+            "sort": c.sort,
+            "search_in_title_only": c.search_in_title_only,
+        }
+        for c in configs
+    ]
+
+
+@app.post("/api/bike-models/{slug}/search-configs", status_code=201)
+def create_search_config_endpoint(slug: str, body: SearchConfigCreate, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
+    cfg = create_search_config(session, model.id, body.model_dump(exclude_unset=True))
+    return {"id": cfg.id, "status": "created"}
+
+
+@app.patch("/api/bike-models/{slug}/search-configs/{config_id}")
+def update_search_config_endpoint(slug: str, config_id: int, body: SearchConfigUpdate, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
+    cfg = session.get(BikeSearchConfig, config_id)
+    if not cfg or cfg.bike_model_id != model.id:
+        raise HTTPException(status_code=404, detail="Config introuvable")
+    updated = update_search_config(session, config_id, body.model_dump(exclude_unset=True))
+    return {"id": updated.id, "status": "updated"}
+
+
+@app.delete("/api/bike-models/{slug}/search-configs/{config_id}")
+def delete_search_config_endpoint(slug: str, config_id: int, session: Session = Depends(get_session)):
+    model = resolve_bike_model(slug, session)
+    cfg = session.get(BikeSearchConfig, config_id)
+    if not cfg or cfg.bike_model_id != model.id:
+        raise HTTPException(status_code=404, detail="Config introuvable")
+    delete_search_config(session, config_id)
+    return {"deleted": 1}
+
+
+# ─── Reference Data ──────────────────────────────────────────────────────────
+
+
+@app.get("/api/reference/lbc-enums")
+def get_lbc_enums():
+    """Retourne les valeurs disponibles pour les filtres LeBonCoin."""
+    import lbc as lbc_lib
+
+    regions = [
+        {"value": r.name, "label": r.name.replace("_", " ").title()}
+        for r in lbc_lib.Region
+    ]
+    departments = [
+        {"value": d.name, "label": d.name.replace("_", " ").title(), "code": d.value[2], "region": d.value[1]}
+        for d in lbc_lib.Department
+    ]
+    sorts = [
+        {"value": s.name.lower(), "label": s.name.replace("_", " ").title()}
+        for s in lbc_lib.Sort
+    ]
+    owner_types = [
+        {"value": o.name.lower(), "label": o.name.replace("_", " ").title()}
+        for o in lbc_lib.OwnerType
+    ]
+
+    return {
+        "regions": regions,
+        "departments": departments,
+        "sorts": sorts,
+        "owner_types": owner_types,
+    }
+
+
 # ─── Model-scoped Crawl ─────────────────────────────────────────────────────
 
 @app.get("/api/bike-models/{slug}/crawl/search")
@@ -1446,12 +1567,23 @@ def crawl_search_scoped(slug: str, session: Session = Depends(get_session)):
     all_results_ads = []
     try:
         for cfg in search_cfgs:
+            search_params = dict(
+                keyword=cfg.keyword,
+                min_cc=cfg.min_cc,
+                max_cc=cfg.max_cc,
+                locations=cfg.locations,
+                owner_type=cfg.owner_type,
+                price_min=cfg.price_min,
+                price_max=cfg.price_max,
+                sort=cfg.sort,
+                search_in_title_only=cfg.search_in_title_only,
+            )
             if settings.lbc_service_url:
                 from . import lbc_client
-                r = lbc_client.search(keyword=cfg.keyword, min_cc=cfg.min_cc, max_cc=cfg.max_cc)
+                r = lbc_client.search(**search_params)
             else:
                 from .crawler import search_all_ads
-                r = search_all_ads(keyword=cfg.keyword, min_cc=cfg.min_cc, max_cc=cfg.max_cc)
+                r = search_all_ads(**search_params)
             all_results_ads.extend(r.get("ads", []))
 
         # Fallback si aucune config
