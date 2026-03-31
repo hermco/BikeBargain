@@ -662,3 +662,33 @@ def get_search_configs(session: Session, bike_model_id: int) -> list[BikeSearchC
     return session.exec(
         select(BikeSearchConfig).where(BikeSearchConfig.bike_model_id == bike_model_id)
     ).all()
+
+
+def create_search_config(session: Session, bike_model_id: int, data: dict) -> BikeSearchConfig:
+    """Cree une config de recherche."""
+    cfg = BikeSearchConfig(bike_model_id=bike_model_id, **data)
+    session.add(cfg)
+    session.commit()
+    session.refresh(cfg)
+    return cfg
+
+
+def update_search_config(session: Session, config_id: int, data: dict) -> BikeSearchConfig:
+    """Met a jour une config de recherche."""
+    cfg = session.get(BikeSearchConfig, config_id)
+    if not cfg:
+        raise ValueError(f"SearchConfig {config_id} introuvable")
+    for key, value in data.items():
+        setattr(cfg, key, value)
+    session.commit()
+    session.refresh(cfg)
+    return cfg
+
+
+def delete_search_config(session: Session, config_id: int) -> None:
+    """Supprime une config de recherche."""
+    cfg = session.get(BikeSearchConfig, config_id)
+    if not cfg:
+        raise ValueError(f"SearchConfig {config_id} introuvable")
+    session.delete(cfg)
+    session.commit()
