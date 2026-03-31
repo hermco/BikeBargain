@@ -25,6 +25,7 @@ from .models import (
     BikeModel, BikeModelConfig, BikeVariant, BikeAccessoryPattern,
     BikeSearchConfig,
     AccessoryCatalogGroup, AccessoryCatalogVariant,
+    AdStatusHistory,
 )
 from .database import (
     get_session, run_migrations, upsert_ad, get_all_ads, get_ad_count,

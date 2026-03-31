@@ -218,7 +218,7 @@ class Ad(SQLModel, table=True):
     extracted_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     accessories_manual: int = Field(default=0)
-    sold: int = Field(default=0, index=True)
+    listing_status: str = Field(default="online", index=True)  # "online", "paused", "sold"
     previous_ad_id: int | None = Field(default=None, sa_column=Column(BigInteger))
     superseded_by: int | None = Field(default=None, sa_column=Column(BigInteger, index=True))
     bike_model_id: int | None = Field(default=None, sa_column=Column(Integer, ForeignKey("bike_models.id"), index=True))
@@ -238,6 +238,10 @@ class Ad(SQLModel, table=True):
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},
     )
     price_history: list["AdPriceHistory"] = Relationship(
+        back_populates="ad",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+    status_history: list["AdStatusHistory"] = Relationship(
         back_populates="ad",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},
     )
@@ -345,6 +349,20 @@ class AdPriceHistory(SQLModel, table=True):
 
     ad: Ad | None = Relationship(back_populates="price_history")
 
+
+class AdStatusHistory(SQLModel, table=True):
+    __tablename__ = "ad_status_history"
+
+    id: int | None = Field(default=None, primary_key=True)
+    ad_id: int = Field(
+        sa_column=Column(BigInteger, ForeignKey("ads.id", ondelete="CASCADE"), nullable=False, index=True),
+    )
+    old_status: str
+    new_status: str
+    reason: str | None = None
+    changed_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+    ad: Ad | None = Relationship(back_populates="status_history")
 
 
 class AccessoryOverride(SQLModel, table=True):
