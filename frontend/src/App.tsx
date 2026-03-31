@@ -16,6 +16,7 @@ import { RankingPage } from './pages/RankingPage'
 import { CrawlPage } from './pages/CrawlPage'
 import { CatalogPage } from './pages/CatalogPage'
 import { AdsPage } from './pages/AdsPage'
+import { SettingsPage } from './pages/SettingsPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -53,6 +54,7 @@ export default function App() {
                 <Route path="crawl/:sessionId" element={<CrawlPage />} />
                 <Route path="crawl/:sessionId/ad/:adId" element={<CrawlPage />} />
                 <Route path="catalog" element={<CatalogPage />} />
+                <Route path="settings" element={<SettingsPage />} />
               </Route>
               {/* Legacy redirects */}
               <Route path="/models" element={<Navigate to="/" replace />} />

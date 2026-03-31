@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { BarChart3, Trophy, LayoutGrid, Plus, Search, Wrench, Globe, ArrowLeft, Sun, Moon } from 'lucide-react'
+import { BarChart3, Trophy, LayoutGrid, Plus, Search, Wrench, Globe, ArrowLeft, Sun, Moon, Settings } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../lib/utils'
@@ -198,6 +198,7 @@ export function Sidebar() {
         { to: ctx.modelUrl('/ads'), icon: LayoutGrid, labelKey: 'nav.ads' },
         { to: ctx.modelUrl('/stats'), icon: BarChart3, labelKey: 'nav.stats' },
         { to: ctx.modelUrl('/catalog'), icon: Wrench, labelKey: 'nav.accessories' },
+        { to: ctx.modelUrl('/settings'), icon: Settings, labelKey: 'nav.settings' },
       ]
     : []
   const allNav = [...primaryNav, ...secondaryNav]
