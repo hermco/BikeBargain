@@ -28,14 +28,15 @@ export function AdCard({ ad, index }: AdCardProps) {
   const heroImage = ad.images?.[0]
   const accCount = ad.accessories?.length ?? 0
   const deal = getDealLevel(ad, t)
-  const isSold = !!ad.sold
+  const isSold = ad.listing_status === 'sold'
+  const isPaused = ad.listing_status === 'paused'
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 16, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ delay: index * 0.04, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className={isSold ? 'opacity-60' : ''}
+      className={isSold ? 'opacity-60' : isPaused ? 'opacity-75' : ''}
     >
       <Link
         to={modelUrl(`/ads/${ad.id}`)}
@@ -67,6 +68,13 @@ export function AdCard({ ad, index }: AdCardProps) {
             <div className="absolute top-0 right-0 z-20 overflow-hidden w-24 h-24 pointer-events-none">
               <div className="absolute top-4 right-[-28px] w-28 bg-red-500 text-white text-[10px] font-bold tracking-widest text-center py-1 rotate-45 shadow-lg uppercase">
                 {t('common.sold')}
+              </div>
+            </div>
+          )}
+          {isPaused && (
+            <div className="absolute top-0 right-0 z-20 overflow-hidden w-24 h-24 pointer-events-none">
+              <div className="absolute top-4 right-[-28px] w-28 bg-amber-500 text-white text-[10px] font-bold tracking-widest text-center py-1 rotate-45 shadow-lg uppercase">
+                {t('common.paused')}
               </div>
             </div>
           )}

@@ -1039,7 +1039,8 @@ export function CrawlPage() {
                             {dup.city && <span>{dup.city}</span>}
                             {dup.mileage_km != null && <span>{dup.mileage_km.toLocaleString('fr-FR')} km</span>}
                             {dup.color && <Badge className={variantColor(dup.color)}>{dup.color}</Badge>}
-                            {dup.sold && <Badge className="bg-red-500/20 text-ui-red text-[10px]">Vendue</Badge>}
+                            {dup.listing_status === 'sold' && <Badge className="bg-red-500/20 text-ui-red text-[10px]">{t('common.sold')}</Badge>}
+                            {dup.listing_status === 'paused' && <Badge className="bg-amber-500/20 text-amber-400 text-[10px]">{t('common.paused')}</Badge>}
                           </div>
                           <div className="flex flex-wrap gap-1.5 mt-2">
                             {dup.reasons.map((r, i) => (
@@ -1741,7 +1742,8 @@ export function CrawlPage() {
                         <Link to={modelUrl(`/ads/${repost.id}`)} target="_blank" className="text-ui-purple underline hover:text-ui-purple" onClick={(e) => e.stopPropagation()}>
                           #{repost.id}
                         </Link>
-                        {repost.sold && <span className="text-ui-red">({t('common.sold').toLowerCase()})</span>}
+                        {repost.listing_status === 'sold' && <span className="text-ui-red">({t('common.sold').toLowerCase()})</span>}
+                        {repost.listing_status === 'paused' && <span className="text-amber-400">({t('common.paused').toLowerCase()})</span>}
                         {delta != null && delta !== 0 && (
                           <span className={`font-semibold tabular-nums ${delta < 0 ? 'text-ui-emerald' : 'text-ui-red'}`}>
                             {delta < 0 ? '' : '+'}{delta}€

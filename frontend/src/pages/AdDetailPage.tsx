@@ -1,8 +1,8 @@
 import { useParams, Link, useNavigate, Navigate } from 'react-router-dom'
-import { ArrowLeft, ExternalLink, Trash2, MapPin, Calendar, ChevronLeft, ChevronRight, ChevronDown, Camera, Pencil, X, Check, Plus, RefreshCw, Ban, ScanSearch, TrendingDown, TrendingUp, History, Share2 } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Trash2, MapPin, Calendar, ChevronLeft, ChevronRight, ChevronDown, Camera, Pencil, X, Check, Plus, RefreshCw, Ban, ScanSearch, TrendingDown, TrendingUp, History, Share2, Pause } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { useAd, useDeleteAd, useUpdateAd, useCatalogGroups, useRefreshAdAccessories, useMarkAdSold, useCheckAdOnline, usePriceHistory } from '../hooks/queries'
+import { useAd, useDeleteAd, useUpdateAd, useCatalogGroups, useRefreshAdAccessories, useUpdateAdStatus, useCheckAdOnline, usePriceHistory, useStatusHistory } from '../hooks/queries'
 import { useCurrentModel, useVariantOptions } from '../hooks/useCurrentModel'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
@@ -29,9 +29,10 @@ export function AdDetailPage() {
   const deleteMut = useDeleteAd(slug)
   const updateMut = useUpdateAd(slug)
   const refreshAccMut = useRefreshAdAccessories(slug)
-  const markSoldMut = useMarkAdSold(slug)
+  const updateStatusMut = useUpdateAdStatus(slug)
   const checkOnlineMut = useCheckAdOnline(slug)
   const { data: priceHistory } = usePriceHistory(slug, adId)
+  const { data: statusHistory } = useStatusHistory(slug, adId)
   const navigate = useNavigate()
   const { toast } = useToast()
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
@@ -220,19 +221,31 @@ export function AdDetailPage() {
           ) : (
             <>
               <Button
-                variant={ad.sold ? 'secondary' : 'ghost'}
+                variant={ad.listing_status !== 'online' ? 'secondary' : 'ghost'}
                 size="sm"
                 className="gap-1.5"
-                disabled={markSoldMut.isPending}
+                disabled={updateStatusMut.isPending}
                 onClick={() => {
-                  markSoldMut.mutate({ id: ad.id, sold: !ad.sold }, {
-                    onSuccess: () => toast(ad.sold ? t('adDetail.markedAvailable') : t('adDetail.markedSold'), 'success'),
+                  const next = ad.listing_status === 'online' ? 'sold'
+                    : ad.listing_status === 'sold' ? 'paused'
+                    : 'online'
+                  updateStatusMut.mutate({ id: ad.id, listing_status: next }, {
+                    onSuccess: () => toast(
+                      next === 'sold' ? t('adDetail.markedSold') :
+                      next === 'paused' ? t('adDetail.markedPaused') :
+                      t('adDetail.markedOnline'),
+                      'success'
+                    ),
                     onError: (err) => toast((err as Error).message, 'error'),
                   })
                 }}
               >
                 <Ban className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{ad.sold ? t('adDetail.markAvailable') : t('adDetail.markSold')}</span>
+                <span className="hidden sm:inline">
+                  {ad.listing_status === 'online' ? t('adDetail.markSold') :
+                   ad.listing_status === 'sold' ? t('adDetail.markPaused') :
+                   t('adDetail.markOnline')}
+                </span>
               </Button>
               <Button
                 variant="ghost"
@@ -243,8 +256,10 @@ export function AdDetailPage() {
                   checkOnlineMut.mutate(ad.id, {
                     onSuccess: (data) => {
                       toast(
-                        data.sold ? t('adDetail.offlineMarkedSold') : t('adDetail.stillOnline'),
-                        data.sold ? 'success' : 'info',
+                        data.changed
+                          ? `${data.previous_status} \u2192 ${data.listing_status}`
+                          : t('adDetail.stillOnline'),
+                        data.changed ? 'success' : 'info',
                       )
                     },
                     onError: (err) => toast((err as Error).message, 'error'),
@@ -315,10 +330,16 @@ export function AdDetailPage() {
       )}
 
       {/* Sold banner */}
-      {!!ad.sold && !ad.superseded_by && !editing && (
+      {ad.listing_status === 'sold' && !ad.superseded_by && !editing && (
         <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-ui-red flex items-center gap-2">
           <Ban className="h-4 w-4 shrink-0" />
           {t('adDetail.soldBanner')}
+        </div>
+      )}
+      {ad.listing_status === 'paused' && !editing && (
+        <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-400 flex items-center gap-2">
+          <Pause className="h-4 w-4 shrink-0" />
+          {t('adDetail.pausedBanner')}
         </div>
       )}
 
@@ -650,6 +671,32 @@ export function AdDetailPage() {
               </div>
             )
           })()}
+        </Card>
+      )}
+
+      {/* Status history */}
+      {statusHistory?.history && statusHistory.history.length > 0 && (
+        <Card className="p-6 space-y-3">
+          <h3 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold">{t('adDetail.statusHistory')}</h3>
+          <div className="space-y-2">
+            {statusHistory.history.map((entry, i) => (
+              <div key={i} className="flex items-center gap-3 text-xs text-text-muted">
+                <span className="tabular-nums text-text-dim">{new Date(entry.changed_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                <span className={`px-1.5 py-0.5 rounded ${
+                  entry.old_status === 'online' ? 'bg-emerald-500/10 text-emerald-400' :
+                  entry.old_status === 'paused' ? 'bg-amber-500/10 text-amber-400' :
+                  'bg-red-500/10 text-ui-red'
+                }`}>{t(`common.${entry.old_status}`)}</span>
+                <span>&rarr;</span>
+                <span className={`px-1.5 py-0.5 rounded ${
+                  entry.new_status === 'online' ? 'bg-emerald-500/10 text-emerald-400' :
+                  entry.new_status === 'paused' ? 'bg-amber-500/10 text-amber-400' :
+                  'bg-red-500/10 text-ui-red'
+                }`}>{t(`common.${entry.new_status}`)}</span>
+                {entry.reason && <span className="text-text-dim">({entry.reason})</span>}
+              </div>
+            ))}
+          </div>
         </Card>
       )}
 

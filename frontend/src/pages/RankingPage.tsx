@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, AlertTriangle, ExternalLink, Search, X, ScanSearch, Car } from 'lucide-react'
-import { useRankings, useCheckAdsOnline } from '../hooks/queries'
+import { useRankings, useCheckAdsOnline, useCheckAdsOnlineFull } from '../hooks/queries'
 import { useCurrentModel } from '../hooks/useCurrentModel'
 import { useToast } from '../components/Toast'
 import { Button } from '../components/ui/Button'
@@ -144,7 +144,7 @@ function RankingCard({ r, rank, isOpen, onToggle, travel, travelLoading, hasFilt
   const { t } = useTranslation()
   const { formatPrice, formatKm } = useFormatters()
   const colorStr = `${r.color || '?'}${r.wheel_type === 'tubeless' ? ' TL' : ''}`
-  const isPodium = !filtered && !r.sold && rank <= 3
+  const isPodium = !filtered && r.listing_status === 'online' && rank <= 3
   const podiumBorder = isPodium && rank === 1
     ? 'border-l-2 border-l-amber-400/60'
     : isPodium && rank === 2
@@ -154,16 +154,17 @@ function RankingCard({ r, rank, isOpen, onToggle, travel, travelLoading, hasFilt
         : ''
 
   return (
-    <Card className={cn('overflow-hidden', r.sold ? 'opacity-50 !border-red-500/25 bg-red-950/15' : podiumBorder)}>
+    <Card className={cn('overflow-hidden', r.listing_status === 'sold' ? 'opacity-50 !border-red-500/25 bg-red-950/15' : r.listing_status === 'paused' ? 'opacity-70 !border-amber-500/25 bg-amber-950/15' : podiumBorder)}>
       <button onClick={onToggle} className="w-full text-left p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className={cn('text-lg font-bold font-fraunces', r.sold ? 'text-ui-red/60' : 'text-text-muted')}>#{rank}</span>
+            <span className={cn('text-lg font-bold font-fraunces', r.listing_status === 'sold' ? 'text-ui-red/60' : r.listing_status === 'paused' ? 'text-amber-400/60' : 'text-text-muted')}>#{rank}</span>
             <div>
               <p className="text-sm font-medium text-text-primary flex items-center gap-2 flex-wrap">
                 {r.city}
                 <TravelBadge travel={travel} loading={travelLoading} />
-                {r.sold && <span className="text-[10px] text-red-100 uppercase font-bold bg-red-500/30 border border-red-500/40 px-2 py-0.5 rounded-md tracking-wider shadow-sm shadow-red-500/10">{t('common.sold')}</span>}
+                {r.listing_status === 'sold' && <span className="text-[10px] text-red-100 uppercase font-bold bg-red-500/30 border border-red-500/40 px-2 py-0.5 rounded-md tracking-wider shadow-sm shadow-red-500/10">{t('common.sold')}</span>}
+                {r.listing_status === 'paused' && <span className="text-[10px] text-amber-100 uppercase font-bold bg-amber-500/30 border border-amber-500/40 px-2 py-0.5 rounded-md tracking-wider shadow-sm shadow-amber-500/10">{t('common.paused')}</span>}
               </p>
               <Badge className={variantColor(r.color)}>{colorStr}</Badge>
             </div>
@@ -223,13 +224,14 @@ export function RankingPage() {
   const { slug, modelUrl } = useCurrentModel()
   const { data: rankings, isLoading } = useRankings(slug)
   const checkOnlineMut = useCheckAdsOnline(slug)
+  const checkFullMut = useCheckAdsOnlineFull(slug)
   const { toast } = useToast()
   const [newlySoldIds, setNewlySoldIds] = useState<Set<number>>(new Set())
   const [expanded, setExpanded] = useState<number | null>(null)
   const [sortKey, setSortKey] = useState<SortKey>('rank')
   const [sortAsc, setSortAsc] = useState(true)
 
-  const [hideSold, setHideSold] = useState(false)
+  const [hideFilter, setHideFilter] = useState<'none' | 'sold' | 'offline'>('none')
 
   // Filtres
   const [search, setSearch] = useState('')
@@ -289,7 +291,13 @@ export function RankingPage() {
     [rankings],
   )
 
-  const soldCount = useMemo(() => (rankings ?? []).filter((r) => r.sold).length, [rankings])
+  const statusCounts = useMemo(() => {
+    const list = rankings ?? []
+    return {
+      sold: list.filter((r) => r.listing_status === 'sold').length,
+      paused: list.filter((r) => r.listing_status === 'paused').length,
+    }
+  }, [rankings])
 
   const hasFilters = search || filterColors.size > 0 || filterWheel || maxKm || maxPrice || maxTrajet
 
@@ -328,7 +336,8 @@ export function RankingPage() {
   }
 
   const filtered = useMemo(() => (rankings ?? []).filter((r) => {
-    if (hideSold && r.sold) return false
+    if (hideFilter === 'sold' && r.listing_status === 'sold') return false
+    if (hideFilter === 'offline' && r.listing_status !== 'online') return false
     if (search) {
       const q = search.toLowerCase()
       if (!r.city.toLowerCase().includes(q) && !r.color?.toLowerCase().includes(q) && !r.variant.toLowerCase().includes(q)) return false
@@ -342,7 +351,7 @@ export function RankingPage() {
       if (t == null || t.durationSec > Number(maxTrajet) * 60) return false
     }
     return true
-  }), [rankings, search, filterColors, filterWheel, maxKm, maxPrice, maxTrajet, hideSold, travelMap])
+  }), [rankings, search, filterColors, filterWheel, maxKm, maxPrice, maxTrajet, hideFilter, travelMap])
 
   const sorted = useMemo(() => [...filtered].sort((a, b) => {
     const aIdx = rankMap.get(a.id) ?? 0
@@ -395,21 +404,22 @@ export function RankingPage() {
             {t('ranking.description')}
           </p>
         </div>
+        {/* Quick check */}
         <Button
           variant="secondary"
           size="sm"
           className="gap-1.5 shrink-0"
-          disabled={checkOnlineMut.isPending}
+          disabled={checkOnlineMut.isPending || checkFullMut.isPending}
           onClick={() => {
             checkOnlineMut.mutate(undefined, {
               onSuccess: (data) => {
-                const soldIds = data.details.filter((d) => d.sold).map((d) => d.id)
-                setNewlySoldIds(new Set(soldIds))
+                const changedIds = data.details.filter((d) => d.changed).map((d) => d.id)
+                setNewlySoldIds(new Set(changedIds))
                 toast(
-                  data.newly_sold > 0
-                    ? t('ads.newlySold', { count: data.newly_sold })
+                  data.changes > 0
+                    ? t('ranking.statusChanges', { count: data.changes })
                     : t('ads.checkedNone', { count: data.checked }),
-                  data.newly_sold > 0 ? 'success' : 'info',
+                  data.changes > 0 ? 'success' : 'info',
                 )
               },
               onError: (err) => toast((err as Error).message, 'error'),
@@ -417,7 +427,31 @@ export function RankingPage() {
           }}
         >
           <ScanSearch className={`h-3.5 w-3.5 ${checkOnlineMut.isPending ? 'animate-pulse' : ''}`} />
-          <span className="hidden sm:inline">{checkOnlineMut.isPending ? t('common.checking') : t('common.checkOnline')}</span>
+          <span className="hidden sm:inline">{checkOnlineMut.isPending ? t('common.checking') : t('ranking.checkQuick')}</span>
+        </Button>
+        {/* Full check */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 shrink-0"
+          disabled={checkOnlineMut.isPending || checkFullMut.isPending}
+          onClick={() => {
+            checkFullMut.mutate(undefined, {
+              onSuccess: (data) => {
+                const changedIds = data.details.filter((d) => d.changed).map((d) => d.id)
+                setNewlySoldIds(new Set(changedIds))
+                const parts: string[] = []
+                if (data.changes > 0) parts.push(t('ranking.statusChanges', { count: data.changes }))
+                if (data.back_online > 0) parts.push(t('ranking.backOnline', { count: data.back_online }))
+                if (parts.length === 0) parts.push(t('ads.checkedNone', { count: data.checked }))
+                toast(parts.join(' \u00b7 '), data.changes > 0 ? 'success' : 'info')
+              },
+              onError: (err) => toast((err as Error).message, 'error'),
+            })
+          }}
+        >
+          <ScanSearch className={`h-3.5 w-3.5 ${checkFullMut.isPending ? 'animate-pulse' : ''}`} />
+          <span className="hidden sm:inline">{checkFullMut.isPending ? t('common.checking') : t('ranking.checkFull')}</span>
         </Button>
       </div>
 
@@ -483,10 +517,12 @@ export function RankingPage() {
           />
         </div>
         <button
-          onClick={() => setHideSold(!hideSold)}
+          onClick={() => setHideFilter(prev =>
+            prev === 'none' ? 'sold' : prev === 'sold' ? 'offline' : 'none'
+          )}
           className={cn(
             'flex items-center gap-2.5 rounded-xl border px-4 py-2.5 transition-all cursor-pointer shrink-0',
-            hideSold
+            hideFilter !== 'none'
               ? 'bg-gradient-to-r from-amber-500/12 to-amber-500/6 border-amber-500/25'
               : 'bg-tint/[0.03] border-tint/[0.06] hover:bg-tint/[0.05]',
           )}
@@ -495,25 +531,27 @@ export function RankingPage() {
           {/* Toggle switch */}
           <div className={cn(
             'relative w-9 h-5 rounded-full transition-colors duration-200',
-            hideSold ? 'bg-amber-500/80' : 'bg-tint/[0.12]',
+            hideFilter !== 'none' ? 'bg-amber-500/80' : 'bg-tint/[0.12]',
           )}>
             <div className={cn(
               'absolute top-[2px] w-4 h-4 rounded-full bg-bg shadow-sm transition-all duration-200',
-              hideSold ? 'left-[18px]' : 'left-[2px]',
+              hideFilter !== 'none' ? 'left-[18px]' : 'left-[2px]',
             )} />
           </div>
           <span className={cn(
             'text-sm font-medium transition-colors',
-            hideSold ? 'text-accent-text' : 'text-text-muted',
+            hideFilter !== 'none' ? 'text-accent-text' : 'text-text-muted',
           )}>
-            {t('ranking.hideSold')}
+            {hideFilter === 'none' ? t('ranking.hideSold') :
+             hideFilter === 'sold' ? t('ranking.hideOffline') :
+             t('common.showAll')}
           </span>
-          {soldCount > 0 && (
+          {(statusCounts.sold > 0 || statusCounts.paused > 0) && (
             <span className={cn(
               'text-[11px] tabular-nums font-semibold px-1.5 py-0.5 rounded-md transition-colors',
-              hideSold ? 'bg-accent-subtle text-accent-text' : 'bg-tint/[0.06] text-text-dim',
+              hideFilter !== 'none' ? 'bg-accent-subtle text-accent-text' : 'bg-tint/[0.06] text-text-dim',
             )}>
-              {soldCount}
+              {statusCounts.sold + statusCounts.paused}
             </span>
           )}
         </button>
@@ -729,7 +767,7 @@ export function RankingPage() {
               const isOpen = expanded === r.id
               const colorStr = `${r.color || '?'}${r.wheel_type === 'tubeless' ? ' TL' : ''}`
 
-              const isPodium = !hasFilters && !r.sold && origRank <= 3
+              const isPodium = !hasFilters && r.listing_status === 'online' && origRank <= 3
               const podiumStyle = isPodium && origRank === 1
                 ? 'border-l-2 border-l-amber-400/60 bg-amber-500/[0.04]'
                 : isPodium && origRank === 2
@@ -744,20 +782,22 @@ export function RankingPage() {
                     className={cn(
                       'border-b border-tint/[0.04] cursor-pointer transition-all duration-200 group/row',
                       isOpen ? 'bg-tint/[0.04]' : 'hover:bg-tint/[0.03]',
-                      r.sold ? 'opacity-50 bg-red-950/20 border-l-2 !border-l-red-500/40' : podiumStyle,
+                      r.listing_status === 'sold' ? 'opacity-50 bg-red-950/20 border-l-2 !border-l-red-500/40' : r.listing_status === 'paused' ? 'opacity-70 bg-amber-950/20 border-l-2 !border-l-amber-500/40' : podiumStyle,
                     )}
                     onClick={() => setExpanded(isOpen ? null : r.id)}
                   >
                     <td className={cn(
                       'py-3 pl-5 pr-4 w-12 text-center font-bold font-fraunces',
-                      r.sold ? 'text-ui-red/60' :
+                      r.listing_status === 'sold' ? 'text-ui-red/60' :
+                      r.listing_status === 'paused' ? 'text-amber-400/60' :
                       isPodium && origRank === 1 ? 'text-accent-text' :
                       isPodium && origRank === 2 ? 'text-gray-300' :
                       isPodium && origRank === 3 ? 'text-amber-600' : 'text-text-muted',
                     )}>{origRank}</td>
                     <td className="py-3 pr-4 text-text-secondary">
                       {r.city}
-                      {r.sold && <span className="ml-2 text-[10px] text-red-100 uppercase font-bold bg-red-500/30 border border-red-500/40 px-2 py-0.5 rounded-md tracking-wider shadow-sm shadow-red-500/10">{t('common.sold')}</span>}
+                      {r.listing_status === 'sold' && <span className="ml-2 text-[10px] text-red-100 uppercase font-bold bg-red-500/30 border border-red-500/40 px-2 py-0.5 rounded-md tracking-wider shadow-sm shadow-red-500/10">{t('common.sold')}</span>}
+                      {r.listing_status === 'paused' && <span className="ml-2 text-[10px] text-amber-100 uppercase font-bold bg-amber-500/30 border border-amber-500/40 px-2 py-0.5 rounded-md tracking-wider shadow-sm shadow-amber-500/10">{t('common.paused')}</span>}
                     </td>
                     {hasLocation && (
                       <td className="py-3 pr-4 text-right w-20">
@@ -768,7 +808,7 @@ export function RankingPage() {
                       <Badge className={variantColor(r.color)}>{colorStr}</Badge>
                     </td>
                     <td className="py-3 pr-4 text-right tabular-nums text-text-secondary">{formatKm(r.km)}</td>
-                    <td className={cn('py-3 pr-4 text-right tabular-nums text-text-primary', r.sold && 'line-through decoration-red-400/50')}>{formatPrice(r.price)}</td>
+                    <td className={cn('py-3 pr-4 text-right tabular-nums text-text-primary', r.listing_status === 'sold' && 'line-through decoration-red-400/50')}>{formatPrice(r.price)}</td>
                     <td className="py-3 pr-4 text-right text-ui-emerald tabular-nums">
                       {r.acc_used_total > 0 ? `-${r.acc_used_total}` : '0'}
                     </td>

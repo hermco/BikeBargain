@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { X, ScanSearch, TrendingUp, Tag, ArrowUpDown } from 'lucide-react'
-import { useAds, useCheckAdsOnline } from '../hooks/queries'
+import { useAds, useCheckAdsOnline, useCheckAdsOnlineFull } from '../hooks/queries'
 import { AdCard } from '../components/AdCard'
 import { AdForm } from '../components/AdForm'
 import { FilterBar, type SortOption } from '../components/FilterBar'
@@ -46,6 +46,7 @@ export function AdsPage() {
   const [autoOpenAdd, setAutoOpenAdd] = useState(false)
   const { data, isLoading } = useAds(slug)
   const checkOnlineMut = useCheckAdsOnline(slug)
+  const checkFullMut = useCheckAdsOnlineFull(slug)
   const { toast } = useToast()
   const { formatPrice } = useFormatters()
 
@@ -83,8 +84,9 @@ export function AdsPage() {
     const avg = Math.round(prices.reduce((s, p) => s + p, 0) / prices.length)
     const min = Math.min(...prices)
     const max = Math.max(...prices)
-    const soldCount = data.ads.filter(a => a.sold).length
-    return { avg, min, max, soldCount }
+    const soldCount = data.ads.filter(a => a.listing_status === 'sold').length
+    const pausedCount = data.ads.filter(a => a.listing_status === 'paused').length
+    return { avg, min, max, soldCount, pausedCount }
   }, [data])
 
   function clearFilters() {
@@ -130,15 +132,16 @@ export function AdsPage() {
             variant="secondary"
             size="sm"
             className="gap-1.5"
-            disabled={checkOnlineMut.isPending}
+            disabled={checkOnlineMut.isPending || checkFullMut.isPending}
             onClick={() => {
               checkOnlineMut.mutate(undefined, {
                 onSuccess: (data) => {
+                  const changed = data.details.filter((d) => d.changed).length
                   toast(
-                    data.newly_sold > 0
-                      ? t('ads.newlySold', { count: data.newly_sold })
+                    changed > 0
+                      ? t('ranking.statusChanges', { count: changed })
                       : t('ads.checkedNone', { count: data.checked }),
-                    data.newly_sold > 0 ? 'success' : 'info',
+                    changed > 0 ? 'success' : 'info',
                   )
                 },
                 onError: (err) => toast((err as Error).message, 'error'),
@@ -146,7 +149,28 @@ export function AdsPage() {
             }}
           >
             <ScanSearch className={`h-3.5 w-3.5 ${checkOnlineMut.isPending ? 'animate-pulse' : ''}`} />
-            <span className="hidden sm:inline">{checkOnlineMut.isPending ? t('common.checking') : t('common.checkOnline')}</span>
+            <span className="hidden sm:inline">{checkOnlineMut.isPending ? t('common.checking') : t('ranking.checkQuick')}</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5"
+            disabled={checkOnlineMut.isPending || checkFullMut.isPending}
+            onClick={() => {
+              checkFullMut.mutate(undefined, {
+                onSuccess: (data) => {
+                  const parts: string[] = []
+                  if (data.changes > 0) parts.push(t('ranking.statusChanges', { count: data.changes }))
+                  if (data.back_online > 0) parts.push(t('ranking.backOnline', { count: data.back_online }))
+                  if (parts.length === 0) parts.push(t('ads.checkedNone', { count: data.checked }))
+                  toast(parts.join(' \u00b7 '), data.changes > 0 ? 'success' : 'info')
+                },
+                onError: (err) => toast((err as Error).message, 'error'),
+              })
+            }}
+          >
+            <ScanSearch className={`h-3.5 w-3.5 ${checkFullMut.isPending ? 'animate-pulse' : ''}`} />
+            <span className="hidden sm:inline">{checkFullMut.isPending ? t('common.checking') : t('ranking.checkFull')}</span>
           </Button>
           <AdForm autoOpen={autoOpenAdd} onAutoOpened={() => setAutoOpenAdd(false)} />
         </div>
@@ -175,6 +199,12 @@ export function AdsPage() {
               <Tag className="h-3.5 w-3.5 text-ui-red/60" />
               <span className="text-text-muted">{t('ads.sold')}</span>
               <span className="text-ui-red/80 tabular-nums">{kpiStats.soldCount}</span>
+            </div>
+          )}
+          {kpiStats.pausedCount > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-text-muted">{t('ads.paused')}</span>
+              <span className="text-amber-400/80 tabular-nums">{kpiStats.pausedCount}</span>
             </div>
           )}
         </motion.div>
