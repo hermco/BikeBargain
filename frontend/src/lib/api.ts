@@ -1,4 +1,4 @@
-import type { AdsResponse, AdDetail, Stats, Ranking, CrawlSearchResult, CrawlExtractResult, PriceHistory, CheckPricesResult, BikeModel, BikeModelDetail, BikeVariant, Accessory } from '../types'
+import type { AdsResponse, AdDetail, Stats, Ranking, CrawlSearchResult, CrawlExtractResult, PriceHistory, CheckPricesResult, BikeModel, BikeModelDetail, BikeVariant, Accessory, SearchConfig, LbcEnums } from '../types'
 import { config } from '../config'
 
 const BASE = `${config.apiBaseUrl}/api`
@@ -331,6 +331,36 @@ export function importCatalog(data: { groups: unknown[] }): Promise<{ status: st
 
 export function fetchRefreshStatus(): Promise<RefreshStatus> {
   return fetchJSON<RefreshStatus>('/catalog/refresh-status')
+}
+
+// ─── Search Configs ───────────────────────────────────────────────────────
+
+export function fetchSearchConfigs(slug: string): Promise<SearchConfig[]> {
+  return fetchJSON<SearchConfig[]>(`/bike-models/${slug}/search-configs`)
+}
+
+export function createSearchConfig(slug: string, data: Omit<SearchConfig, 'id'>): Promise<{ id: number; status: string }> {
+  return fetchJSON(`/bike-models/${slug}/search-configs`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+}
+
+export function updateSearchConfig(slug: string, id: number, data: Partial<Omit<SearchConfig, 'id'>>): Promise<{ id: number; status: string }> {
+  return fetchJSON(`/bike-models/${slug}/search-configs/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+}
+
+export function deleteSearchConfig(slug: string, id: number): Promise<{ deleted: number }> {
+  return fetchJSON(`/bike-models/${slug}/search-configs/${id}`, { method: 'DELETE' })
+}
+
+export function fetchLbcEnums(): Promise<LbcEnums> {
+  return fetchJSON<LbcEnums>('/reference/lbc-enums')
 }
 
 // ─── Crawl ────────────────────────────────────────────────────────────────

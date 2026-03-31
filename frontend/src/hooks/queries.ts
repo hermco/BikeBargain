@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import type { SearchConfig } from '../types'
 import * as api from '../lib/api'
 
 // ─── Bike Models ─────────────────────────────────────────────────────────────
@@ -384,6 +385,55 @@ export function useRefreshStatus() {
       const data = query.state.data
       return data?.status === 'running' ? 2000 : false
     },
+  })
+}
+
+// ─── Search Configs ───────────────────────────────────────────────────────
+
+export function useSearchConfigs(slug: string) {
+  return useQuery({
+    queryKey: ['search-configs', slug],
+    queryFn: () => api.fetchSearchConfigs(slug),
+    staleTime: 30_000,
+  })
+}
+
+export function useCreateSearchConfig(slug: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: Omit<SearchConfig, 'id'>) => api.createSearchConfig(slug, data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['search-configs', slug] })
+    },
+  })
+}
+
+export function useUpdateSearchConfig(slug: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<Omit<SearchConfig, 'id'>> }) =>
+      api.updateSearchConfig(slug, id, data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['search-configs', slug] })
+    },
+  })
+}
+
+export function useDeleteSearchConfig(slug: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => api.deleteSearchConfig(slug, id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['search-configs', slug] })
+    },
+  })
+}
+
+export function useLbcEnums() {
+  return useQuery({
+    queryKey: ['lbc-enums'],
+    queryFn: api.fetchLbcEnums,
+    staleTime: Infinity,
   })
 }
 

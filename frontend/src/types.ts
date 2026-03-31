@@ -271,3 +271,25 @@ export interface CrawlExtractResult {
   potential_duplicates: PotentialDuplicate[]
   is_new_listing?: boolean
 }
+
+// ─── Search Config ────────────────────────────────────────────────────────
+
+export interface SearchConfig {
+  id: number
+  keyword: string
+  min_cc: number | null
+  max_cc: number | null
+  locations: string[] | null
+  owner_type: string | null
+  price_min: number | null
+  price_max: number | null
+  sort: string | null
+  search_in_title_only: boolean
+}
+
+export interface LbcEnums {
+  regions: { value: string; label: string }[]
+  departments: { value: string; label: string; code: string; region: string }[]
+  sorts: { value: string; label: string }[]
+  owner_types: { value: string; label: string }[]
+}
