@@ -126,33 +126,36 @@ export function LandingPage() {
                 key={model.id}
                 initial={{ opacity: 0, scale: 0.93, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
+                whileHover={{ y: -4 }}
                 transition={{ delay: 0.22 + i * 0.09, duration: 0.45, ease: 'easeOut' }}
               >
                 <Link
                   to={`/models/${model.slug}/rankings`}
-                  className="group block rounded-2xl border border-tint/[0.06] bg-surface/80 backdrop-blur-sm overflow-hidden transition-all duration-500 ease-out hover:border-amber-500/25 hover:shadow-[0_8px_40px_rgba(212,168,83,0.12)] hover:-translate-y-1"
+                  className="group relative flex flex-col rounded-2xl border border-tint/[0.06] bg-surface overflow-hidden transition-[border-color,box-shadow] duration-500 ease-out hover:border-amber-500/25 hover:shadow-[0_8px_40px_rgba(212,168,83,0.12)]"
                 >
-                  {/* Card image with gradient overlay */}
+                  {/* Full-card background image */}
                   {model.image_url && (
-                    <div className="relative h-44 bg-surface/80 overflow-hidden">
-                      <img
-                        src={model.image_url}
-                        alt={model.name}
-                        className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-700 ease-out"
-                      />
-                      {/* Bottom-to-surface gradient — seamless blend */}
-                      <div
-                        className="absolute inset-0 pointer-events-none"
-                        style={{
-                          background:
-                            'linear-gradient(to bottom, transparent 50%, var(--color-surface) 100%)',
-                        }}
-                      />
-                    </div>
+                    <img
+                      src={model.image_url}
+                      alt={model.name}
+                      className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 ease-out will-change-transform group-hover:scale-105"
+                    />
                   )}
 
-                  {/* Card body */}
-                  <div className="p-5 space-y-4">
+                  {/* Gradient overlay — covers full card, fades image to surface at bottom */}
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      background:
+                        'linear-gradient(to bottom, transparent 20%, var(--color-surface) 65%)',
+                    }}
+                  />
+
+                  {/* Spacer to push content down, revealing image at top */}
+                  <div className="h-40" />
+
+                  {/* Card body — sits on top of the gradient */}
+                  <div className="relative z-10 px-5 pb-5 space-y-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-[10px] text-amber-500/70 uppercase tracking-widest font-semibold mb-0.5">
