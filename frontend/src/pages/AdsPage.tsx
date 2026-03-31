@@ -121,7 +121,7 @@ export function AdsPage() {
           {hasFilters && (
             <button
               onClick={clearFilters}
-              className="flex items-center gap-1.5 rounded-xl bg-white/[0.04] border border-white/[0.06] px-3 py-2 text-xs text-text-dim hover:text-text-secondary hover:bg-white/[0.06] transition-all"
+              className="flex items-center gap-1.5 rounded-xl bg-tint/[0.04] border border-tint/[0.06] px-3 py-2 text-xs text-text-dim hover:text-text-secondary hover:bg-tint/[0.06] transition-all"
             >
               <X className="h-3.5 w-3.5" /> {t('common.resetFilters')}
             </button>
@@ -155,7 +155,7 @@ export function AdsPage() {
       {/* KPI summary strip */}
       {kpiStats && (
         <motion.div
-          className="flex flex-wrap gap-4 mb-6 px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.04]"
+          className="flex flex-wrap gap-4 mb-6 px-4 py-3 rounded-xl bg-tint/[0.02] border border-tint/[0.04]"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}

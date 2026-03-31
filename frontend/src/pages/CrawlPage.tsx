@@ -698,14 +698,14 @@ export function CrawlPage() {
 
       {/* Status bar */}
       {adStates.length > 0 && (
-        <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 mb-6">
+        <div className="rounded-xl bg-tint/[0.03] border border-tint/[0.06] p-4 mb-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-4 text-sm">
               <span className="text-text-muted">{t('crawl.total')} <span className="text-text-primary font-medium">{adStates.length}</span></span>
               <span className="text-text-muted">{t('crawl.processed')} <span className="text-text-primary font-medium">{processedCount}</span></span>
               <span className="text-text-muted">{t('crawl.confirmed')} <span className="text-green-400 font-medium">{confirmedCount}</span></span>
               <span className="text-text-muted">{t('crawl.skipped')} <span className="text-text-dim font-medium">{skippedCount}</span></span>
-              <span className="text-text-muted">{t('crawl.remaining')} <span className="text-amber-300 font-medium">{pendingCount}</span></span>
+              <span className="text-text-muted">{t('crawl.remaining')} <span className="text-accent-text font-medium">{pendingCount}</span></span>
             </div>
             <div className="flex items-center gap-2">
               {status === 'ready' && (
@@ -748,7 +748,7 @@ export function CrawlPage() {
             </div>
           </div>
           {/* Progress bar */}
-          <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+          <div className="h-1.5 bg-tint/[0.06] rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-500"
               style={{ width: `${adStates.length > 0 ? (processedCount / adStates.length) * 100 : 0}%` }}
@@ -760,7 +760,7 @@ export function CrawlPage() {
       {/* Loading session */}
       {isLoadingSession && status === 'idle' && (
         <div className="flex flex-col items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-amber-400 mb-3" />
+          <Loader2 className="h-8 w-8 animate-spin text-accent mb-3" />
           <p className="text-sm text-text-muted">{t('common.loading')}</p>
         </div>
       )}
@@ -824,7 +824,7 @@ export function CrawlPage() {
               <DollarSign className="h-3.5 w-3.5" />
               {t('crawl.priceChanges')}
             </h3>
-            <Badge className="bg-amber-500/15 text-amber-300 text-[10px]">
+            <Badge className="bg-accent-subtle text-accent-text text-[10px]">
               {t('crawl.priceChangeCount', { count: priceChanges.filter(pc => !confirmedPriceIds.has(pc.id) && !dismissedPriceIds.has(pc.id)).length })}
             </Badge>
           </div>
@@ -840,7 +840,7 @@ export function CrawlPage() {
                   className={`rounded-xl border p-4 transition-all ${
                     isConfirmed
                       ? 'bg-green-500/5 border-green-500/20 opacity-60'
-                      : 'bg-card border-white/[0.06]'
+                      : 'bg-card border-tint/[0.06]'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-4">
@@ -950,7 +950,7 @@ export function CrawlPage() {
 
       {/* Current ad extraction / validation */}
       {currentAd && status === 'waiting_validation' && currentExtract && (
-        <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-6 mb-6">
+        <div className="rounded-xl bg-tint/[0.03] border border-tint/[0.06] p-6 mb-6">
           {/* Back button + Validation banner */}
           {isManualPick && (
             <button
@@ -961,9 +961,9 @@ export function CrawlPage() {
               {t('crawl.backToResults')}
             </button>
           )}
-          <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+          <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-accent-subtle border border-amber-500/20">
             <div className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-            <span className="text-xs font-medium text-amber-300">
+            <span className="text-xs font-medium text-accent-text">
               {isManualPick
                 ? t('crawl.manualBanner')
                 : t('crawl.autoBanner')}
@@ -974,9 +974,9 @@ export function CrawlPage() {
               {t('crawl.adCounter', { current: currentIndex + 1, total: adStates.length })}
             </h3>
             {currentAd.existsInDb && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-subtle border border-amber-500/20">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
-                <span className="text-xs font-medium text-amber-300">{t('crawl.existsInDb')}</span>
+                <span className="text-xs font-medium text-accent-text">{t('crawl.existsInDb')}</span>
               </div>
             )}
           </div>
@@ -1015,7 +1015,7 @@ export function CrawlPage() {
                           <div className={`shrink-0 text-center px-3 py-2 rounded-lg ${
                             dup.price_delta < 0 ? 'bg-emerald-500/10 border border-emerald-500/20' :
                             dup.price_delta > 0 ? 'bg-red-500/10 border border-red-500/20' :
-                            'bg-white/[0.04] border border-white/[0.06]'
+                            'bg-tint/[0.04] border border-tint/[0.06]'
                           }`}>
                             <span className={`text-lg font-bold tabular-nums ${
                               dup.price_delta < 0 ? 'text-emerald-400' :
@@ -1049,7 +1049,7 @@ export function CrawlPage() {
                       <Link
                         to={modelUrl(`/ads/${dup.id}`)}
                         target="_blank"
-                        className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] text-text-muted text-xs font-medium hover:bg-white/[0.08] hover:text-text-secondary transition-all"
+                        className="px-3 py-1.5 rounded-lg bg-tint/[0.04] border border-tint/[0.06] text-text-muted text-xs font-medium hover:bg-tint/[0.08] hover:text-text-secondary transition-all"
                       >
                         {t('crawl.viewAd')}
                       </Link>
@@ -1065,7 +1065,7 @@ export function CrawlPage() {
             const images = (currentExtract.images as string[]) ?? (currentAd.summary.thumbnail ? [currentAd.summary.thumbnail] : [])
             if (images.length === 0) return null
             return (
-              <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] overflow-hidden mb-4">
+              <div className="rounded-xl bg-tint/[0.03] border border-tint/[0.06] overflow-hidden mb-4">
                 <div className="relative">
                   <img
                     src={images[galleryIdx % images.length]}
@@ -1162,7 +1162,7 @@ export function CrawlPage() {
           })()}
 
           {/* Ad title & basic info */}
-          <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 mb-4">
+          <div className="rounded-xl bg-tint/[0.03] border border-tint/[0.06] p-4 mb-4">
             <div className="flex items-start gap-4">
               <div className="flex-1 min-w-0">
                 <h4 className="text-sm font-semibold text-text-primary truncate mb-2">
@@ -1170,7 +1170,7 @@ export function CrawlPage() {
                 </h4>
                 <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm">
                   <span className="text-text-muted">{t('common.price')}</span>
-                  <span className="font-semibold text-amber-300">{formatPrice(currentExtract.price as number)}</span>
+                  <span className="font-semibold text-accent-text">{formatPrice(currentExtract.price as number)}</span>
 
                   <span className="text-text-muted">{t('common.year')}</span>
                   <span className="text-text-primary">{(currentExtract.year as number) ?? t('common.na')}</span>
@@ -1187,7 +1187,7 @@ export function CrawlPage() {
                     <div className="flex flex-wrap gap-1.5">
                       {variantNames.map((v) => (
                         <button key={v} onClick={() => updateExtractField('variant', v)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${v === variant ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40' : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'}`}>
+                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${v === variant ? 'bg-amber-500/20 text-accent-text ring-1 ring-amber-500/40' : 'bg-tint/[0.04] text-text-muted hover:bg-tint/[0.08]'}`}>
                           {v}
                         </button>
                       ))}
@@ -1205,7 +1205,7 @@ export function CrawlPage() {
                     <div className="flex flex-wrap gap-1.5">
                       {availableColors.map((c) => (
                         <button key={c} onClick={() => updateExtractField('color', c)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${c === currentExtract.color ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40' : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'}`}>
+                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${c === currentExtract.color ? 'bg-amber-500/20 text-accent-text ring-1 ring-amber-500/40' : 'bg-tint/[0.04] text-text-muted hover:bg-tint/[0.08]'}`}>
                           {c}
                         </button>
                       ))}
@@ -1223,7 +1223,7 @@ export function CrawlPage() {
                     <div className="flex gap-1.5">
                       {wheelTypes.map((w) => (
                         <button key={w} onClick={() => updateExtractField('wheel_type', w)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${w === currentExtract.wheel_type ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40' : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'}`}>
+                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${w === currentExtract.wheel_type ? 'bg-amber-500/20 text-accent-text ring-1 ring-amber-500/40' : 'bg-tint/[0.04] text-text-muted hover:bg-tint/[0.08]'}`}>
                           {w}
                         </button>
                       ))}
@@ -1248,7 +1248,7 @@ export function CrawlPage() {
 
           {/* Description vendeur */}
           {currentExtract.body != null && (
-            <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] mb-4">
+            <div className="rounded-xl bg-tint/[0.03] border border-tint/[0.06] mb-4">
               <button
                 onClick={() => setShowDescription(!showDescription)}
                 className="w-full flex items-center justify-between p-4 text-left"
@@ -1271,7 +1271,7 @@ export function CrawlPage() {
           {/* Diffs warning */}
           {currentAd.existsInDb && currentAd.diffs && currentAd.diffs.length > 0 && (
             <div className="rounded-xl bg-amber-500/5 border border-amber-500/15 p-4 mb-4">
-              <h4 className="text-xs uppercase tracking-widest font-semibold text-amber-300 mb-3">
+              <h4 className="text-xs uppercase tracking-widest font-semibold text-accent-text mb-3">
                 {t('crawl.dbDifferences')}
               </h4>
               <div className="space-y-2">
@@ -1301,13 +1301,13 @@ export function CrawlPage() {
           )}
 
           {currentAd.existsInDb && currentAd.diffs && currentAd.diffs.length === 0 && (
-            <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 mb-4 text-center">
+            <div className="rounded-xl bg-tint/[0.03] border border-tint/[0.06] p-4 mb-4 text-center">
               <p className="text-sm text-text-muted">{t('crawl.noDifferences')}</p>
             </div>
           )}
 
           {/* Accessories */}
-          <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 mb-4">
+          <div className="rounded-xl bg-tint/[0.03] border border-tint/[0.06] p-4 mb-4">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold">
                 {t('adForm.accessories')} ({accessories.length})
@@ -1316,7 +1316,7 @@ export function CrawlPage() {
                 <button
                   onClick={handleRedetect}
                   disabled={redetectMut.isPending}
-                  className="flex items-center gap-1 text-xs text-text-dim hover:text-amber-300 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1 text-xs text-text-dim hover:text-accent-text transition-colors disabled:opacity-50"
                   title={t('crawl.redetectTooltip')}
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${redetectMut.isPending ? 'animate-spin' : ''}`} />
@@ -1324,7 +1324,7 @@ export function CrawlPage() {
                 </button>
                 <button
                   onClick={() => setShowAddAccessory(!showAddAccessory)}
-                  className="flex items-center gap-1 text-xs text-amber-300 hover:text-amber-200 transition-colors"
+                  className="flex items-center gap-1 text-xs text-accent-text hover:text-accent-text transition-colors"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   {t('common.add')}
@@ -1334,13 +1334,13 @@ export function CrawlPage() {
 
             {/* Add accessory search */}
             {showAddAccessory && (
-              <div className="mb-3 rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 space-y-2">
+              <div className="mb-3 rounded-lg bg-tint/[0.03] border border-tint/[0.06] p-3 space-y-2">
                 <input
                   type="text"
                   placeholder={t('common.searchAccessory')}
                   value={accessorySearch}
                   onChange={(e) => setAccessorySearch(e.target.value)}
-                  className="w-full rounded-lg bg-white/[0.04] border border-white/[0.08] px-3 py-2 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
+                  className="w-full rounded-lg bg-tint/[0.04] border border-tint/[0.08] px-3 py-2 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
                   autoFocus
                 />
                 <div className="max-h-48 overflow-y-auto space-y-1">
@@ -1348,7 +1348,7 @@ export function CrawlPage() {
                     <button
                       key={c.name}
                       onClick={() => addAccessory(c)}
-                      className="w-full flex items-center gap-2 py-1.5 px-2 rounded-lg text-sm hover:bg-white/[0.05] transition-colors text-left"
+                      className="w-full flex items-center gap-2 py-1.5 px-2 rounded-lg text-sm hover:bg-tint/[0.05] transition-colors text-left"
                     >
                       <CategoryBadge category={c.category} />
                       <span className="flex-1 text-text-primary">{c.name}</span>
@@ -1365,11 +1365,11 @@ export function CrawlPage() {
             {accessories.length > 0 ? (
               <div className="space-y-1.5">
                 {accessories.map((acc, i) => (
-                  <div key={acc.name} className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-white/[0.03] group">
+                  <div key={acc.name} className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-tint/[0.03] group">
                     <CategoryBadge category={acc.category} />
                     <span className="text-sm text-text-primary flex-1">{acc.name}</span>
                     {acc.source === 'manual' && (
-                      <span className="text-[10px] text-amber-300/60 uppercase tracking-wide">{t('common.manual')}</span>
+                      <span className="text-[10px] text-accent-text/60 uppercase tracking-wide">{t('common.manual')}</span>
                     )}
                     <span className="text-xs text-text-dim">{acc.estimated_new_price} &euro; {t('common.new')}</span>
                     <button onClick={() => removeAccessory(i)}
@@ -1391,7 +1391,7 @@ export function CrawlPage() {
               href={currentAd.summary.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-text-dim hover:text-amber-300 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs text-text-dim hover:text-accent-text transition-colors"
             >
               <ExternalLink className="h-3 w-3" />
               {t('crawl.viewOnLbc')}
@@ -1399,7 +1399,7 @@ export function CrawlPage() {
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
+          <div className="flex items-center justify-between pt-2 border-t border-tint/[0.06]">
             <Button variant="ghost" onClick={handleSkip} disabled={!!transition || confirmMut.isPending} className="gap-1.5">
               <SkipForward className="h-4 w-4" />
               {t('crawl.skip')}
@@ -1429,11 +1429,11 @@ export function CrawlPage() {
 
       {/* Transition state — countdown before next extraction */}
       {transition && (
-        <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-8 mb-6 text-center">
+        <div className="rounded-xl bg-tint/[0.03] border border-tint/[0.06] p-8 mb-6 text-center">
           <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full mb-4 ${
             transition.type === 'confirmed'
               ? 'bg-green-500/10 border border-green-500/20'
-              : 'bg-white/[0.04] border border-white/[0.06]'
+              : 'bg-tint/[0.04] border border-tint/[0.06]'
           }`}>
             {transition.type === 'confirmed' ? (
               <Check className="h-4 w-4 text-green-400" />
@@ -1448,10 +1448,10 @@ export function CrawlPage() {
             {transition.subject}
           </p>
           <div className="flex items-center justify-center gap-2 text-sm text-text-muted">
-            <Loader2 className="h-4 w-4 animate-spin text-amber-400" />
+            <Loader2 className="h-4 w-4 animate-spin text-accent" />
             <span>{t('crawl.nextAdIn')} <span className="tabular-nums font-medium text-text-primary">{transition.countdown}s</span></span>
           </div>
-          <div className="mt-3 mx-auto max-w-xs h-1 bg-white/[0.06] rounded-full overflow-hidden">
+          <div className="mt-3 mx-auto max-w-xs h-1 bg-tint/[0.06] rounded-full overflow-hidden">
             <div
               className="h-full bg-amber-400/60 rounded-full transition-all duration-1000 ease-linear"
               style={{ width: `${((CRAWL_DELAY_MS / 1000 - transition.countdown) / (CRAWL_DELAY_MS / 1000)) * 100}%` }}
@@ -1462,9 +1462,9 @@ export function CrawlPage() {
 
       {/* Extracting state */}
       {currentAd && currentAd.action === 'extracting' && (
-        <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-8 mb-6">
+        <div className="rounded-xl bg-tint/[0.03] border border-tint/[0.06] p-8 mb-6">
           <div className="flex flex-col items-center text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-amber-400 mb-3" />
+            <Loader2 className="h-8 w-8 animate-spin text-accent mb-3" />
             <p className="text-sm font-medium text-text-primary mb-1">
               {t('crawl.extracting')}
             </p>
@@ -1472,7 +1472,7 @@ export function CrawlPage() {
               {t('crawl.adCounter', { current: currentIndex + 1, total: adStates.length })}
             </p>
           </div>
-          <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 flex items-center gap-3 max-w-md mx-auto">
+          <div className="rounded-lg bg-tint/[0.03] border border-tint/[0.06] p-3 flex items-center gap-3 max-w-md mx-auto">
             {currentAd.summary.thumbnail && (
               <img src={currentAd.summary.thumbnail} alt="" className="w-16 h-12 rounded-md object-cover shrink-0" />
             )}
@@ -1506,7 +1506,7 @@ export function CrawlPage() {
                 .map((state) => (
                   <div
                     key={state.summary.id}
-                    className="flex items-center gap-3 py-2 px-3 rounded-lg bg-white/[0.02] text-sm"
+                    className="flex items-center gap-3 py-2 px-3 rounded-lg bg-tint/[0.02] text-sm"
                   >
                     {state.action === 'confirmed' && <Check className="h-4 w-4 text-green-400 shrink-0" />}
                     {state.action === 'skipped' && <SkipForward className="h-4 w-4 text-text-dim shrink-0" />}
@@ -1516,7 +1516,7 @@ export function CrawlPage() {
                       {state.summary.price != null ? formatPrice(state.summary.price) : ''}
                     </span>
                     {state.summary.exists_in_db && (
-                      <Badge className="bg-amber-500/10 text-amber-300 text-[10px]">{t('crawl.existed')}</Badge>
+                      <Badge className="bg-accent-subtle text-accent-text text-[10px]">{t('crawl.existed')}</Badge>
                     )}
                     {state.potentialDuplicates && state.potentialDuplicates.length > 0 && (
                       <Link to={modelUrl(`/ads/${state.potentialDuplicates[0].id}`)} target="_blank">
@@ -1561,7 +1561,7 @@ export function CrawlPage() {
                   onClick={() => setHideNewListings(!hideNewListings)}
                   className="flex items-center gap-2 text-xs text-text-muted hover:text-text-secondary transition-colors"
                 >
-                  <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${hideNewListings ? 'bg-blue-500/40' : 'bg-white/[0.08]'}`}>
+                  <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${hideNewListings ? 'bg-blue-500/40' : 'bg-tint/[0.08]'}`}>
                     <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 mt-0.5 ${hideNewListings ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
                   </span>
                   <span className={hideNewListings ? 'text-blue-300' : ''}>
@@ -1574,10 +1574,10 @@ export function CrawlPage() {
                   onClick={() => setShowInDb(!showInDb)}
                   className="flex items-center gap-2 text-xs text-text-muted hover:text-text-secondary transition-colors"
                 >
-                  <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${showInDb ? 'bg-amber-500/40' : 'bg-white/[0.08]'}`}>
+                  <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${showInDb ? 'bg-amber-500/40' : 'bg-tint/[0.08]'}`}>
                     <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 mt-0.5 ${showInDb ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
                   </span>
-                  <span className={showInDb ? 'text-amber-300' : ''}>
+                  <span className={showInDb ? 'text-accent-text' : ''}>
                     {t('crawl.showInDb')} ({inDbCount})
                   </span>
                 </button>
@@ -1604,12 +1604,12 @@ export function CrawlPage() {
                   isConfirmed
                     ? 'bg-green-500/[0.04] border border-green-500/15 opacity-50'
                     : isSkipped
-                    ? 'bg-white/[0.01] border border-white/[0.04] opacity-35'
+                    ? 'bg-tint/[0.01] border border-tint/[0.04] opacity-35'
                     : isError
                     ? 'bg-red-500/[0.04] border border-red-500/15 opacity-50'
                     : inDb
                     ? 'bg-amber-500/[0.06] border border-amber-500/20 hover:border-amber-500/30'
-                    : 'bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12]'
+                    : 'bg-tint/[0.03] border border-tint/[0.06] hover:border-tint/[0.12]'
                 }`}
               >
                 {/* Status overlay for processed ads */}
@@ -1623,7 +1623,7 @@ export function CrawlPage() {
                 )}
                 {isSkipped && (
                   <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.08] backdrop-blur-sm border border-white/[0.12]">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-tint/[0.08] backdrop-blur-sm border border-tint/[0.12]">
                       <SkipForward className="h-4 w-4 text-text-dim" />
                       <span className="text-xs font-semibold text-text-dim">{t('crawl.skippedLabel')}</span>
                     </div>
@@ -1640,7 +1640,7 @@ export function CrawlPage() {
                 {isWaiting && (
                   <div className="absolute top-2 right-10 z-10 flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/20 backdrop-blur-sm border border-amber-500/30">
                     <Pencil className="h-3 w-3 text-amber-400" />
-                    <span className="text-[10px] font-semibold text-amber-300 uppercase tracking-wide">{t('crawl.inProgress')}</span>
+                    <span className="text-[10px] font-semibold text-accent-text uppercase tracking-wide">{t('crawl.inProgress')}</span>
                   </div>
                 )}
                 {/* Remove button */}
@@ -1660,7 +1660,7 @@ export function CrawlPage() {
                 {inDb && isPending && (
                   <div className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/20 backdrop-blur-sm border border-amber-500/30">
                     <AlertTriangle className="h-3 w-3 text-amber-400" />
-                    <span className="text-[10px] font-semibold text-amber-300 uppercase tracking-wide">{t('crawl.inDb')}</span>
+                    <span className="text-[10px] font-semibold text-accent-text uppercase tracking-wide">{t('crawl.inDb')}</span>
                   </div>
                 )}
                 {!inDb && isPending && state.summary.possible_repost_of && (
@@ -1682,7 +1682,7 @@ export function CrawlPage() {
                     {state.summary.subject}
                   </p>
                   <div className="flex items-center justify-between">
-                    <span className="text-amber-300 text-sm font-semibold">
+                    <span className="text-accent-text text-sm font-semibold">
                       {state.summary.price != null ? formatPrice(state.summary.price) : t('common.na')}
                     </span>
                     <span className="text-text-secondary text-xs">
@@ -1690,7 +1690,7 @@ export function CrawlPage() {
                     </span>
                   </div>
                   {state.summary.price_changed && (
-                    <Badge className="bg-amber-500/15 text-amber-300 text-[10px]">
+                    <Badge className="bg-accent-subtle text-accent-text text-[10px]">
                       {t('crawl.priceChangedBadge')} ({state.summary.price_delta! < 0 ? '' : '+'}{state.summary.price_delta}€)
                     </Badge>
                   )}

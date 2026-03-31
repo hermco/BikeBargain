@@ -24,7 +24,7 @@ export function LandingPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-amber-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
       </div>
     )
   }
@@ -69,7 +69,7 @@ export function LandingPage() {
             <motion.div
               animate={{ y: [0, -6, 0] }}
               transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-              className="w-20 h-20 flex items-center justify-center"
+              className="w-20 h-20 mx-auto flex items-center justify-center"
             >
               <svg width="80" height="80" viewBox="0 0 110 110" fill="none" style={{ filter: 'drop-shadow(0 8px 24px rgba(212,168,83,0.3))' }}>
                 <defs>
@@ -78,16 +78,16 @@ export function LandingPage() {
                     <stop offset="100%" stopColor="#d97706"/>
                   </linearGradient>
                 </defs>
-                <circle cx="55" cy="55" r="50" stroke="rgba(255,255,255,0.1)" strokeWidth="3.5" fill="none"/>
-                <path d="M 18.4 80 A 50 50 0 1 1 91.6 80" stroke="url(#heroGauge)" strokeWidth="4" strokeLinecap="round" fill="none"/>
-                <line x1="55" y1="9" x2="55" y2="17" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round"/>
-                <line x1="91" y1="27" x2="86" y2="31" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round"/>
-                <line x1="19" y1="27" x2="24" y2="31" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round"/>
-                <line x1="101" y1="55" x2="95" y2="55" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round"/>
-                <line x1="9" y1="55" x2="15" y2="55" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round"/>
+                <circle cx="55" cy="55" r="50" stroke="rgb(from var(--color-tint) r g b / 0.15)" strokeWidth="3.5" fill="none"/>
+                <path d="M 11.7 80 A 50 50 0 1 1 98.3 80" stroke="url(#heroGauge)" strokeWidth="4" strokeLinecap="round" fill="none"/>
+                <line x1="55" y1="5" x2="55" y2="15" stroke="rgb(from var(--color-tint) r g b / 0.25)" strokeWidth="1.5" strokeLinecap="round"/>
+                <line x1="94" y1="24" x2="87" y2="30" stroke="rgb(from var(--color-tint) r g b / 0.25)" strokeWidth="1.5" strokeLinecap="round"/>
+                <line x1="16" y1="24" x2="23" y2="30" stroke="rgb(from var(--color-tint) r g b / 0.25)" strokeWidth="1.5" strokeLinecap="round"/>
+                <line x1="105" y1="55" x2="95" y2="55" stroke="rgb(from var(--color-tint) r g b / 0.25)" strokeWidth="1.5" strokeLinecap="round"/>
+                <line x1="5" y1="55" x2="15" y2="55" stroke="rgb(from var(--color-tint) r g b / 0.25)" strokeWidth="1.5" strokeLinecap="round"/>
                 <line x1="55" y1="55" x2="76" y2="32" stroke="#d4a853" strokeWidth="2.5" strokeLinecap="round"/>
                 <circle cx="55" cy="55" r="5" fill="#d4a853"/>
-                <circle cx="55" cy="55" r="2.5" fill="#0c0f14"/>
+                <circle cx="55" cy="55" r="2.5" fill="var(--color-gauge-dot)"/>
               </svg>
             </motion.div>
             {/* Glow beneath logo */}
@@ -118,7 +118,7 @@ export function LandingPage() {
         </div>
 
         {/* Model cards grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
           {models.map((model, i) => {
             const medianPrice = (model as typeof model & { median_price?: number }).median_price
             return (
@@ -130,7 +130,7 @@ export function LandingPage() {
               >
                 <Link
                   to={`/models/${model.slug}/rankings`}
-                  className="group block rounded-2xl border border-white/[0.06] bg-surface/80 backdrop-blur-sm overflow-hidden transition-all duration-500 ease-out hover:border-amber-500/25 hover:shadow-[0_8px_40px_rgba(212,168,83,0.12)] hover:-translate-y-1"
+                  className="group block rounded-2xl border border-tint/[0.06] bg-surface/80 backdrop-blur-sm overflow-hidden transition-all duration-500 ease-out hover:border-amber-500/25 hover:shadow-[0_8px_40px_rgba(212,168,83,0.12)] hover:-translate-y-1"
                 >
                   {/* Card image with gradient overlay */}
                   {model.image_url && (
@@ -158,19 +158,19 @@ export function LandingPage() {
                         <p className="text-[10px] text-amber-500/70 uppercase tracking-widest font-semibold mb-0.5">
                           {model.brand}
                         </p>
-                        <h2 className="text-xl font-semibold text-text-primary font-fraunces leading-tight group-hover:text-amber-200 transition-colors duration-200">
+                        <h2 className="text-xl font-semibold text-text-primary font-fraunces leading-tight group-hover:text-accent-text transition-colors duration-200">
                           {model.name}
                         </h2>
                       </div>
 
                       {/* Arrow indicator — fades in on hover */}
-                      <div className="shrink-0 mt-1 w-7 h-7 rounded-full border border-white/[0.08] bg-white/[0.04] flex items-center justify-center opacity-0 group-hover:opacity-100 group-hover:border-amber-500/30 group-hover:bg-amber-500/10 transition-all duration-300 -translate-x-1 group-hover:translate-x-0">
-                        <ArrowRight className="w-3.5 h-3.5 text-amber-400 transition-transform duration-200 group-hover:translate-x-0.5" />
+                      <div className="shrink-0 mt-1 w-7 h-7 rounded-full border border-tint/[0.08] bg-tint/[0.04] flex items-center justify-center opacity-0 group-hover:opacity-100 group-hover:border-amber-500/30 group-hover:bg-amber-500/10 transition-all duration-300 -translate-x-1 group-hover:translate-x-0">
+                        <ArrowRight className="w-3.5 h-3.5 text-accent transition-transform duration-200 group-hover:translate-x-0.5" />
                       </div>
                     </div>
 
                     {/* Stats row */}
-                    <div className="flex items-center justify-between text-xs text-text-muted border-t border-white/[0.05] pt-3">
+                    <div className="flex items-center justify-between text-xs text-text-muted border-t border-tint/[0.05] pt-3">
                       {model.ad_count > 0 ? (
                         <span>{model.ad_count} {t('landing.ads')}</span>
                       ) : (
@@ -179,7 +179,7 @@ export function LandingPage() {
 
                       <div className="flex items-center gap-2">
                         {medianPrice != null ? (
-                          <span className="text-amber-400/80 font-medium">
+                          <span className="text-accent/80 font-medium">
                             {t('landing.medianPrice')} {formatPrice(medianPrice)}
                           </span>
                         ) : model.min_price != null && model.max_price != null ? (

@@ -32,7 +32,7 @@ function RefreshStatusBadge() {
   if (!status) return null
 
   const colors = {
-    running: 'bg-amber-500/10 text-amber-300 ring-1 ring-amber-500/20',
+    running: 'bg-accent-subtle text-accent-text ring-1 ring-amber-500/20',
     idle: 'bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/20',
     error: 'bg-red-500/10 text-red-300 ring-1 ring-red-500/20',
   }
@@ -69,11 +69,11 @@ function GroupRow({
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <div className="rounded-xl hover:bg-white/[0.015] transition-colors">
+    <div className="rounded-xl hover:bg-tint/[0.015] transition-colors">
       <div className="flex items-center gap-3 px-4 py-3">
         <button
           onClick={() => setExpanded(!expanded)}
-          className="p-0.5 rounded-md hover:bg-white/[0.06] text-text-dim hover:text-text-secondary transition-colors"
+          className="p-0.5 rounded-md hover:bg-tint/[0.06] text-text-dim hover:text-text-secondary transition-colors"
         >
           {expanded ? (
             <ChevronDown className="h-4 w-4" />
@@ -88,7 +88,7 @@ function GroupRow({
             {group.expressions.map((expr) => (
               <Badge
                 key={expr}
-                className="bg-white/[0.05] text-text-dim ring-1 ring-white/[0.08]"
+                className="bg-tint/[0.05] text-text-dim ring-1 ring-tint/[0.08]"
               >
                 {expr}
               </Badge>
@@ -108,7 +108,7 @@ function GroupRow({
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={onEdit}
-            className="p-1.5 rounded-lg text-text-dim hover:text-text-secondary hover:bg-white/[0.06] transition-colors"
+            className="p-1.5 rounded-lg text-text-dim hover:text-text-secondary hover:bg-tint/[0.06] transition-colors"
             title={t('common.edit')}
           >
             <Pencil className="h-3.5 w-3.5" />
@@ -135,7 +135,7 @@ function GroupRow({
               {group.variants.map((v) => (
                 <div
                   key={v.id}
-                  className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/[0.03] group transition-colors"
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-tint/[0.03] group transition-colors"
                 >
                   <div className="flex-1 min-w-0">
                     <span className="text-sm text-text-secondary">{v.name}</span>
@@ -153,7 +153,7 @@ function GroupRow({
                   <span className="text-xs text-text-dim tabular-nums">{formatPrice(v.estimated_new_price)}</span>
                   <button
                     onClick={() => onEditVariant(v)}
-                    className="p-1 rounded-md text-text-dim opacity-0 group-hover:opacity-100 hover:text-text-secondary hover:bg-white/[0.06] transition-all"
+                    className="p-1 rounded-md text-text-dim opacity-0 group-hover:opacity-100 hover:text-text-secondary hover:bg-tint/[0.06] transition-all"
                     title={t('common.edit')}
                   >
                     <Pencil className="h-3 w-3" />
@@ -162,7 +162,7 @@ function GroupRow({
               ))}
               <button
                 onClick={onNewVariant}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-amber-300/70 hover:text-amber-300 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-accent-text/70 hover:text-accent-text transition-colors"
               >
                 <Plus className="h-3 w-3" />
                 {t('catalog.createVariant')}
@@ -396,7 +396,7 @@ export function CatalogPage() {
                   {t('catalog.accessory', { count: grouped[category].length })}
                 </span>
               </div>
-              <div className="divide-y divide-white/[0.04]">
+              <div className="divide-y divide-tint/[0.04]">
                 {grouped[category].map((group) => (
                   <GroupRow
                     key={group.id}

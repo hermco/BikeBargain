@@ -4,6 +4,8 @@
 @theme {
   --font-sans: 'Outfit', system-ui, sans-serif;
   --font-display: 'Fraunces', Georgia, serif;
+
+  /* Token registration — values overridden by :root / .dark below */
   --color-surface: #161a22;
   --color-surface-hover: #1c2130;
   --color-border: #262d3d;
@@ -13,10 +15,56 @@
   --color-text-muted: #5a6478;
   --color-text-dim: #3a4258;
   --color-accent: #d4a853;
+  --color-accent-text: #fbbf24;
+  --color-accent-subtle: rgba(245, 158, 11, 0.15);
+  --color-tint: rgb(255 255 255);
+  --color-gauge-dot: #0c0f14;
 }
 
 @utility font-fraunces {
   font-family: 'Fraunces', Georgia, serif;
+}
+
+/* ── Light mode ─────────────────────────────────────── */
+:root {
+  --color-bg: #f5f6fa;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f0f1f5;
+  --color-border: #dfe2ea;
+  --color-text-primary: #1a1d28;
+  --color-text-secondary: #4a5068;
+  --color-text-muted: #7c8498;
+  --color-text-dim: #a0a8b8;
+  --color-accent: #b8860b;
+  --color-accent-text: #92400e;
+  --color-accent-subtle: rgba(146, 64, 14, 0.10);
+  --color-tint: rgb(0 0 0);
+  --color-gauge-dot: #ffffff;
+  --shimmer-lo: rgba(0, 0, 0, 0.04);
+  --shimmer-hi: rgba(0, 0, 0, 0.07);
+  --noise-opacity: 0.025;
+  --selection-bg: rgba(146, 64, 14, 0.15);
+}
+
+/* ── Dark mode ──────────────────────────────────────── */
+.dark {
+  --color-bg: #0c0f14;
+  --color-surface: #161a22;
+  --color-surface-hover: #1c2130;
+  --color-border: #262d3d;
+  --color-text-primary: #f0f2f5;
+  --color-text-secondary: #8b95a8;
+  --color-text-muted: #5a6478;
+  --color-text-dim: #3a4258;
+  --color-accent: #d4a853;
+  --color-accent-text: #fbbf24;
+  --color-accent-subtle: rgba(245, 158, 11, 0.15);
+  --color-tint: rgb(255 255 255);
+  --color-gauge-dot: #0c0f14;
+  --shimmer-lo: rgba(255, 255, 255, 0.03);
+  --shimmer-hi: rgba(255, 255, 255, 0.08);
+  --noise-opacity: 0.015;
+  --selection-bg: rgba(212, 168, 83, 0.3);
 }
 
 body {
@@ -32,7 +80,7 @@ body::before {
   inset: 0;
   pointer-events: none;
   z-index: 1;
-  opacity: 0.015;
+  opacity: var(--noise-opacity);
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
   background-repeat: repeat;
   background-size: 256px 256px;
@@ -46,22 +94,25 @@ body::before {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-white/10 rounded-full;
+  @apply bg-tint/10 rounded-full;
 }
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-white/20;
+  @apply bg-tint/20;
 }
 
 /* Selection */
 ::selection {
-  background: rgba(212, 168, 83, 0.3);
-  color: #f0f2f5;
+  background: var(--selection-bg);
+  color: var(--color-text-primary);
 }
 
 /* Recharts tooltip */
 .recharts-default-tooltip {
   border-radius: 12px !important;
   backdrop-filter: blur(12px) !important;
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text-primary) !important;
 }
 
 /* Accordion animations */
@@ -99,9 +150,9 @@ body::before {
 @utility skeleton-shimmer {
   background: linear-gradient(
     90deg,
-    rgba(255,255,255,0.03) 25%,
-    rgba(255,255,255,0.08) 50%,
-    rgba(255,255,255,0.03) 75%
+    var(--shimmer-lo) 25%,
+    var(--shimmer-hi) 50%,
+    var(--shimmer-lo) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.8s ease-in-out infinite;
@@ -188,4 +239,20 @@ button:focus-visible {
 /* Smooth scrollbar fade */
 ::-webkit-scrollbar-thumb {
   transition: background-color 0.2s ease;
+}
+
+/* Light mode: softer shadows for cards */
+:root:not(.dark) .shadow-xl {
+  --tw-shadow-color: rgba(0, 0, 0, 0.06);
+}
+:root:not(.dark) .shadow-2xl {
+  --tw-shadow-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Theme transition — applied to root for smooth toggles */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease, box-shadow 0.3s ease !important;
 }

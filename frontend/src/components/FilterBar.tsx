@@ -52,7 +52,7 @@ export function FilterBar({ variant, onVariantChange, search, onSearchChange, so
           placeholder={t('filter.searchPlaceholder')}
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full rounded-xl bg-white/[0.04] border border-white/[0.06] pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/30 transition-all"
+          className="w-full rounded-xl bg-tint/[0.04] border border-tint/[0.06] pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/30 transition-all"
         />
       </div>
       <Select

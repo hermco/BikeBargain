@@ -27,7 +27,7 @@ import type { Ranking } from '../types'
 function TravelBadge({ travel, loading }: { travel?: TravelInfo; loading?: boolean }) {
   const base = 'inline-flex items-center justify-center rounded-lg px-2 py-0.5 min-w-[3.5rem] text-center text-[11px] leading-[16px]'
   if (loading && !travel) {
-    return <span className={cn(base, 'bg-white/[0.06] animate-pulse')}>&nbsp;</span>
+    return <span className={cn(base, 'bg-tint/[0.06] animate-pulse')}>&nbsp;</span>
   }
   if (!travel) return null
   const band = travelTimeBand(travel.durationSec)
@@ -54,7 +54,7 @@ function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
     >
       <div className="px-5 pb-5 pt-3 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
         {/* Accessories */}
-        <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-4">
+        <div className="rounded-xl bg-tint/[0.02] border border-tint/[0.04] p-4">
           <h4 className="text-[10px] text-text-muted uppercase tracking-widest font-semibold mb-3">
             {t('ranking.accessories')} ({r.acc_count}) — <span className="text-emerald-400">{formatPrice(r.acc_used_total)}</span>
           </h4>
@@ -73,7 +73,7 @@ function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
         </div>
 
         {/* Consumables */}
-        <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-4">
+        <div className="rounded-xl bg-tint/[0.02] border border-tint/[0.04] p-4">
           <h4 className="text-[10px] text-text-muted uppercase tracking-widest font-semibold mb-3">
             {t('ranking.consumables')} — <span className="text-orange-400">+{formatPrice(r.wear_total)}</span>
           </h4>
@@ -85,13 +85,13 @@ function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
               </li>
             ))}
           </ul>
-          <p className="text-[10px] text-text-dim mt-3 pt-2 border-t border-white/[0.04]">
+          <p className="text-[10px] text-text-dim mt-3 pt-2 border-t border-tint/[0.04]">
             {t('ranking.mechanical')} : +{formatPrice(r.mechanical_wear)} · {t('ranking.conditionRisk')} : +{formatPrice(r.condition_risk)} ({r.km} km)
           </p>
         </div>
 
         {/* Warranty & alerts */}
-        <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-4">
+        <div className="rounded-xl bg-tint/[0.02] border border-tint/[0.04] p-4">
           <h4 className="text-[10px] text-text-muted uppercase tracking-widest font-semibold mb-3">
             {t('ranking.warranty')} — {r.warranty.remaining_years} {t('ranking.years')} — <span className="text-blue-400">{formatPrice(r.warranty.value)}</span>
           </h4>
@@ -122,8 +122,8 @@ function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
             </p>
           )}
 
-          <div className="mt-3 pt-2 border-t border-white/[0.04] flex gap-3">
-            <Link to={modelUrl(`/ads/${r.id}`)} className="text-xs text-amber-400 hover:text-amber-300 transition-colors">
+          <div className="mt-3 pt-2 border-t border-tint/[0.04] flex gap-3">
+            <Link to={modelUrl(`/ads/${r.id}`)} className="text-xs text-amber-400 hover:text-accent-text transition-colors">
               {t('ranking.viewAd')}
             </Link>
             <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-xs text-text-dim hover:text-text-secondary flex items-center gap-0.5 transition-colors">
@@ -176,7 +176,7 @@ function RankingCard({ r, rank, isOpen, onToggle, travel, travelLoading, hasFilt
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-text-muted border-t border-white/[0.04] pt-3">
+        <div className="flex items-center justify-between text-xs text-text-muted border-t border-tint/[0.04] pt-3">
           <div className="flex gap-4">
             <span>{t('ranking.listed')} : <span className="text-text-primary font-medium">{formatPrice(r.price)}</span></span>
             <span>{formatKm(r.km)}</span>
@@ -191,7 +191,7 @@ function RankingCard({ r, rank, isOpen, onToggle, travel, travelLoading, hasFilt
         {/* Décote progress bar */}
         <div className="flex items-center gap-2 pt-1">
           <span className="text-[10px] text-text-dim">{t('ranking.discount')}</span>
-          <div className="flex-1 h-1 rounded-full bg-white/[0.06] overflow-hidden">
+          <div className="flex-1 h-1 rounded-full bg-tint/[0.06] overflow-hidden">
             <div
               className={cn(
                 'h-full rounded-full transition-all duration-500',
@@ -377,7 +377,7 @@ export function RankingPage() {
       onClick={() => handleSort(k)}
     >
       {children}
-      {sortKey === k && <span className="ml-0.5 text-amber-400">{sortAsc ? '\u25b2' : '\u25bc'}</span>}
+      {sortKey === k && <span className="ml-0.5 text-accent">{sortAsc ? '\u25b2' : '\u25bc'}</span>}
     </th>
   )
 
@@ -435,7 +435,7 @@ export function RankingPage() {
           >
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-5 py-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-amber-300 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-accent-text flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4" />
                   {t('ranking.newlySoldBanner', { count: newlySoldIds.size })}
                 </h3>
@@ -455,7 +455,7 @@ export function RankingPage() {
                       <Link
                         key={r.id}
                         to={modelUrl(`/ads/${r.id}`)}
-                        className="inline-flex items-center gap-2 rounded-lg bg-white/[0.04] border border-white/[0.06] px-3 py-2 text-sm hover:bg-white/[0.08] transition-colors"
+                        className="inline-flex items-center gap-2 rounded-lg bg-tint/[0.04] border border-tint/[0.06] px-3 py-2 text-sm hover:bg-tint/[0.08] transition-colors"
                       >
                         <span className="text-text-dim font-fraunces">#{origRank}</span>
                         <span className="text-text-secondary">{r.city}</span>
@@ -479,7 +479,7 @@ export function RankingPage() {
             placeholder={t('ranking.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl bg-white/[0.04] border border-white/[0.06] pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/30 transition-all"
+            className="w-full rounded-xl bg-tint/[0.04] border border-tint/[0.06] pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/30 transition-all"
           />
         </div>
         <button
@@ -488,14 +488,14 @@ export function RankingPage() {
             'flex items-center gap-2.5 rounded-xl border px-4 py-2.5 transition-all cursor-pointer shrink-0',
             hideSold
               ? 'bg-gradient-to-r from-amber-500/12 to-amber-500/6 border-amber-500/25'
-              : 'bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.05]',
+              : 'bg-tint/[0.03] border-tint/[0.06] hover:bg-tint/[0.05]',
           )}
           title={t('ranking.toggleSold')}
         >
           {/* Toggle switch */}
           <div className={cn(
             'relative w-9 h-5 rounded-full transition-colors duration-200',
-            hideSold ? 'bg-amber-500/80' : 'bg-white/[0.12]',
+            hideSold ? 'bg-amber-500/80' : 'bg-tint/[0.12]',
           )}>
             <div className={cn(
               'absolute top-[2px] w-4 h-4 rounded-full bg-bg shadow-sm transition-all duration-200',
@@ -504,14 +504,14 @@ export function RankingPage() {
           </div>
           <span className={cn(
             'text-sm font-medium transition-colors',
-            hideSold ? 'text-amber-300' : 'text-text-muted',
+            hideSold ? 'text-accent-text' : 'text-text-muted',
           )}>
             {t('ranking.hideSold')}
           </span>
           {soldCount > 0 && (
             <span className={cn(
               'text-[11px] tabular-nums font-semibold px-1.5 py-0.5 rounded-md transition-colors',
-              hideSold ? 'bg-amber-500/15 text-amber-400' : 'bg-white/[0.06] text-text-dim',
+              hideSold ? 'bg-accent-subtle text-amber-400' : 'bg-tint/[0.06] text-text-dim',
             )}>
               {soldCount}
             </span>
@@ -520,7 +520,7 @@ export function RankingPage() {
       </div>
 
       {/* Row 2: Filter groups in card container */}
-      <div className="rounded-xl bg-white/[0.02] border border-white/[0.05] px-4 py-3">
+      <div className="rounded-xl bg-tint/[0.02] border border-tint/[0.05] px-4 py-3">
         <div className="flex flex-wrap gap-x-4 gap-y-3 items-center">
 
           {/* Color group */}
@@ -535,15 +535,15 @@ export function RankingPage() {
                     className={cn(
                       'rounded-lg px-2.5 py-1 text-xs font-medium border transition-all cursor-pointer',
                       filterColors.has(c)
-                        ? 'bg-amber-500/15 border-amber-500/30 text-amber-300'
-                        : 'bg-white/[0.03] border-white/[0.06] text-text-dim hover:text-text-secondary hover:bg-white/[0.06]',
+                        ? 'bg-accent-subtle border-amber-500/30 text-accent-text'
+                        : 'bg-tint/[0.03] border-tint/[0.06] text-text-dim hover:text-text-secondary hover:bg-tint/[0.06]',
                     )}
                   >
                     {c}
                   </button>
                 ))}
               </div>
-              <div className="w-px h-5 bg-white/[0.06] hidden sm:block" />
+              <div className="w-px h-5 bg-tint/[0.06] hidden sm:block" />
             </>
           )}
 
@@ -561,8 +561,8 @@ export function RankingPage() {
                 className={cn(
                   'rounded-lg px-2.5 py-1 text-xs font-medium border transition-all cursor-pointer',
                   filterWheel === opt.value
-                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-300'
-                    : 'bg-white/[0.03] border-white/[0.06] text-text-dim hover:text-text-secondary hover:bg-white/[0.06]',
+                    ? 'bg-accent-subtle border-amber-500/30 text-accent-text'
+                    : 'bg-tint/[0.03] border-tint/[0.06] text-text-dim hover:text-text-secondary hover:bg-tint/[0.06]',
                 )}
               >
                 {opt.label}
@@ -570,7 +570,7 @@ export function RankingPage() {
             ))}
           </div>
 
-          <div className="w-px h-5 bg-white/[0.06] hidden sm:block" />
+          <div className="w-px h-5 bg-tint/[0.06] hidden sm:block" />
 
           {/* Max values group */}
           <div className="flex items-center gap-1.5">
@@ -582,7 +582,7 @@ export function RankingPage() {
                 placeholder="—"
                 value={maxKm}
                 onChange={(e) => setMaxKm(e.target.value)}
-                className="rounded-lg bg-white/[0.04] border border-white/[0.06] pl-8 pr-2.5 py-1 text-xs text-text-primary placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-all w-[90px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className="rounded-lg bg-tint/[0.04] border border-tint/[0.06] pl-8 pr-2.5 py-1 text-xs text-text-primary placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-all w-[90px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
             </div>
             <div className="relative">
@@ -592,7 +592,7 @@ export function RankingPage() {
                 placeholder="—"
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(e.target.value)}
-                className="rounded-lg bg-white/[0.04] border border-white/[0.06] pl-7 pr-2.5 py-1 text-xs text-text-primary placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-all w-[90px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className="rounded-lg bg-tint/[0.04] border border-tint/[0.06] pl-7 pr-2.5 py-1 text-xs text-text-primary placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-all w-[90px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
             </div>
           </div>
@@ -600,7 +600,7 @@ export function RankingPage() {
           {/* Travel time presets (only if location set) */}
           {hasLocation && (
             <>
-              <div className="w-px h-5 bg-white/[0.06] hidden sm:block" />
+              <div className="w-px h-5 bg-tint/[0.06] hidden sm:block" />
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] uppercase tracking-widest text-text-dim font-semibold mr-1">{t('ranking.travel')}</span>
                 {[
@@ -615,8 +615,8 @@ export function RankingPage() {
                     className={cn(
                       'rounded-lg px-2.5 py-1 text-xs font-medium border transition-all cursor-pointer',
                       maxTrajet === p.value
-                        ? 'bg-amber-500/15 border-amber-500/30 text-amber-300'
-                        : 'bg-white/[0.03] border-white/[0.06] text-text-dim hover:text-text-secondary hover:bg-white/[0.06]',
+                        ? 'bg-accent-subtle border-amber-500/30 text-accent-text'
+                        : 'bg-tint/[0.03] border-tint/[0.06] text-text-dim hover:text-text-secondary hover:bg-tint/[0.06]',
                     )}
                   >
                     {p.label}
@@ -645,37 +645,37 @@ export function RankingPage() {
       {(hasFilters || filtered.length < rankings.length) && (
         <div className="flex flex-wrap items-center gap-1.5">
           {search && (
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-amber-300">
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-accent-text">
               "{search}"
               <button onClick={() => setSearch('')} className="hover:text-amber-100 transition-colors"><X className="h-2.5 w-2.5" /></button>
             </span>
           )}
           {[...filterColors].map((c) => (
-            <span key={c} className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-amber-300">
+            <span key={c} className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-accent-text">
               {c}
               <button onClick={() => toggleColor(c)} className="hover:text-amber-100 transition-colors"><X className="h-2.5 w-2.5" /></button>
             </span>
           ))}
           {filterWheel && (
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-amber-300">
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-accent-text">
               {filterWheel === 'rayons' ? t('ranking.spoked') : t('ranking.tubeless')}
               <button onClick={() => setFilterWheel('')} className="hover:text-amber-100 transition-colors"><X className="h-2.5 w-2.5" /></button>
             </span>
           )}
           {maxKm && (
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-amber-300">
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-accent-text">
               ≤ {Number(maxKm).toLocaleString()} km
               <button onClick={() => setMaxKm('')} className="hover:text-amber-100 transition-colors"><X className="h-2.5 w-2.5" /></button>
             </span>
           )}
           {maxPrice && (
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-amber-300">
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-accent-text">
               ≤ {Number(maxPrice).toLocaleString()} €
               <button onClick={() => setMaxPrice('')} className="hover:text-amber-100 transition-colors"><X className="h-2.5 w-2.5" /></button>
             </span>
           )}
           {maxTrajet && (
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-amber-300">
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-accent-text">
               ≤ {Math.round(Number(maxTrajet) / 60)}h
               <button onClick={() => setMaxTrajet('')} className="hover:text-amber-100 transition-colors"><X className="h-2.5 w-2.5" /></button>
             </span>
@@ -711,7 +711,7 @@ export function RankingPage() {
       <Card className="overflow-x-auto hidden lg:block">
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10 bg-surface">
-            <tr className="text-left text-[11px] text-text-dim uppercase tracking-widest border-b border-white/[0.06]">
+            <tr className="text-left text-[11px] text-text-dim uppercase tracking-widest border-b border-tint/[0.06]">
               <SortHeader k="rank" className="pl-5 w-12 text-center">{t('ranking.rank')}</SortHeader>
               <th className="py-4 pr-4">{t('ranking.city')}</th>
               {hasLocation && <SortHeader k="distance" className="text-right w-20">{t('ranking.travel')}</SortHeader>}
@@ -733,7 +733,7 @@ export function RankingPage() {
               const podiumStyle = isPodium && origRank === 1
                 ? 'border-l-2 border-l-amber-400/60 bg-amber-500/[0.04]'
                 : isPodium && origRank === 2
-                  ? 'border-l-2 border-l-gray-300/40 bg-white/[0.02]'
+                  ? 'border-l-2 border-l-gray-300/40 bg-tint/[0.02]'
                   : isPodium && origRank === 3
                     ? 'border-l-2 border-l-amber-700/40 bg-amber-900/[0.03]'
                     : ''
@@ -742,8 +742,8 @@ export function RankingPage() {
                 <React.Fragment key={r.id}>
                   <tr
                     className={cn(
-                      'border-b border-white/[0.04] cursor-pointer transition-all duration-200 group/row',
-                      isOpen ? 'bg-white/[0.04]' : 'hover:bg-white/[0.03]',
+                      'border-b border-tint/[0.04] cursor-pointer transition-all duration-200 group/row',
+                      isOpen ? 'bg-tint/[0.04]' : 'hover:bg-tint/[0.03]',
                       r.sold ? 'opacity-50 bg-red-950/20 border-l-2 !border-l-red-500/40' : podiumStyle,
                     )}
                     onClick={() => setExpanded(isOpen ? null : r.id)}

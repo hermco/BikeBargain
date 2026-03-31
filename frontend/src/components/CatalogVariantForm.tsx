@@ -21,9 +21,9 @@ function TagInput({ tags, onChange, placeholder }: { tags: string[]; onChange: (
     }
   }
   return (
-    <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-white/[0.04] border border-white/[0.08] min-h-[42px] focus-within:ring-2 focus-within:ring-amber-500/30">
+    <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-tint/[0.04] border border-tint/[0.08] min-h-[42px] focus-within:ring-2 focus-within:ring-amber-500/30">
       {tags.map(tag => (
-        <span key={tag} className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/[0.08] text-xs text-text-secondary">
+        <span key={tag} className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-tint/[0.08] text-xs text-text-secondary">
           {tag}
           <button type="button" onClick={() => onChange(tags.filter(t => t !== tag))} className="text-text-dim hover:text-red-400">
             &times;
@@ -168,7 +168,7 @@ export function CatalogVariantForm({ groupId, group, variant, onClose }: Catalog
     <Dialog.Root open onOpenChange={(v) => { if (!v) onClose() }}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-md z-40" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-2xl max-h-[85vh] flex flex-col bg-surface border border-white/[0.08] rounded-2xl z-50 shadow-2xl shadow-black/50">
+        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-2xl max-h-[85vh] flex flex-col bg-surface border border-tint/[0.08] rounded-2xl z-50 shadow-2xl shadow-black/50">
           <div className="px-7 pt-7 pb-2 shrink-0">
             <Dialog.Title className="text-xl font-semibold text-text-primary font-fraunces">
               {isEdit ? t('catalog.editVariant') : t('catalog.createVariant')}
@@ -184,7 +184,7 @@ export function CatalogVariantForm({ groupId, group, variant, onClose }: Catalog
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] px-3 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
+                  className="w-full rounded-xl bg-tint/[0.04] border border-tint/[0.08] px-3 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
                   autoFocus
                 />
               </div>
@@ -195,7 +195,7 @@ export function CatalogVariantForm({ groupId, group, variant, onClose }: Catalog
                     type="number"
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
-                    className="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] px-3 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all pr-8"
+                    className="w-full rounded-xl bg-tint/[0.04] border border-tint/[0.08] px-3 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all pr-8"
                     min="0"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim text-xs">&euro;</span>
@@ -238,7 +238,7 @@ export function CatalogVariantForm({ groupId, group, variant, onClose }: Catalog
             </button>
 
             {showAdvanced && (
-              <div className="space-y-3 pl-2 border-l-2 border-white/[0.06]">
+              <div className="space-y-3 pl-2 border-l-2 border-tint/[0.06]">
                 <div>
                   <label className="text-xs text-text-muted block mb-1">
                     {t('catalog.optionalWords')}
@@ -255,7 +255,7 @@ export function CatalogVariantForm({ groupId, group, variant, onClose }: Catalog
                     type="text"
                     value={regexOverride}
                     onChange={(e) => setRegexOverride(e.target.value)}
-                    className="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] px-3 py-2.5 text-sm text-text-primary font-mono placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
+                    className="w-full rounded-xl bg-tint/[0.04] border border-tint/[0.08] px-3 py-2.5 text-sm text-text-primary font-mono placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
                   />
                 </div>
                 <div>
@@ -267,7 +267,7 @@ export function CatalogVariantForm({ groupId, group, variant, onClose }: Catalog
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     rows={2}
-                    className="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] px-3 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all resize-none"
+                    className="w-full rounded-xl bg-tint/[0.04] border border-tint/[0.08] px-3 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all resize-none"
                   />
                 </div>
               </div>
@@ -281,7 +281,7 @@ export function CatalogVariantForm({ groupId, group, variant, onClose }: Catalog
                 </h4>
                 <div>
                   <span className="text-xs text-text-dim">{t('catalog.previewRegex')}</span>
-                  <code className="block mt-1 text-xs font-mono text-amber-300/80 bg-white/[0.03] rounded-lg p-2 break-all">
+                  <code className="block mt-1 text-xs font-mono text-accent-text/80 bg-tint/[0.03] rounded-lg p-2 break-all">
                     {preview.generated_regex}
                   </code>
                 </div>
@@ -294,7 +294,7 @@ export function CatalogVariantForm({ groupId, group, variant, onClose }: Catalog
                       <div key={ad.id} className="text-xs text-text-dim flex gap-2">
                         <span className="text-text-muted">#{ad.id}</span>
                         <span className="truncate">{ad.title}</span>
-                        <span className="text-amber-300/60 font-mono shrink-0">{ad.matched_text}</span>
+                        <span className="text-accent-text/60 font-mono shrink-0">{ad.matched_text}</span>
                       </div>
                     ))}
                   </div>
@@ -342,7 +342,7 @@ export function CatalogVariantForm({ groupId, group, variant, onClose }: Catalog
 
             {/* Delete confirmation for existing variants */}
             {isEdit && variant && (
-              <div className="border-t border-white/[0.06] pt-4">
+              <div className="border-t border-tint/[0.06] pt-4">
                 {showDeleteConfirm ? (
                   <div className="rounded-xl bg-red-500/5 border border-red-500/20 p-4 space-y-2">
                     <p className="text-sm text-red-400">
@@ -380,7 +380,7 @@ export function CatalogVariantForm({ groupId, group, variant, onClose }: Catalog
           </div>
 
           {/* Footer */}
-          <div className="shrink-0 px-7 py-4 bg-surface border-t border-white/[0.06] rounded-b-2xl">
+          <div className="shrink-0 px-7 py-4 bg-surface border-t border-tint/[0.06] rounded-b-2xl">
             <div className="flex justify-end gap-3">
               <Button variant="ghost" onClick={onClose} disabled={isPending}>
                 {t('common.cancel')}

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { BarChart3, Trophy, LayoutGrid, Plus, Search, Wrench, Globe, ArrowLeft } from 'lucide-react'
+import { BarChart3, Trophy, LayoutGrid, Plus, Search, Wrench, Globe, ArrowLeft, Sun, Moon } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../lib/utils'
@@ -7,7 +7,41 @@ import { useFormatters } from '../hooks/useFormatters'
 import { useStats } from '../hooks/queries'
 import { useContext } from 'react'
 import { ModelCtx } from '../hooks/useCurrentModel'
+import { useTheme } from '../hooks/useTheme'
 import { EASE_OUT_EXPO } from './animations'
+
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme()
+  const isDark = theme === 'dark'
+
+  function handleToggle() {
+    document.documentElement.classList.add('theme-transitioning')
+    toggleTheme()
+    setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), 350)
+  }
+
+  return (
+    <motion.button
+      onClick={handleToggle}
+      className="flex items-center justify-center w-8 h-8 rounded-lg bg-tint/[0.04] border border-tint/[0.06] text-text-dim hover:text-accent-text hover:bg-tint/[0.08] transition-all mr-4"
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.9 }}
+      title={isDark ? 'Light mode' : 'Dark mode'}
+    >
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={theme}
+          initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
+          animate={{ rotate: 0, opacity: 1, scale: 1 }}
+          exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
+          transition={{ duration: 0.2 }}
+        >
+          {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+        </motion.span>
+      </AnimatePresence>
+    </motion.button>
+  )
+}
 
 function LanguageSwitcher() {
   const { i18n } = useTranslation()
@@ -16,13 +50,13 @@ function LanguageSwitcher() {
   return (
     <div className="flex items-center gap-1.5 px-4">
       <Globe className="h-3.5 w-3.5 text-text-dim shrink-0" />
-      <div className="flex rounded-lg bg-white/[0.04] border border-white/[0.06] p-0.5">
+      <div className="flex rounded-lg bg-tint/[0.04] border border-tint/[0.06] p-0.5">
         <button
           onClick={() => i18n.changeLanguage('fr')}
           className={cn(
             'px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all',
             currentLang === 'fr'
-              ? 'bg-amber-500/15 text-amber-300 shadow-sm'
+              ? 'bg-accent-subtle text-accent-text shadow-sm'
               : 'text-text-dim hover:text-text-secondary',
           )}
         >
@@ -33,7 +67,7 @@ function LanguageSwitcher() {
           className={cn(
             'px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all',
             currentLang === 'en'
-              ? 'bg-amber-500/15 text-amber-300 shadow-sm'
+              ? 'bg-accent-subtle text-accent-text shadow-sm'
               : 'text-text-dim hover:text-text-secondary',
           )}
         >
@@ -58,8 +92,8 @@ function NavItem({ to, icon: Icon, label, index = 0 }: { to: string; icon: React
           cn(
             'relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden',
             isActive
-              ? 'bg-gradient-to-r from-amber-500/15 to-amber-500/5 text-amber-300 shadow-[inset_0_0_0_1px_rgba(212,168,83,0.15)]'
-              : 'text-text-muted hover:text-text-secondary hover:bg-white/[0.04]',
+              ? 'bg-gradient-to-r from-amber-500/15 to-amber-500/5 text-accent-text shadow-[inset_0_0_0_1px_rgba(212,168,83,0.15)]'
+              : 'text-text-muted hover:text-text-secondary hover:bg-tint/[0.04]',
           )
         }
       >
@@ -77,7 +111,7 @@ function NavItem({ to, icon: Icon, label, index = 0 }: { to: string; icon: React
             <Icon
               className={cn(
                 'h-[18px] w-[18px] shrink-0 transition-all duration-200',
-                isActive ? 'text-amber-300' : 'group-hover:scale-110 group-hover:text-text-secondary',
+                isActive ? 'text-accent-text' : 'group-hover:scale-110 group-hover:text-text-secondary',
               )}
             />
             <span className="hidden md:inline relative">{label}</span>
@@ -106,14 +140,14 @@ function SidebarStats() {
 
   return (
     <motion.div
-      className="mx-3 rounded-xl overflow-hidden border border-white/[0.06] shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+      className="mx-3 rounded-xl overflow-hidden border border-tint/[0.06] shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3, duration: 0.4, ease: EASE_OUT_EXPO }}
     >
       {/* Colored top accent line */}
       <div className="h-[3px] bg-gradient-to-r from-amber-500/60 via-amber-400/80 to-amber-500/40" />
-      <div className="px-4 py-3 bg-white/[0.02]">
+      <div className="px-4 py-3 bg-tint/[0.02]">
         <p className="text-[10px] text-text-dim uppercase tracking-widest font-semibold mb-3">
           {t('sidebar.summary')}
         </p>
@@ -132,7 +166,7 @@ function SidebarStats() {
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400/80 shrink-0 transition-transform group-hover/stat:scale-150" />
               {t('sidebar.avgPrice')}
             </span>
-            <span className="text-amber-300 font-medium tabular-nums">{formatPrice(stats.price.mean)}</span>
+            <span className="text-accent-text font-medium tabular-nums">{formatPrice(stats.price.mean)}</span>
           </div>
           {/* Median price */}
           <div className="flex justify-between items-center group/stat">
@@ -171,7 +205,7 @@ export function Sidebar() {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col bg-bg/80 backdrop-blur-xl border-r border-white/[0.06] z-30">
+      <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col bg-bg/80 backdrop-blur-xl border-r border-tint/[0.06] z-30">
 
         {/* Logo area — more breathing room + separator */}
         <motion.div
@@ -192,14 +226,14 @@ export function Sidebar() {
                   <stop offset="100%" stopColor="#d97706"/>
                 </linearGradient>
               </defs>
-              <circle cx="55" cy="55" r="50" stroke="rgba(255,255,255,0.1)" strokeWidth="4" fill="none"/>
-              <path d="M 18.4 80 A 50 50 0 1 1 91.6 80" stroke="url(#sidebarGauge)" strokeWidth="4.5" strokeLinecap="round" fill="none"/>
-              <line x1="55" y1="9" x2="55" y2="17" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round"/>
-              <line x1="9" y1="55" x2="17" y2="55" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round"/>
-              <line x1="101" y1="55" x2="93" y2="55" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round"/>
+              <circle cx="55" cy="55" r="50" stroke="rgb(from var(--color-tint) r g b / 0.15)" strokeWidth="4" fill="none"/>
+              <path d="M 11.7 80 A 50 50 0 1 1 98.3 80" stroke="url(#sidebarGauge)" strokeWidth="4.5" strokeLinecap="round" fill="none"/>
+              <line x1="55" y1="5" x2="55" y2="15" stroke="rgb(from var(--color-tint) r g b / 0.25)" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="5" y1="55" x2="15" y2="55" stroke="rgb(from var(--color-tint) r g b / 0.25)" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="105" y1="55" x2="95" y2="55" stroke="rgb(from var(--color-tint) r g b / 0.25)" strokeWidth="2" strokeLinecap="round"/>
               <line x1="55" y1="55" x2="76" y2="32" stroke="#d4a853" strokeWidth="2.5" strokeLinecap="round"/>
               <circle cx="55" cy="55" r="5.5" fill="#d4a853"/>
-              <circle cx="55" cy="55" r="2.5" fill="#0c0f14"/>
+              <circle cx="55" cy="55" r="2.5" fill="var(--color-gauge-dot)"/>
             </svg>
           </motion.div>
           <div>
@@ -217,13 +251,13 @@ export function Sidebar() {
           </div>
         </motion.div>
         {/* Subtle separator below logo */}
-        <div className="h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent mx-4 mb-3" />
+        <div className="h-px bg-gradient-to-r from-transparent via-tint/[0.08] to-transparent mx-4 mb-3" />
 
         {ctx && (
           <div className="px-4 mb-2">
             <NavLink
               to="/?browse=1"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] text-text-dim hover:text-text-secondary hover:bg-white/[0.03] transition-all"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] text-text-dim hover:text-text-secondary hover:bg-tint/[0.03] transition-all"
             >
               <ArrowLeft className="h-3 w-3" />
               {t('nav.allModels')}
@@ -232,7 +266,7 @@ export function Sidebar() {
         )}
 
         {ctx?.model.image_url && (
-          <div className="mx-3 mb-3 rounded-xl overflow-hidden border border-white/[0.06]">
+          <div className="mx-3 mb-3 rounded-xl overflow-hidden border border-tint/[0.06]">
             <img
               src={ctx.model.image_url}
               alt={`${ctx.model.brand} ${ctx.model.name}`}
@@ -250,7 +284,7 @@ export function Sidebar() {
               {primaryNav.map((n, i) => (
                 <NavItem key={n.to} to={n.to} icon={n.icon} label={t(n.labelKey)} index={i} />
               ))}
-              <div className="h-px bg-white/[0.04] mx-2 my-1.5" />
+              <div className="h-px bg-tint/[0.04] mx-2 my-1.5" />
             </>
           )}
           {secondaryNav.length > 0 && (
@@ -290,9 +324,12 @@ export function Sidebar() {
               {t('sidebar.addAd')}
             </motion.button>
           )}
-          <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
-          <LanguageSwitcher />
-          <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
+          <div className="h-px bg-gradient-to-r from-transparent via-tint/[0.06] to-transparent" />
+          <div className="flex items-center justify-between">
+            <LanguageSwitcher />
+            <ThemeToggle />
+          </div>
+          <div className="h-px bg-gradient-to-r from-transparent via-tint/[0.06] to-transparent" />
           <p className="text-[10px] text-text-dim text-center">
             {t('sidebar.footer')}
           </p>
@@ -310,7 +347,7 @@ export function Sidebar() {
         className={cn(
           'md:hidden fixed bottom-0 left-0 right-0 z-30',
           'bg-bg/70 backdrop-blur-2xl backdrop-saturate-150',
-          'border-t border-white/[0.08]',
+          'border-t border-tint/[0.08]',
           'shadow-[0_-8px_32px_rgba(0,0,0,0.4)]',
           'flex justify-around py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-2',
         )}
@@ -323,7 +360,7 @@ export function Sidebar() {
             className={({ isActive }) =>
               cn(
                 'relative flex flex-col items-center gap-1 px-4 py-2 text-[10px] font-medium rounded-xl transition-all duration-200 min-w-[52px]',
-                isActive ? 'text-amber-300' : 'text-text-muted active:text-text-secondary',
+                isActive ? 'text-accent-text' : 'text-text-muted active:text-text-secondary',
               )
             }
           >

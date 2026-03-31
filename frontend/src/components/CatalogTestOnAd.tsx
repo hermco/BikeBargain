@@ -32,13 +32,13 @@ export function CatalogTestOnAd() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={t('catalog.testOnAdPlaceholder')}
-            className="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] pl-9 pr-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/30 transition-all"
+            className="w-full rounded-xl bg-tint/[0.04] border border-tint/[0.08] pl-9 pr-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/30 transition-all"
           />
         </div>
         <button
           type="submit"
           disabled={testMut.isPending || !input.trim()}
-          className="px-4 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.08] text-sm text-text-secondary hover:bg-white/[0.1] hover:text-text-primary disabled:opacity-40 disabled:pointer-events-none transition-all"
+          className="px-4 py-2.5 rounded-xl bg-tint/[0.06] border border-tint/[0.08] text-sm text-text-secondary hover:bg-tint/[0.1] hover:text-text-primary disabled:opacity-40 disabled:pointer-events-none transition-all"
         >
           {testMut.isPending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -56,7 +56,7 @@ export function CatalogTestOnAd() {
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="mt-3 pt-3 border-t border-white/[0.06]">
+            <div className="mt-3 pt-3 border-t border-tint/[0.06]">
               <h4 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-2">
                 {t('catalog.testResults')}
               </h4>
@@ -67,7 +67,7 @@ export function CatalogTestOnAd() {
                   {matches.map((m, i) => (
                     <div
                       key={`${m.group_key}-${m.variant}-${i}`}
-                      className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-white/[0.02]"
+                      className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-tint/[0.02]"
                     >
                       <CategoryBadge category={m.group} />
                       <span className="text-sm text-text-primary flex-1">{m.variant}</span>

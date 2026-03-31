@@ -15,12 +15,13 @@ import { AnimatedNumber, EASE_OUT_EXPO } from '../components/animations'
 import { Package, TrendingUp, ArrowUpDown, Gauge } from 'lucide-react'
 
 const TOOLTIP_STYLE = {
-  backgroundColor: 'rgba(16, 18, 28, 0.92)',
-  border: '1px solid rgba(255,255,255,0.08)',
+  backgroundColor: 'var(--color-surface)',
+  border: '1px solid var(--color-border)',
   borderRadius: 12,
-  boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+  boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
   backdropFilter: 'blur(12px)',
   WebkitBackdropFilter: 'blur(12px)',
+  color: 'var(--color-text-primary)',
 }
 
 const ACCENT_COLORS: Record<string, { hex: string; bg: string; border: string; icon: string }> = {
@@ -205,7 +206,7 @@ export function StatsPage() {
 
       {/* Section divider */}
       <motion.div
-        className="border-t border-white/[0.05]"
+        className="border-t border-tint/[0.05]"
         initial={{ scaleX: 0 }}
         animate={{ scaleX: 1 }}
         transition={{ duration: 0.6, ease: EASE_OUT_EXPO }}
@@ -227,7 +228,7 @@ export function StatsPage() {
                 </defs>
                 <XAxis dataKey="label" tick={{ fill: '#5a6478', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#5a6478', fontSize: 11 }} allowDecimals={false} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: '#8b95a8' }} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: 'var(--color-text-secondary)' }} cursor={{ fill: 'rgb(from var(--color-tint) r g b / 0.05)' }} />
                 {stats.price.median != null && (
                   <ReferenceLine
                     x={String(Math.round(stats.price.median))}
@@ -257,7 +258,7 @@ export function StatsPage() {
                 </defs>
                 <XAxis dataKey="label" tick={{ fill: '#5a6478', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#5a6478', fontSize: 11 }} allowDecimals={false} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: '#8b95a8' }} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: 'var(--color-text-secondary)' }} cursor={{ fill: 'rgb(from var(--color-tint) r g b / 0.05)' }} />
                 <Bar dataKey="count" fill="url(#kmGrad)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -306,7 +307,7 @@ export function StatsPage() {
                 </defs>
                 <XAxis type="number" tick={{ fill: '#5a6478', fontSize: 11 }} allowDecimals={false} axisLine={false} tickLine={false} />
                 <YAxis type="category" dataKey="name" tick={{ fill: '#5a6478', fontSize: 11 }} width={80} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgb(from var(--color-tint) r g b / 0.05)' }} />
                 <Bar dataKey="count" fill="url(#deptGrad)" radius={[0, 6, 6, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -316,7 +317,7 @@ export function StatsPage() {
 
       {/* Section divider */}
       <motion.div
-        className="border-t border-white/[0.05]"
+        className="border-t border-tint/[0.05]"
         initial={{ scaleX: 0 }}
         animate={{ scaleX: 1 }}
         transition={{ duration: 0.6, ease: EASE_OUT_EXPO }}
@@ -343,7 +344,7 @@ export function StatsPage() {
                   <Tooltip
                     contentStyle={TOOLTIP_STYLE}
                     formatter={(value) => [`${value}%`, t('stats.frequency')]}
-                    cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                    cursor={{ fill: 'rgb(from var(--color-tint) r g b / 0.05)' }}
                   />
                   <Bar
                     dataKey="pct"

@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { ToastProvider } from './components/Toast'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { ThemeProvider } from './hooks/useTheme'
 import { ScrollToTop } from './components/ScrollToTop'
 import { SplashScreen } from './components/SplashScreen'
 import { ModelLayout } from './components/ModelLayout'
@@ -31,6 +32,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+      <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
           <AnimatePresence>
@@ -64,6 +66,7 @@ export default function App() {
           )}
         </ToastProvider>
       </QueryClientProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   )
 }

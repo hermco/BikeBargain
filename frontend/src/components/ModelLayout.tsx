@@ -23,7 +23,7 @@ export function ModelLayout() {
   if (modelLoading || variantsLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-amber-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
       </div>
     )
   }
@@ -33,7 +33,7 @@ export function ModelLayout() {
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <p className="text-lg text-text-muted">Model not found</p>
-          <a href="/" className="text-amber-400 hover:text-amber-300 text-sm mt-2 inline-block">
+          <a href="/" className="text-accent hover:text-accent-text text-sm mt-2 inline-block">
             Back to home
           </a>
         </div>

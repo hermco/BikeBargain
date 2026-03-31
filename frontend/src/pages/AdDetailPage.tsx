@@ -80,7 +80,7 @@ export function AdDetailPage() {
         action={
           <Link
             to={modelUrl('/rankings')}
-            className="inline-flex items-center gap-2 rounded-xl bg-amber-500/15 text-amber-300 px-4 py-2 text-sm font-medium hover:bg-amber-500/25 transition-colors"
+            className="inline-flex items-center gap-2 rounded-xl bg-accent-subtle text-accent-text px-4 py-2 text-sm font-medium hover:bg-amber-500/25 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             {t('common.backToListings')}
@@ -197,7 +197,7 @@ export function AdDetailPage() {
         transition={{ delay: 0.1, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
       >
         <div className="flex items-center gap-4 flex-1 min-w-0">
-          <Link to={modelUrl('/rankings')} className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-white/[0.08] transition-all shrink-0 hover:scale-105 active:scale-95">
+          <Link to={modelUrl('/rankings')} className="w-9 h-9 rounded-xl bg-tint/[0.04] border border-tint/[0.06] flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-tint/[0.08] transition-all shrink-0 hover:scale-105 active:scale-95">
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div className="min-w-0">
@@ -314,7 +314,7 @@ export function AdDetailPage() {
 
       {/* Edit mode banner */}
       {editing && (
-        <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-300 flex items-center gap-2">
+        <div className="rounded-xl bg-accent-subtle border border-amber-500/20 px-4 py-3 text-sm text-accent-text flex items-center gap-2">
           <Pencil className="h-4 w-4 shrink-0" />
           {t('adDetail.editBanner')}
         </div>
@@ -330,7 +330,7 @@ export function AdDetailPage() {
               return (
                 <span className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-sm font-semibold tabular-nums ${
                   decotePct > 20 ? 'bg-emerald-500/15 text-emerald-400' :
-                  decotePct > 10 ? 'bg-amber-500/15 text-amber-400' :
+                  decotePct > 10 ? 'bg-accent-subtle text-amber-400' :
                   decotePct > 0 ? 'bg-red-500/15 text-red-400' :
                   'bg-red-500/15 text-red-400'
                 }`}>
@@ -339,28 +339,28 @@ export function AdDetailPage() {
               )
             })()}
           </div>
-          <div className="h-6 w-px bg-white/[0.08] hidden sm:block" />
+          <div className="h-6 w-px bg-tint/[0.08] hidden sm:block" />
           <div className="flex flex-wrap gap-2">
             {ad.year && (
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] px-3 py-1.5 text-xs text-text-secondary">
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-tint/[0.04] border border-tint/[0.06] px-3 py-1.5 text-xs text-text-secondary">
                 <Calendar className="h-3 w-3 text-text-dim" />
                 {ad.year}
               </span>
             )}
             {ad.mileage_km != null && (
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] px-3 py-1.5 text-xs text-text-secondary tabular-nums">
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-tint/[0.04] border border-tint/[0.06] px-3 py-1.5 text-xs text-text-secondary tabular-nums">
                 {formatKm(ad.mileage_km)}
               </span>
             )}
             {ad.city && (
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] px-3 py-1.5 text-xs text-text-secondary">
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-tint/[0.04] border border-tint/[0.06] px-3 py-1.5 text-xs text-text-secondary">
                 <MapPin className="h-3 w-3 text-text-dim" />
                 {ad.city}
               </span>
             )}
             <Badge className={variantColor(ad.color)}>{ad.color ?? t('common.na')}</Badge>
             {ad.wheel_type && (
-              <Badge className="bg-white/[0.06] text-text-secondary text-[10px]">
+              <Badge className="bg-tint/[0.06] text-text-secondary text-[10px]">
                 {ad.wheel_type === 'tubeless' ? 'Tubeless' : 'Tube'}
               </Badge>
             )}
@@ -372,26 +372,26 @@ export function AdDetailPage() {
       {imageCount > 0 && (
         <div className="relative">
           {imageCount === 1 ? (
-            <button onClick={() => setLightboxIdx(0)} className="w-full rounded-2xl overflow-hidden border border-white/[0.06] hover:border-amber-500/30 transition-all group">
+            <button onClick={() => setLightboxIdx(0)} className="w-full rounded-2xl overflow-hidden border border-tint/[0.06] hover:border-amber-500/30 transition-all group">
               <img src={ad.images[0]} alt="" className="w-full h-64 md:h-80 object-cover group-hover:scale-[1.02] transition-transform duration-500" />
             </button>
           ) : imageCount === 2 ? (
             <div className="grid grid-cols-2 gap-2 h-64 md:h-80">
               {ad.images.slice(0, 2).map((url, i) => (
-                <button key={i} onClick={() => setLightboxIdx(i)} className="rounded-2xl overflow-hidden border border-white/[0.06] hover:border-amber-500/30 transition-all group">
+                <button key={i} onClick={() => setLightboxIdx(i)} className="rounded-2xl overflow-hidden border border-tint/[0.06] hover:border-amber-500/30 transition-all group">
                   <img src={url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
                 </button>
               ))}
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 grid-rows-2 gap-2 h-56 sm:h-64 md:h-80">
-              <button onClick={() => setLightboxIdx(0)} className="col-span-1 sm:col-span-2 row-span-2 rounded-2xl overflow-hidden border border-white/[0.06] hover:border-amber-500/30 transition-all group">
+              <button onClick={() => setLightboxIdx(0)} className="col-span-1 sm:col-span-2 row-span-2 rounded-2xl overflow-hidden border border-tint/[0.06] hover:border-amber-500/30 transition-all group">
                 <img src={ad.images[0]} alt="" className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500" loading="lazy" />
               </button>
-              <button onClick={() => setLightboxIdx(1)} className="rounded-2xl overflow-hidden border border-white/[0.06] hover:border-amber-500/30 transition-all group">
+              <button onClick={() => setLightboxIdx(1)} className="rounded-2xl overflow-hidden border border-tint/[0.06] hover:border-amber-500/30 transition-all group">
                 <img src={ad.images[1]} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
               </button>
-              <button onClick={() => setLightboxIdx(2)} className="relative rounded-2xl overflow-hidden border border-white/[0.06] hover:border-amber-500/30 transition-all group">
+              <button onClick={() => setLightboxIdx(2)} className="relative rounded-2xl overflow-hidden border border-tint/[0.06] hover:border-amber-500/30 transition-all group">
                 <img src={ad.images[Math.min(2, imageCount - 1)]} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
                 {imageCount > 3 && (
                   <div className="absolute inset-0 bg-bg/60 flex items-center justify-center">
@@ -454,7 +454,7 @@ export function AdDetailPage() {
           <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold">{t('adDetail.characteristics')}</h2>
           <div className="grid grid-cols-2 gap-y-3 text-sm">
             <span className="text-text-muted">{t('common.price')}</span>
-            <span className="font-semibold text-amber-300 text-lg font-fraunces">{formatPrice(ad.price)}</span>
+            <span className="font-semibold text-accent-text text-lg font-fraunces">{formatPrice(ad.price)}</span>
             <span className="text-text-muted">{t('common.year')}</span>
             <span className="text-text-primary">{ad.year ?? t('common.na')}</span>
             <span className="text-text-muted">{t('common.mileage')}</span>
@@ -466,7 +466,7 @@ export function AdDetailPage() {
               <div className="flex flex-wrap gap-1.5">
                 {variantNames.map((v) => (
                   <button key={v} onClick={() => setEditVariant(v)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${v === editVariant ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40' : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'}`}>
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${v === editVariant ? 'bg-amber-500/20 text-accent-text ring-1 ring-amber-500/40' : 'bg-tint/[0.04] text-text-muted hover:bg-tint/[0.08]'}`}>
                     {v}
                   </button>
                 ))}
@@ -481,7 +481,7 @@ export function AdDetailPage() {
               <div className="flex flex-wrap gap-1.5">
                 {availableColors.map((c) => (
                   <button key={c} onClick={() => setEditColor(c)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${c === editColor ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40' : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'}`}>
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${c === editColor ? 'bg-amber-500/20 text-accent-text ring-1 ring-amber-500/40' : 'bg-tint/[0.04] text-text-muted hover:bg-tint/[0.08]'}`}>
                     {c}
                   </button>
                 ))}
@@ -496,7 +496,7 @@ export function AdDetailPage() {
               <div className="flex gap-1.5">
                 {wheelTypes.map((w) => (
                   <button key={w} onClick={() => setEditWheelType(w)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${w === editWheelType ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40' : 'bg-white/[0.04] text-text-muted hover:bg-white/[0.08]'}`}>
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${w === editWheelType ? 'bg-amber-500/20 text-accent-text ring-1 ring-amber-500/40' : 'bg-tint/[0.04] text-text-muted hover:bg-tint/[0.08]'}`}>
                     {w}
                   </button>
                 ))}
@@ -544,7 +544,7 @@ export function AdDetailPage() {
           </h2>
           <div className="relative">
             {/* Timeline */}
-            <div className="absolute left-[18px] top-3 bottom-3 w-px bg-white/[0.08]" />
+            <div className="absolute left-[18px] top-3 bottom-3 w-px bg-tint/[0.08]" />
             <div className="space-y-0">
               {priceHistory.history.map((entry, i) => {
                 const prev = i > 0 ? priceHistory.history[i - 1] : null
@@ -571,10 +571,10 @@ export function AdDetailPage() {
                           </span>
                         )}
                         <Badge className={`text-[10px] ${
-                          entry.source === 'initial' ? 'bg-white/[0.06] text-text-dim' :
+                          entry.source === 'initial' ? 'bg-tint/[0.06] text-text-dim' :
                           entry.source === 'repost' ? 'bg-purple-500/15 text-purple-300' :
                           entry.source === 'price_update' ? 'bg-emerald-500/15 text-emerald-300' :
-                          'bg-amber-500/15 text-amber-300'
+                          'bg-accent-subtle text-accent-text'
                         }`}>
                           {entry.source === 'initial' ? t('adDetail.initialPublication') :
                            entry.source === 'repost' ? t('adDetail.repost') :
@@ -604,7 +604,7 @@ export function AdDetailPage() {
             const totalDelta = last - first
             const pct = first > 0 ? ((totalDelta / first) * 100).toFixed(1) : '0'
             return (
-              <div className="mt-4 pt-4 border-t border-white/[0.06] flex items-center gap-4 text-sm">
+              <div className="mt-4 pt-4 border-t border-tint/[0.06] flex items-center gap-4 text-sm">
                 <span className="text-text-muted">{t('adDetail.totalEvolution')}</span>
                 <span className={`font-semibold tabular-nums ${totalDelta < 0 ? 'text-emerald-400' : totalDelta > 0 ? 'text-red-400' : 'text-text-muted'}`}>
                   {totalDelta < 0 ? '' : '+'}{totalDelta}€ ({totalDelta <= 0 ? '' : '+'}{pct}%)
@@ -658,13 +658,13 @@ export function AdDetailPage() {
 
           {/* Add accessory search */}
           {editing && showAddAccessory && (
-            <div className="mb-4 rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 space-y-3">
+            <div className="mb-4 rounded-xl bg-tint/[0.03] border border-tint/[0.06] p-4 space-y-3">
               <input
                 type="text"
                 placeholder={t('common.searchAccessory')}
                 value={accessorySearch}
                 onChange={(e) => setAccessorySearch(e.target.value)}
-                className="w-full rounded-lg bg-white/[0.04] border border-white/[0.08] px-3 py-2 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
+                className="w-full rounded-lg bg-tint/[0.04] border border-tint/[0.08] px-3 py-2 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
                 autoFocus
               />
               <div className="max-h-48 overflow-y-auto space-y-1">
@@ -672,7 +672,7 @@ export function AdDetailPage() {
                   <button
                     key={c.name}
                     onClick={() => addAccessory(c)}
-                    className="w-full flex items-center gap-2 py-2 px-2 rounded-lg text-sm hover:bg-white/[0.05] transition-colors text-left"
+                    className="w-full flex items-center gap-2 py-2 px-2 rounded-lg text-sm hover:bg-tint/[0.05] transition-colors text-left"
                   >
                     <CategoryBadge category={c.category} />
                     <span className="flex-1 text-text-primary">{c.name}</span>
@@ -690,7 +690,7 @@ export function AdDetailPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-[11px] text-text-dim uppercase tracking-widest border-b border-white/[0.06]">
+                  <tr className="text-left text-[11px] text-text-dim uppercase tracking-widest border-b border-tint/[0.06]">
                     <th className="pb-3 pr-4 font-semibold">{t('adDetail.category')}</th>
                     <th className="pb-3 pr-4 font-semibold">{t('adDetail.name')}</th>
                     <th className="pb-3 text-right pr-4 font-semibold">{t('common.new')}</th>
@@ -701,7 +701,7 @@ export function AdDetailPage() {
                 <tbody>
                   {Object.entries(accByCategory).map(([cat, accs]) =>
                     accs.map((a) => (
-                      <tr key={a.name} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
+                      <tr key={a.name} className="border-b border-tint/[0.03] hover:bg-tint/[0.02] transition-colors">
                         <td className="py-2.5 pr-4">
                           <CategoryBadge category={cat} />
                         </td>
@@ -733,10 +733,10 @@ export function AdDetailPage() {
                 </tbody>
                 {!editing && (
                   <tfoot>
-                    <tr className="border-t border-white/[0.08] font-semibold">
+                    <tr className="border-t border-tint/[0.08] font-semibold">
                       <td className="pt-3" colSpan={2}>{t('common.total')}</td>
                       <td className="pt-3 text-right pr-4 text-text-muted">{currentAccessories.reduce((s, a) => s + a.estimated_new_price, 0)} &euro;</td>
-                      <td className="pt-3 text-right text-amber-300">{currentAccessories.reduce((s, a) => s + a.estimated_used_price, 0)} &euro;</td>
+                      <td className="pt-3 text-right text-accent-text">{currentAccessories.reduce((s, a) => s + a.estimated_used_price, 0)} &euro;</td>
                     </tr>
                   </tfoot>
                 )}
@@ -776,7 +776,7 @@ export function AdDetailPage() {
                   <table className="w-full text-sm">
                     <tbody>
                       {ad.attributes.map((a) => (
-                        <tr key={a.key} className="border-b border-white/[0.03]">
+                        <tr key={a.key} className="border-b border-tint/[0.03]">
                           <td className="py-2 pr-4 text-text-dim font-mono text-xs">{a.key}</td>
                           <td className="py-2 text-text-secondary">{a.value_label ?? a.value ?? ''}</td>
                         </tr>
@@ -793,7 +793,7 @@ export function AdDetailPage() {
       <Dialog.Root open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-md z-40" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-md bg-surface border border-white/[0.08] rounded-2xl p-7 z-50 shadow-2xl shadow-black/50">
+          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-md bg-surface border border-tint/[0.08] rounded-2xl p-7 z-50 shadow-2xl shadow-black/50">
             <Dialog.Title className="text-lg font-semibold text-text-primary font-fraunces">
               {t('adDetail.deleteConfirmTitle')}
             </Dialog.Title>

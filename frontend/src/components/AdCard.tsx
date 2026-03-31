@@ -39,7 +39,7 @@ export function AdCard({ ad, index }: AdCardProps) {
     >
       <Link
         to={modelUrl(`/ads/${ad.id}`)}
-        className="group block rounded-2xl border border-white/[0.06] bg-surface/80 backdrop-blur-sm hover:border-amber-500/25 hover:shadow-[0_8px_40px_rgba(212,168,83,0.1),0_0_0_1px_rgba(212,168,83,0.1)] transition-all duration-500 ease-out relative hover:-translate-y-1.5"
+        className="group block rounded-2xl border border-tint/[0.06] bg-surface/80 backdrop-blur-sm hover:border-amber-500/25 hover:shadow-[0_8px_40px_rgba(212,168,83,0.1),0_0_0_1px_rgba(212,168,83,0.1)] transition-all duration-500 ease-out relative hover:-translate-y-1.5"
       >
         {/* Image */}
         <div className="relative h-48 bg-bg overflow-hidden rounded-t-2xl">
@@ -90,7 +90,7 @@ export function AdCard({ ad, index }: AdCardProps) {
 
         {/* Content */}
         <div className="p-4 flex flex-col gap-3">
-          <h3 className="text-[15px] font-medium text-text-primary line-clamp-1 group-hover:text-amber-200 transition-colors leading-snug">
+          <h3 className="text-[15px] font-medium text-text-primary line-clamp-1 group-hover:text-accent-text transition-colors leading-snug">
             {ad.subject ?? t('common.noTitle')}
           </h3>
 
@@ -99,7 +99,7 @@ export function AdCard({ ad, index }: AdCardProps) {
               {ad.color ?? t('common.na')}
             </Badge>
             {ad.wheel_type && (
-              <Badge className="bg-white/[0.06] text-text-secondary text-[10px]">
+              <Badge className="bg-tint/[0.06] text-text-secondary text-[10px]">
                 {ad.wheel_type === 'tubeless' ? 'TL' : 'Tube'}
               </Badge>
             )}
@@ -148,7 +148,7 @@ export function AdCard({ ad, index }: AdCardProps) {
                       <span className="text-text-dim font-normal"> / 50 000 km</span>
                     </span>
                   </div>
-                  <div style={{ height: '3px', background: 'rgba(255,255,255,0.06)', borderRadius: '9999px', overflow: 'hidden' }}>
+                  <div style={{ height: '3px', background: 'rgb(from var(--color-tint) r g b / 0.06)', borderRadius: '9999px', overflow: 'hidden' }}>
                     <motion.div
                       className={`bg-gradient-to-r ${kmColor}`}
                       style={{ height: '100%', borderRadius: '9999px' }}

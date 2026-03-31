@@ -23,9 +23,9 @@ function TagInput({ tags, onChange, placeholder }: { tags: string[]; onChange: (
     }
   }
   return (
-    <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-white/[0.04] border border-white/[0.08] min-h-[42px] focus-within:ring-2 focus-within:ring-amber-500/30">
+    <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-tint/[0.04] border border-tint/[0.08] min-h-[42px] focus-within:ring-2 focus-within:ring-amber-500/30">
       {tags.map(tag => (
-        <span key={tag} className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/[0.08] text-xs text-text-secondary">
+        <span key={tag} className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-tint/[0.08] text-xs text-text-secondary">
           {tag}
           <button type="button" onClick={() => onChange(tags.filter(t => t !== tag))} className="text-text-dim hover:text-red-400">
             &times;
@@ -208,7 +208,7 @@ export function CatalogGroupForm({ group, onClose }: CatalogGroupFormProps) {
     <Dialog.Root open onOpenChange={(v) => { if (!v) onClose() }}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-md z-40" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-2xl max-h-[85vh] flex flex-col bg-surface border border-white/[0.08] rounded-2xl z-50 shadow-2xl shadow-black/50">
+        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-2xl max-h-[85vh] flex flex-col bg-surface border border-tint/[0.08] rounded-2xl z-50 shadow-2xl shadow-black/50">
           <div className="px-7 pt-7 pb-2 shrink-0">
             <Dialog.Title className="text-xl font-semibold text-text-primary font-fraunces">
               {isEdit ? t('catalog.editGroup') : t('catalog.createGroup')}
@@ -224,7 +224,7 @@ export function CatalogGroupForm({ group, onClose }: CatalogGroupFormProps) {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] px-3 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
+                  className="w-full rounded-xl bg-tint/[0.04] border border-tint/[0.08] px-3 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
                   autoFocus
                 />
               </div>
@@ -235,7 +235,7 @@ export function CatalogGroupForm({ group, onClose }: CatalogGroupFormProps) {
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
+                    className="w-full rounded-xl bg-tint/[0.04] border border-tint/[0.08] px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
                   >
                     {CATEGORY_ORDER.map((cat) => (
                       <option key={cat} value={cat} className="bg-surface text-text-primary">
@@ -251,7 +251,7 @@ export function CatalogGroupForm({ group, onClose }: CatalogGroupFormProps) {
                       type="number"
                       value={defaultPrice}
                       onChange={(e) => setDefaultPrice(e.target.value)}
-                      className="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] px-3 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all pr-8"
+                      className="w-full rounded-xl bg-tint/[0.04] border border-tint/[0.08] px-3 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all pr-8"
                       min="0"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim text-xs">&euro;</span>
@@ -274,7 +274,7 @@ export function CatalogGroupForm({ group, onClose }: CatalogGroupFormProps) {
 
               {/* Synonym suggestions */}
               {suggestions.length > 0 && (
-                <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-3">
+                <div className="rounded-xl bg-tint/[0.02] border border-tint/[0.06] p-3">
                   <div className="flex items-center gap-1.5 mb-2">
                     <Lightbulb className="h-3.5 w-3.5 text-amber-400" />
                     <span className="text-[11px] text-text-muted uppercase tracking-widest font-semibold">
@@ -287,7 +287,7 @@ export function CatalogGroupForm({ group, onClose }: CatalogGroupFormProps) {
                         key={s.expression}
                         type="button"
                         onClick={() => addSuggestion(s)}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] text-xs text-text-secondary hover:bg-white/[0.08] transition-colors"
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-tint/[0.04] text-xs text-text-secondary hover:bg-tint/[0.08] transition-colors"
                         title={s.context}
                       >
                         <Plus className="h-3 w-3" />
@@ -304,7 +304,7 @@ export function CatalogGroupForm({ group, onClose }: CatalogGroupFormProps) {
 
             {/* Section 2: First variant (create mode only) */}
             {!isEdit && (
-              <div className="border-t border-white/[0.06] pt-4 space-y-3">
+              <div className="border-t border-tint/[0.06] pt-4 space-y-3">
                 <h3 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold">
                   {t('catalog.createVariant')}
                 </h3>
@@ -316,7 +316,7 @@ export function CatalogGroupForm({ group, onClose }: CatalogGroupFormProps) {
                       type="text"
                       value={variantName}
                       onChange={(e) => setVariantName(e.target.value)}
-                      className="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] px-3 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
+                      className="w-full rounded-xl bg-tint/[0.04] border border-tint/[0.08] px-3 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
                     />
                   </div>
                   <div>
@@ -327,7 +327,7 @@ export function CatalogGroupForm({ group, onClose }: CatalogGroupFormProps) {
                         value={variantPrice}
                         onChange={(e) => setVariantPrice(e.target.value)}
                         placeholder={defaultPrice || '0'}
-                        className="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] px-3 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all pr-8"
+                        className="w-full rounded-xl bg-tint/[0.04] border border-tint/[0.08] px-3 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all pr-8"
                         min="0"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim text-xs">&euro;</span>
@@ -370,7 +370,7 @@ export function CatalogGroupForm({ group, onClose }: CatalogGroupFormProps) {
                 </button>
 
                 {showAdvanced && (
-                  <div className="space-y-3 pl-2 border-l-2 border-white/[0.06]">
+                  <div className="space-y-3 pl-2 border-l-2 border-tint/[0.06]">
                     <div>
                       <label className="text-xs text-text-muted block mb-1">
                         {t('catalog.optionalWords')}
@@ -387,7 +387,7 @@ export function CatalogGroupForm({ group, onClose }: CatalogGroupFormProps) {
                         type="text"
                         value={regexOverride}
                         onChange={(e) => setRegexOverride(e.target.value)}
-                        className="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] px-3 py-2.5 text-sm text-text-primary font-mono placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
+                        className="w-full rounded-xl bg-tint/[0.04] border border-tint/[0.08] px-3 py-2.5 text-sm text-text-primary font-mono placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
                       />
                     </div>
                     <div>
@@ -399,7 +399,7 @@ export function CatalogGroupForm({ group, onClose }: CatalogGroupFormProps) {
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                         rows={2}
-                        className="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] px-3 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all resize-none"
+                        className="w-full rounded-xl bg-tint/[0.04] border border-tint/[0.08] px-3 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all resize-none"
                       />
                     </div>
                   </div>
@@ -415,7 +415,7 @@ export function CatalogGroupForm({ group, onClose }: CatalogGroupFormProps) {
                 </h4>
                 <div>
                   <span className="text-xs text-text-dim">{t('catalog.previewRegex')}</span>
-                  <code className="block mt-1 text-xs font-mono text-amber-300/80 bg-white/[0.03] rounded-lg p-2 break-all">
+                  <code className="block mt-1 text-xs font-mono text-accent-text/80 bg-tint/[0.03] rounded-lg p-2 break-all">
                     {preview.generated_regex}
                   </code>
                 </div>
@@ -428,7 +428,7 @@ export function CatalogGroupForm({ group, onClose }: CatalogGroupFormProps) {
                       <div key={ad.id} className="text-xs text-text-dim flex gap-2">
                         <span className="text-text-muted">#{ad.id}</span>
                         <span className="truncate">{ad.title}</span>
-                        <span className="text-amber-300/60 font-mono shrink-0">{ad.matched_text}</span>
+                        <span className="text-accent-text/60 font-mono shrink-0">{ad.matched_text}</span>
                       </div>
                     ))}
                   </div>
@@ -441,7 +441,7 @@ export function CatalogGroupForm({ group, onClose }: CatalogGroupFormProps) {
           </div>
 
           {/* Footer */}
-          <div className="shrink-0 px-7 py-4 bg-surface border-t border-white/[0.06] rounded-b-2xl">
+          <div className="shrink-0 px-7 py-4 bg-surface border-t border-tint/[0.06] rounded-b-2xl">
             <div className="flex justify-end gap-3">
               <Button variant="ghost" onClick={onClose} disabled={isPending}>
                 {t('common.cancel')}

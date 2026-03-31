@@ -9,7 +9,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   eclairage: 'bg-yellow-500/10 text-yellow-300 ring-1 ring-yellow-500/20',
   esthetique: 'bg-pink-500/10 text-pink-300 ring-1 ring-pink-500/20',
   performance: 'bg-red-500/10 text-red-300 ring-1 ring-red-500/20',
-  autre: 'bg-white/[0.05] text-[#8b95a8] ring-1 ring-white/10',
+  autre: 'bg-tint/[0.05] text-[#8b95a8] ring-1 ring-white/10',
 }
 
 export function AccessoryBadge({ category, name }: { category: string; name: string }) {

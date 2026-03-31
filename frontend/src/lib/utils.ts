@@ -29,13 +29,13 @@ export function variantColor(color: string | null): string {
     case 'Slate Poppy Blue':
       return 'bg-blue-500/15 text-blue-300'
     case 'Hanle Black':
-      return 'bg-amber-500/15 text-amber-300'
+      return 'bg-accent-subtle text-amber-300'
     case 'Kamet White':
       return 'bg-emerald-500/15 text-emerald-300'
     case 'Mana Black':
       return 'bg-violet-500/15 text-violet-300'
     default:
-      return 'bg-white/[0.06] text-text-muted'
+      return 'bg-tint/[0.06] text-text-muted'
   }
 }
 

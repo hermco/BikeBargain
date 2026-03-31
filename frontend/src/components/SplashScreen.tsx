@@ -58,7 +58,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
           {/* Background circle */}
           <motion.circle
             cx="55" cy="55" r="50"
-            stroke="rgba(255,255,255,0.08)"
+            stroke="rgb(from var(--color-tint) r g b / 0.12)"
             strokeWidth="3"
             fill="none"
             initial={{ opacity: 0, scale: 0.85 }}
@@ -68,14 +68,17 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
 
           {/* Arc — draws in from left (idle) to right (redline) */}
           <motion.path
-            d="M 18.4 80 A 50 50 0 1 1 91.6 80"
+            d="M 11.7 80 A 50 50 0 1 1 98.3 80"
             stroke="url(#splashGauge)"
             strokeWidth="4"
             strokeLinecap="round"
             fill="none"
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: 1.4, ease: EASE_OUT_EXPO, delay: 0.2 }}
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{
+              pathLength: { duration: 1.4, ease: EASE_OUT_EXPO, delay: 0.2 },
+              opacity: { duration: 0.15, delay: 0.2 },
+            }}
           />
 
           {/* Tick marks — ordered around the arc from left to right */}
@@ -89,7 +92,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
             <motion.line
               key={i}
               x1={tick.x1} y1={tick.y1} x2={tick.x2} y2={tick.y2}
-              stroke="rgba(255,255,255,0.2)"
+              stroke="rgb(from var(--color-tint) r g b / 0.25)"
               strokeWidth="2"
               strokeLinecap="round"
               initial={{ opacity: 0 }}
@@ -108,7 +111,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
           />
           <motion.circle
             cx="55" cy="55" r="3"
-            fill="#0c0f14"
+            fill="var(--color-gauge-dot)"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.4, type: 'spring', stiffness: 400, damping: 12 }}

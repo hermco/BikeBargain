@@ -37,7 +37,7 @@ export function CatalogResetModal({
     <Dialog.Root open={open} onOpenChange={(v) => { if (!v) handleClose(); else onOpenChange(true) }}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-md z-40" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-md bg-surface border border-white/[0.08] rounded-2xl z-50 shadow-2xl shadow-black/50 p-7">
+        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-md bg-surface border border-tint/[0.08] rounded-2xl z-50 shadow-2xl shadow-black/50 p-7">
           <Dialog.Title className="text-lg font-semibold text-text-primary font-fraunces flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-amber-400" />
             {t('catalog.resetConfirm')}
@@ -62,7 +62,7 @@ export function CatalogResetModal({
               {t('catalog.resetExportFirst')}
             </Button>
 
-            <div className="border-t border-white/[0.06] pt-3">
+            <div className="border-t border-tint/[0.06] pt-3">
               <label className="text-xs text-text-dim block mb-1.5">
                 {t('catalog.resetTypeConfirm')}
               </label>
@@ -71,7 +71,7 @@ export function CatalogResetModal({
                 value={confirmText}
                 onChange={(e) => setConfirmText(e.target.value)}
                 placeholder="RESET"
-                className="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] px-3 py-2 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500/30 transition-all"
+                className="w-full rounded-xl bg-tint/[0.04] border border-tint/[0.08] px-3 py-2 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500/30 transition-all"
               />
               <Button
                 variant="danger"

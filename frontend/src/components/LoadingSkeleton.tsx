@@ -1,7 +1,7 @@
 export function CardSkeleton({ index = 0 }: { index?: number }) {
   return (
     <div
-      className="rounded-2xl border border-white/[0.06] bg-surface/80 overflow-hidden animate-[fadeIn_0.3s_ease-out_both]"
+      className="rounded-2xl border border-tint/[0.06] bg-surface/80 overflow-hidden animate-[fadeIn_0.3s_ease-out_both]"
       style={{ animationDelay: `${index * 60}ms` }}
     >
       <div className="h-48 skeleton-shimmer" />
@@ -37,7 +37,7 @@ export function TableSkeleton({ rows = 8 }: { rows?: number }) {
 
 export function StatCardSkeleton() {
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-surface/80 p-6">
+    <div className="rounded-2xl border border-tint/[0.06] bg-surface/80 p-6">
       <div className="h-3 skeleton-shimmer rounded-lg w-20 mb-3" />
       <div className="h-8 skeleton-shimmer rounded-lg w-28" />
     </div>

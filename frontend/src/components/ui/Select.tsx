@@ -41,8 +41,8 @@ export function Select({ value, onChange, options, placeholder, className, icon 
         type="button"
         onClick={() => setOpen(!open)}
         className={cn(
-          'flex items-center gap-2 w-full rounded-xl bg-white/[0.04] border border-white/[0.06] px-4 py-2.5 text-sm text-left transition-all cursor-pointer',
-          'hover:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/30',
+          'flex items-center gap-2 w-full rounded-xl bg-tint/[0.04] border border-tint/[0.06] px-4 py-2.5 text-sm text-left transition-all cursor-pointer',
+          'hover:bg-tint/[0.06] focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/30',
           open && 'ring-2 ring-amber-500/30 border-amber-500/30',
         )}
       >
@@ -60,7 +60,7 @@ export function Select({ value, onChange, options, placeholder, className, icon 
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
             transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute z-50 mt-1.5 w-full min-w-[160px] rounded-xl bg-surface border border-white/[0.08] shadow-2xl shadow-black/40 py-1.5 max-h-60 overflow-y-auto backdrop-blur-xl"
+            className="absolute z-50 mt-1.5 w-full min-w-[160px] rounded-xl bg-surface border border-tint/[0.08] shadow-2xl shadow-black/40 py-1.5 max-h-60 overflow-y-auto backdrop-blur-xl"
           >
             {options.map((opt) => (
               <button
@@ -70,8 +70,8 @@ export function Select({ value, onChange, options, placeholder, className, icon 
                 className={cn(
                   'w-full text-left px-4 py-2 text-sm transition-all duration-150',
                   opt.value === value
-                    ? 'text-amber-300 bg-amber-500/10'
-                    : 'text-text-secondary hover:bg-white/[0.06] hover:text-text-primary hover:pl-5',
+                    ? 'text-accent-text bg-accent-subtle'
+                    : 'text-text-secondary hover:bg-tint/[0.06] hover:text-text-primary hover:pl-5',
                 )}
               >
                 {opt.label}

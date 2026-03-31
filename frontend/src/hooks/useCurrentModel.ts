@@ -29,12 +29,12 @@ export function useVariantOptions() {
   }
 
   function variantColor(variantName: string | null): string {
-    if (!variantName) return 'bg-white/[0.06] text-text-muted'
+    if (!variantName) return 'bg-tint/[0.06] text-text-muted'
     const v = variants.find((vr) => vr.variant_name === variantName)
     if (v?.color_hex) {
       return `bg-[${v.color_hex}]/15 text-[${v.color_hex}]`
     }
-    return 'bg-white/[0.06] text-text-muted'
+    return 'bg-tint/[0.06] text-text-muted'
   }
 
   function variantChartColor(variantName: string): string {

@@ -33,7 +33,7 @@ export function EmptyState({ title, description, action, icon = 'bike' }: EmptyS
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 0.1, duration: 0.4, type: 'spring', stiffness: 300, damping: 20 }}
       >
-        <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
+        <div className="w-16 h-16 rounded-2xl bg-tint/[0.04] border border-tint/[0.06] flex items-center justify-center">
           <Icon className="h-7 w-7 text-text-dim" />
         </div>
         <motion.div
