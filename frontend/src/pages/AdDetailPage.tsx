@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate, Navigate } from 'react-router-dom'
-import { ArrowLeft, ExternalLink, Trash2, MapPin, Calendar, ChevronLeft, ChevronRight, ChevronDown, Camera, Pencil, X, Check, Plus, RefreshCw, Ban, ScanSearch, TrendingDown, TrendingUp, History } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Trash2, MapPin, Calendar, ChevronLeft, ChevronRight, ChevronDown, Camera, Pencil, X, Check, Plus, RefreshCw, Ban, ScanSearch, TrendingDown, TrendingUp, History, Share2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { useAd, useDeleteAd, useUpdateAd, useCatalogGroups, useRefreshAdAccessories, useMarkAdSold, useCheckAdOnline, usePriceHistory } from '../hooks/queries'
@@ -256,6 +256,38 @@ export function AdDetailPage() {
               </Button>
               <Button variant="secondary" size="sm" onClick={startEdit} className="gap-1.5">
                 <Pencil className="h-3.5 w-3.5" /> <span className="hidden sm:inline">{t('common.edit')}</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5"
+                onClick={async () => {
+                  const shareUrl = window.location.href
+                  const shareData = {
+                    title: ad.subject,
+                    text: `${ad.subject} — ${formatPrice(ad.price)}${ad.year ? ` — ${ad.year}` : ''}${ad.mileage_km ? ` — ${formatKm(ad.mileage_km)}` : ''}`,
+                    url: shareUrl,
+                  }
+                  if (navigator.share) {
+                    try {
+                      await navigator.share(shareData)
+                    } catch (err) {
+                      if ((err as Error).name !== 'AbortError') {
+                        toast(t('adDetail.shareError'), 'error')
+                      }
+                    }
+                  } else {
+                    try {
+                      await navigator.clipboard.writeText(shareUrl)
+                      toast(t('adDetail.linkCopied'), 'success')
+                    } catch {
+                      toast(t('adDetail.shareError'), 'error')
+                    }
+                  }
+                }}
+              >
+                <Share2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{t('adDetail.share')}</span>
               </Button>
               <a href={ad.url} target="_blank" rel="noopener noreferrer">
                 <Button variant="secondary" size="sm" className="gap-1.5">

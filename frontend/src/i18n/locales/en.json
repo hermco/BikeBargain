@@ -164,7 +164,10 @@
     "deleteConfirmTitle": "Delete this listing?",
     "deleteConfirmDescription": "This action is irreversible. The listing and all its accessories will be permanently deleted.",
     "photo_one": "{{count}} photo",
-    "photo_other": "{{count}} photos"
+    "photo_other": "{{count}} photos",
+    "share": "Share",
+    "linkCopied": "Link copied to clipboard",
+    "shareError": "Unable to share listing"
   },
   "stats": {
     "title": "Statistics",

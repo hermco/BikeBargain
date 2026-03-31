@@ -164,7 +164,10 @@
     "deleteConfirmTitle": "Supprimer cette annonce ?",
     "deleteConfirmDescription": "Cette action est irréversible. L'annonce et tous ses accessoires seront supprimés définitivement.",
     "photo_one": "{{count}} photo",
-    "photo_other": "{{count}} photos"
+    "photo_other": "{{count}} photos",
+    "share": "Partager",
+    "linkCopied": "Lien copié dans le presse-papier",
+    "shareError": "Impossible de partager l'annonce"
   },
   "stats": {
     "title": "Statistiques",
