@@ -444,7 +444,7 @@ function ConfigCard({
         <button
           onClick={onDelete}
           disabled={isDeleting}
-          className="p-1.5 rounded-lg text-text-dim hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40"
+          className="p-1.5 rounded-lg text-text-dim hover:text-ui-red hover:bg-red-500/10 transition-colors disabled:opacity-40"
           title={t('common.delete')}
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -625,7 +625,7 @@ export function SettingsPage() {
             exit={{ opacity: 0, y: 20 }}
             className="fixed bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-xl border border-red-500/20 bg-red-500/10 backdrop-blur-xl shadow-2xl shadow-black/40"
           >
-            <Trash2 className="h-4 w-4 text-red-400" />
+            <Trash2 className="h-4 w-4 text-ui-red" />
             <span className="text-sm font-medium text-text-primary">
               {t('settings.searchConfig.deleteConfirm')}
             </span>

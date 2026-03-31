@@ -140,7 +140,7 @@ function SidebarStats() {
 
   return (
     <motion.div
-      className="mx-3 rounded-xl overflow-hidden border border-tint/[0.06] shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+      className="mx-3 rounded-xl overflow-hidden border border-tint/[0.06] shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3, duration: 0.4, ease: EASE_OUT_EXPO }}
@@ -186,6 +186,7 @@ export function Sidebar() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const ctx = useContext(ModelCtx)
+  const { theme } = useTheme()
 
   const primaryNav = ctx
     ? [
@@ -337,7 +338,7 @@ export function Sidebar() {
           {__GIT_BRANCH__ !== 'master' && __GIT_BRANCH__ !== 'main' && (
             <div className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/20">
               <div className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
-              <span className="text-[10px] text-violet-300 font-mono font-medium truncate">{__GIT_BRANCH__}</span>
+              <span className="text-[10px] text-ui-purple font-mono font-medium truncate">{__GIT_BRANCH__}</span>
             </div>
           )}
         </div>
@@ -349,7 +350,9 @@ export function Sidebar() {
           'md:hidden fixed bottom-0 left-0 right-0 z-30',
           'bg-bg/70 backdrop-blur-2xl backdrop-saturate-150',
           'border-t border-tint/[0.08]',
-          'shadow-[0_-8px_32px_rgba(0,0,0,0.4)]',
+          theme === 'dark'
+            ? 'shadow-[0_-8px_32px_rgba(0,0,0,0.4)]'
+            : 'shadow-[0_-4px_24px_rgba(120,90,40,0.08)]',
           'flex justify-around py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-2',
         )}
       >

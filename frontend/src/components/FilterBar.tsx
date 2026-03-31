@@ -46,7 +46,7 @@ export function FilterBar({ variant, onVariantChange, search, onSearchChange, so
       transition={{ duration: 0.35, ease: EASE_OUT_EXPO }}
     >
       <div className="relative flex-1 group">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-dim transition-colors duration-200 group-focus-within:text-amber-400/70" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-dim transition-colors duration-200 group-focus-within:text-accent-text/70" />
         <input
           type="text"
           placeholder={t('filter.searchPlaceholder')}

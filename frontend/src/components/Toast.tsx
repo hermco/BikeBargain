@@ -50,9 +50,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }
 
   const colors = {
-    success: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20 border-l-emerald-400',
-    error: 'text-red-400 bg-red-500/10 border-red-500/20 border-l-red-400',
-    info: 'text-blue-400 bg-blue-500/10 border-blue-500/20 border-l-blue-400',
+    success: 'text-ui-emerald bg-emerald-500/10 border-emerald-500/20 border-l-ui-emerald',
+    error: 'text-ui-red bg-red-500/10 border-red-500/20 border-l-ui-red',
+    info: 'text-ui-blue bg-blue-500/10 border-blue-500/20 border-l-ui-blue',
   }
 
   return (

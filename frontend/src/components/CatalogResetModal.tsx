@@ -39,7 +39,7 @@ export function CatalogResetModal({
         <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-md z-40" />
         <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-md bg-surface border border-tint/[0.08] rounded-2xl z-50 shadow-2xl shadow-black/50 p-7">
           <Dialog.Title className="text-lg font-semibold text-text-primary font-fraunces flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-400" />
+            <AlertTriangle className="h-5 w-5 text-accent-text" />
             {t('catalog.resetConfirm')}
           </Dialog.Title>
 

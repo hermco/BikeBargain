@@ -179,7 +179,7 @@ export function AdForm({ autoOpen, onAutoOpened }: AdFormProps) {
                   />
                 </div>
                 {previewMut.error && (
-                  <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
+                  <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-ui-red">
                     {(previewMut.error as Error).message}
                   </div>
                 )}
@@ -436,7 +436,7 @@ export function AdForm({ autoOpen, onAutoOpened }: AdFormProps) {
                         )}
                         <span className="text-xs text-text-dim">{acc.estimated_new_price} &euro; {t('common.new')}</span>
                         <button onClick={() => removeAccessory(i)}
-                          className="p-1 rounded-md text-text-dim opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                          className="p-1 rounded-md text-text-dim opacity-0 group-hover:opacity-100 hover:text-ui-red hover:bg-red-500/10 transition-all"
                           title={t('common.removeAccessory')}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -450,7 +450,7 @@ export function AdForm({ autoOpen, onAutoOpened }: AdFormProps) {
 
               {/* Errors */}
               {confirmMut.error && (
-                <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
+                <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-ui-red">
                   {(confirmMut.error as Error).message}
                 </div>
               )}

@@ -19,6 +19,17 @@
   --color-accent-subtle: rgba(245, 158, 11, 0.15);
   --color-tint: rgb(255 255 255);
   --color-gauge-dot: #0c0f14;
+
+  /* Adaptive UI colors — auto-switch between light & dark */
+  --color-ui-red: #f87171;
+  --color-ui-green: #4ade80;
+  --color-ui-emerald: #34d399;
+  --color-ui-blue: #60a5fa;
+  --color-ui-purple: #d8b4fe;
+  --color-ui-orange: #fdba74;
+  --color-ui-cyan: #67e8f9;
+  --color-ui-yellow: #fde047;
+  --color-ui-pink: #f9a8d4;
 }
 
 @utility font-fraunces {
@@ -27,23 +38,32 @@
 
 /* ── Light mode ─────────────────────────────────────── */
 :root {
-  --color-bg: #f5f6fa;
+  --color-bg: #f7f6f3;
   --color-surface: #ffffff;
-  --color-surface-hover: #f0f1f5;
-  --color-border: #dfe2ea;
-  --color-text-primary: #1a1d28;
-  --color-text-secondary: #4a5068;
-  --color-text-muted: #7c8498;
-  --color-text-dim: #a0a8b8;
-  --color-accent: #b8860b;
-  --color-accent-text: #92400e;
-  --color-accent-subtle: rgba(146, 64, 14, 0.10);
+  --color-surface-hover: #f2f0ed;
+  --color-border: #e2dfd8;
+  --color-text-primary: #1c1a17;
+  --color-text-secondary: #544f45;
+  --color-text-muted: #8a8478;
+  --color-text-dim: #b5afa3;
+  --color-accent: #c08c0a;
+  --color-accent-text: #8b5a10;
+  --color-accent-subtle: rgba(192, 140, 10, 0.08);
   --color-tint: rgb(0 0 0);
   --color-gauge-dot: #ffffff;
-  --shimmer-lo: rgba(0, 0, 0, 0.04);
-  --shimmer-hi: rgba(0, 0, 0, 0.07);
-  --noise-opacity: 0.025;
-  --selection-bg: rgba(146, 64, 14, 0.15);
+  --shimmer-lo: rgba(140, 120, 80, 0.04);
+  --shimmer-hi: rgba(140, 120, 80, 0.08);
+  --noise-opacity: 0.02;
+  --selection-bg: rgba(192, 140, 10, 0.18);
+  --color-ui-red: #dc2626;
+  --color-ui-green: #15803d;
+  --color-ui-emerald: #047857;
+  --color-ui-blue: #2563eb;
+  --color-ui-purple: #7c3aed;
+  --color-ui-orange: #c2410c;
+  --color-ui-cyan: #0e7490;
+  --color-ui-yellow: #a16207;
+  --color-ui-pink: #be185d;
 }
 
 /* ── Dark mode ──────────────────────────────────────── */
@@ -65,6 +85,15 @@
   --shimmer-hi: rgba(255, 255, 255, 0.08);
   --noise-opacity: 0.015;
   --selection-bg: rgba(212, 168, 83, 0.3);
+  --color-ui-red: #f87171;
+  --color-ui-green: #4ade80;
+  --color-ui-emerald: #34d399;
+  --color-ui-blue: #60a5fa;
+  --color-ui-purple: #d8b4fe;
+  --color-ui-orange: #fdba74;
+  --color-ui-cyan: #67e8f9;
+  --color-ui-yellow: #fde047;
+  --color-ui-pink: #f9a8d4;
 }
 
 body {
@@ -241,12 +270,35 @@ button:focus-visible {
   transition: background-color 0.2s ease;
 }
 
-/* Light mode: softer shadows for cards */
+/* Light mode: warm-tinted shadows for depth and cohesion */
 :root:not(.dark) .shadow-xl {
-  --tw-shadow-color: rgba(0, 0, 0, 0.06);
+  --tw-shadow: 0 4px 24px -6px rgba(120, 90, 40, 0.1), 0 2px 6px -2px rgba(120, 90, 40, 0.06);
 }
 :root:not(.dark) .shadow-2xl {
-  --tw-shadow-color: rgba(0, 0, 0, 0.08);
+  --tw-shadow: 0 8px 40px -8px rgba(120, 90, 40, 0.14), 0 4px 12px -4px rgba(120, 90, 40, 0.08);
+}
+:root:not(.dark) .shadow-lg {
+  --tw-shadow: 0 4px 16px -4px rgba(120, 90, 40, 0.1), 0 1px 4px -1px rgba(120, 90, 40, 0.05);
+}
+/* Dark mode: deeper shadows for contrast */
+.dark .shadow-xl {
+  --tw-shadow-color: rgba(0, 0, 0, 0.2);
+}
+.dark .shadow-2xl {
+  --tw-shadow-color: rgba(0, 0, 0, 0.3);
+}
+
+/* Light mode: warm scrollbar */
+:root:not(.dark) ::-webkit-scrollbar-thumb {
+  background: rgba(140, 120, 80, 0.15);
+}
+:root:not(.dark) ::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 120, 80, 0.25);
+}
+
+/* Light mode: warm Recharts tooltip */
+:root:not(.dark) .recharts-default-tooltip {
+  box-shadow: 0 8px 32px -8px rgba(120, 90, 40, 0.15) !important;
 }
 
 /* Theme transition — applied to root for smooth toggles */

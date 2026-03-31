@@ -72,7 +72,7 @@ export function LocationPicker({ location, onChange }: LocationPickerProps) {
   return (
     <div ref={containerRef} className="relative max-w-xs">
       <div className="flex items-center gap-2 rounded-xl bg-tint/[0.03] border border-tint/[0.06] px-3 py-2 focus-within:ring-2 focus-within:ring-amber-500/30 focus-within:border-amber-500/30 transition-all">
-        <MapPin className={`h-4 w-4 shrink-0 ${location ? 'text-amber-400' : 'text-text-dim'}`} />
+        <MapPin className={`h-4 w-4 shrink-0 ${location ? 'text-accent-text' : 'text-text-dim'}`} />
         <input
           ref={inputRef}
           type="text"
@@ -91,7 +91,7 @@ export function LocationPicker({ location, onChange }: LocationPickerProps) {
         {location && !focused && (
           <button
             onClick={handleClear}
-            className="p-0.5 rounded-md hover:bg-tint/[0.06] text-text-dim hover:text-red-400 transition-colors"
+            className="p-0.5 rounded-md hover:bg-tint/[0.06] text-text-dim hover:text-ui-red transition-colors"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -105,7 +105,7 @@ export function LocationPicker({ location, onChange }: LocationPickerProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-50 mt-1.5 w-full rounded-xl bg-[#1a1d24] border border-tint/[0.08] shadow-2xl shadow-black/40 overflow-hidden"
+            className="absolute z-50 mt-1.5 w-full rounded-xl bg-surface border border-tint/[0.08] shadow-2xl overflow-hidden"
           >
             {suggestions.map((s, i) => (
               <button

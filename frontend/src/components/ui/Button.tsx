@@ -17,9 +17,9 @@ export function Button({ variant = 'primary', size = 'md', className, disabled, 
         size === 'sm' && 'px-3.5 py-1.5 text-xs rounded-lg',
         size === 'md' && 'px-5 py-2.5 text-sm rounded-xl',
         variant === 'primary' && 'bg-gradient-to-b from-amber-400 to-amber-500 text-gray-900 font-semibold shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:from-amber-300 hover:to-amber-400',
-        variant === 'secondary' && 'bg-tint/[0.06] text-[#8b95a8] border border-tint/[0.08] hover:bg-tint/[0.1] hover:text-[#f0f2f5]',
-        variant === 'ghost' && 'text-[#5a6478] hover:text-[#8b95a8] hover:bg-tint/[0.04]',
-        variant === 'danger' && 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20',
+        variant === 'secondary' && 'bg-tint/[0.06] text-text-secondary border border-tint/[0.08] hover:bg-tint/[0.1] hover:text-text-primary',
+        variant === 'ghost' && 'text-text-muted hover:text-text-secondary hover:bg-tint/[0.04]',
+        variant === 'danger' && 'bg-red-500/10 text-ui-red border border-red-500/20 hover:bg-red-500/20',
         className,
       )}
       disabled={disabled}

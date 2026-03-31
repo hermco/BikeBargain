@@ -33,8 +33,8 @@ function RefreshStatusBadge() {
 
   const colors = {
     running: 'bg-accent-subtle text-accent-text ring-1 ring-amber-500/20',
-    idle: 'bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/20',
-    error: 'bg-red-500/10 text-red-300 ring-1 ring-red-500/20',
+    idle: 'bg-emerald-500/10 text-ui-emerald ring-1 ring-emerald-500/20',
+    error: 'bg-red-500/10 text-ui-red ring-1 ring-red-500/20',
   }
 
   const labels = {
@@ -115,7 +115,7 @@ function GroupRow({
           </button>
           <button
             onClick={onDelete}
-            className="p-1.5 rounded-lg text-text-dim hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            className="p-1.5 rounded-lg text-text-dim hover:text-ui-red hover:bg-red-500/10 transition-colors"
             title={t('common.delete')}
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -423,9 +423,9 @@ export function CatalogPage() {
             className="fixed bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-xl border border-red-500/20 bg-red-500/10 backdrop-blur-xl shadow-2xl shadow-black/40"
           >
             {deleteMut.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin text-red-400" />
+              <Loader2 className="h-4 w-4 animate-spin text-ui-red" />
             ) : (
-              <Trash2 className="h-4 w-4 text-red-400" />
+              <Trash2 className="h-4 w-4 text-ui-red" />
             )}
             <span className="text-sm font-medium text-text-primary">
               {t('catalog.deleteGroupConfirm', {

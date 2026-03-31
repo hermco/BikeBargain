@@ -25,7 +25,7 @@ function TagInput({ tags, onChange, placeholder }: { tags: string[]; onChange: (
       {tags.map(tag => (
         <span key={tag} className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-tint/[0.08] text-xs text-text-secondary">
           {tag}
-          <button type="button" onClick={() => onChange(tags.filter(t => t !== tag))} className="text-text-dim hover:text-red-400">
+          <button type="button" onClick={() => onChange(tags.filter(t => t !== tag))} className="text-text-dim hover:text-ui-red">
             &times;
           </button>
         </span>
@@ -300,7 +300,7 @@ export function CatalogVariantForm({ groupId, group, variant, onClose }: Catalog
                   </div>
                 )}
                 {preview.warning && (
-                  <p className="text-xs text-amber-400">{preview.warning}</p>
+                  <p className="text-xs text-accent-text">{preview.warning}</p>
                 )}
               </Card>
             )}
@@ -313,7 +313,7 @@ export function CatalogVariantForm({ groupId, group, variant, onClose }: Catalog
                 </h4>
                 {diff.gained.length > 0 && (
                   <div>
-                    <span className="text-xs text-emerald-400">{t('catalog.gained')} (+{diff.gained.length})</span>
+                    <span className="text-xs text-ui-emerald">{t('catalog.gained')} (+{diff.gained.length})</span>
                     <div className="mt-1 space-y-0.5">
                       {diff.gained.slice(0, 5).map((ad) => (
                         <div key={ad.id} className="text-xs text-text-dim">
@@ -325,7 +325,7 @@ export function CatalogVariantForm({ groupId, group, variant, onClose }: Catalog
                 )}
                 {diff.lost.length > 0 && (
                   <div>
-                    <span className="text-xs text-red-400">
+                    <span className="text-xs text-ui-red">
                       {t('catalog.lostWarning', { count: diff.lost.length })}
                     </span>
                     <div className="mt-1 space-y-0.5">
@@ -345,11 +345,11 @@ export function CatalogVariantForm({ groupId, group, variant, onClose }: Catalog
               <div className="border-t border-tint/[0.06] pt-4">
                 {showDeleteConfirm ? (
                   <div className="rounded-xl bg-red-500/5 border border-red-500/20 p-4 space-y-2">
-                    <p className="text-sm text-red-400">
+                    <p className="text-sm text-ui-red">
                       {t('catalog.deleteVariantConfirm', { name: variant.name })}
                     </p>
                     {group.variants.length <= 1 && (
-                      <p className="text-xs text-amber-400">{t('catalog.deleteVariantLastWarning')}</p>
+                      <p className="text-xs text-accent-text">{t('catalog.deleteVariantLastWarning')}</p>
                     )}
                     <div className="flex gap-2">
                       <Button variant="danger" size="sm" onClick={handleDelete} disabled={deleteVariant.isPending}>
@@ -369,7 +369,7 @@ export function CatalogVariantForm({ groupId, group, variant, onClose }: Catalog
                   <button
                     type="button"
                     onClick={() => setShowDeleteConfirm(true)}
-                    className="flex items-center gap-1.5 text-xs text-red-400/60 hover:text-red-400 transition-colors"
+                    className="flex items-center gap-1.5 text-xs text-ui-red/60 hover:text-ui-red transition-colors"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     {t('catalog.deleteVariant')}

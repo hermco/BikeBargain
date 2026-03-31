@@ -27,7 +27,7 @@ function TagInput({ tags, onChange, placeholder }: { tags: string[]; onChange: (
       {tags.map(tag => (
         <span key={tag} className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-tint/[0.08] text-xs text-text-secondary">
           {tag}
-          <button type="button" onClick={() => onChange(tags.filter(t => t !== tag))} className="text-text-dim hover:text-red-400">
+          <button type="button" onClick={() => onChange(tags.filter(t => t !== tag))} className="text-text-dim hover:text-ui-red">
             &times;
           </button>
         </span>
@@ -276,7 +276,7 @@ export function CatalogGroupForm({ group, onClose }: CatalogGroupFormProps) {
               {suggestions.length > 0 && (
                 <div className="rounded-xl bg-tint/[0.02] border border-tint/[0.06] p-3">
                   <div className="flex items-center gap-1.5 mb-2">
-                    <Lightbulb className="h-3.5 w-3.5 text-amber-400" />
+                    <Lightbulb className="h-3.5 w-3.5 text-accent-text" />
                     <span className="text-[11px] text-text-muted uppercase tracking-widest font-semibold">
                       {t('catalog.suggestions')}
                     </span>
@@ -434,7 +434,7 @@ export function CatalogGroupForm({ group, onClose }: CatalogGroupFormProps) {
                   </div>
                 )}
                 {preview.warning && (
-                  <p className="text-xs text-amber-400">{preview.warning}</p>
+                  <p className="text-xs text-accent-text">{preview.warning}</p>
                 )}
               </Card>
             )}

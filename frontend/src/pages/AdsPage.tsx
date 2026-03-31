@@ -161,7 +161,7 @@ export function AdsPage() {
           transition={{ delay: 0.15, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
           <div className="flex items-center gap-2 text-xs">
-            <TrendingUp className="h-3.5 w-3.5 text-amber-400/70" />
+            <TrendingUp className="h-3.5 w-3.5 text-accent-text/70" />
             <span className="text-text-muted">{t('stats.avgPrice')}</span>
             <span className="text-text-primary font-semibold tabular-nums">{formatPrice(kpiStats.avg)}</span>
           </div>
@@ -172,9 +172,9 @@ export function AdsPage() {
           </div>
           {kpiStats.soldCount > 0 && (
             <div className="flex items-center gap-2 text-xs">
-              <Tag className="h-3.5 w-3.5 text-red-400/60" />
+              <Tag className="h-3.5 w-3.5 text-ui-red/60" />
               <span className="text-text-muted">{t('ads.sold')}</span>
-              <span className="text-red-400/80 tabular-nums">{kpiStats.soldCount}</span>
+              <span className="text-ui-red/80 tabular-nums">{kpiStats.soldCount}</span>
             </div>
           )}
         </motion.div>

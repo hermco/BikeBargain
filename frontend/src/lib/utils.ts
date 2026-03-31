@@ -27,13 +27,13 @@ export function variantColor(color: string | null): string {
       return 'bg-[#2a3040] text-[#9aa5b8]'
     case 'Slate Himalayan Salt':
     case 'Slate Poppy Blue':
-      return 'bg-blue-500/15 text-blue-300'
+      return 'bg-blue-500/15 text-ui-blue'
     case 'Hanle Black':
-      return 'bg-accent-subtle text-amber-300'
+      return 'bg-accent-subtle text-accent-text'
     case 'Kamet White':
-      return 'bg-emerald-500/15 text-emerald-300'
+      return 'bg-emerald-500/15 text-ui-emerald'
     case 'Mana Black':
-      return 'bg-violet-500/15 text-violet-300'
+      return 'bg-violet-500/15 text-ui-purple'
     default:
       return 'bg-tint/[0.06] text-text-muted'
   }

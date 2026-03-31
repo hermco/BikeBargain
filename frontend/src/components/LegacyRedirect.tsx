@@ -30,7 +30,7 @@ export function LegacyAdRedirect() {
 
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <Loader2 className="h-8 w-8 animate-spin text-amber-400" />
+      <Loader2 className="h-8 w-8 animate-spin text-accent-text" />
     </div>
   )
 }

@@ -56,7 +56,7 @@ function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
         {/* Accessories */}
         <div className="rounded-xl bg-tint/[0.02] border border-tint/[0.04] p-4">
           <h4 className="text-[10px] text-text-muted uppercase tracking-widest font-semibold mb-3">
-            {t('ranking.accessories')} ({r.acc_count}) — <span className="text-emerald-400">{formatPrice(r.acc_used_total)}</span>
+            {t('ranking.accessories')} ({r.acc_count}) — <span className="text-ui-emerald">{formatPrice(r.acc_used_total)}</span>
           </h4>
           {r.accessories.length > 0 ? (
             <ul className="space-y-1.5">
@@ -75,11 +75,11 @@ function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
         {/* Consumables */}
         <div className="rounded-xl bg-tint/[0.02] border border-tint/[0.04] p-4">
           <h4 className="text-[10px] text-text-muted uppercase tracking-widest font-semibold mb-3">
-            {t('ranking.consumables')} — <span className="text-orange-400">+{formatPrice(r.wear_total)}</span>
+            {t('ranking.consumables')} — <span className="text-ui-orange">+{formatPrice(r.wear_total)}</span>
           </h4>
           <ul className="space-y-1.5">
             {r.wear_details.map((c) => (
-              <li key={c.name} className={cn('flex justify-between', c.short_term ? 'text-red-400' : 'text-text-secondary')}>
+              <li key={c.name} className={cn('flex justify-between', c.short_term ? 'text-ui-red' : 'text-text-secondary')}>
                 <span>{c.name} <span className="text-text-dim">({c.wear_pct}%)</span></span>
                 <span className="ml-2 shrink-0">{c.cost_consumed} &euro;</span>
               </li>
@@ -93,7 +93,7 @@ function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
         {/* Warranty & alerts */}
         <div className="rounded-xl bg-tint/[0.02] border border-tint/[0.04] p-4">
           <h4 className="text-[10px] text-text-muted uppercase tracking-widest font-semibold mb-3">
-            {t('ranking.warranty')} — {r.warranty.remaining_years} {t('ranking.years')} — <span className="text-blue-400">{formatPrice(r.warranty.value)}</span>
+            {t('ranking.warranty')} — {r.warranty.remaining_years} {t('ranking.years')} — <span className="text-ui-blue">{formatPrice(r.warranty.value)}</span>
           </h4>
           {r.warranty.circulation_date && (
             <p className="text-text-muted text-xs mb-3">
@@ -103,12 +103,12 @@ function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
 
           {r.short_term_items.length > 0 && (
             <div className="mt-2 p-3 rounded-lg bg-red-500/5 border border-red-500/15">
-              <div className="flex items-center gap-1.5 text-red-400 text-[11px] font-semibold mb-1.5">
+              <div className="flex items-center gap-1.5 text-ui-red text-[11px] font-semibold mb-1.5">
                 <AlertTriangle className="h-3.5 w-3.5" />
                 {t('ranking.shortTerm')} {formatPrice(r.short_term_total)}
               </div>
               {r.short_term_items.map((s) => (
-                <p key={s.name} className="text-[11px] text-red-300/70">
+                <p key={s.name} className="text-[11px] text-ui-red/70">
                   {s.name} : {s.garage_cost} &euro; — {s.reason}
                 </p>
               ))}
@@ -123,7 +123,7 @@ function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
           )}
 
           <div className="mt-3 pt-2 border-t border-tint/[0.04] flex gap-3">
-            <Link to={modelUrl(`/ads/${r.id}`)} className="text-xs text-amber-400 hover:text-accent-text transition-colors">
+            <Link to={modelUrl(`/ads/${r.id}`)} className="text-xs text-accent-text hover:text-accent-text transition-colors">
               {t('ranking.viewAd')}
             </Link>
             <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-xs text-text-dim hover:text-text-secondary flex items-center gap-0.5 transition-colors">
@@ -158,7 +158,7 @@ function RankingCard({ r, rank, isOpen, onToggle, travel, travelLoading, hasFilt
       <button onClick={onToggle} className="w-full text-left p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className={cn('text-lg font-bold font-fraunces', r.sold ? 'text-red-400/60' : 'text-text-muted')}>#{rank}</span>
+            <span className={cn('text-lg font-bold font-fraunces', r.sold ? 'text-ui-red/60' : 'text-text-muted')}>#{rank}</span>
             <div>
               <p className="text-sm font-medium text-text-primary flex items-center gap-2 flex-wrap">
                 {r.city}
@@ -170,7 +170,7 @@ function RankingCard({ r, rank, isOpen, onToggle, travel, travelLoading, hasFilt
           </div>
           <div className="text-right">
             <p className="text-sm font-semibold text-text-primary tabular-nums">{formatPrice(r.effective_price)}</p>
-            <span className={cn('text-xs font-semibold', r.decote_pct > 20 ? 'text-emerald-400' : r.decote_pct > 10 ? 'text-amber-400' : 'text-red-400')}>
+            <span className={cn('text-xs font-semibold', r.decote_pct > 20 ? 'text-ui-emerald' : r.decote_pct > 10 ? 'text-accent-text' : 'text-ui-red')}>
               -{r.decote_pct}%
             </span>
           </div>
@@ -182,8 +182,8 @@ function RankingCard({ r, rank, isOpen, onToggle, travel, travelLoading, hasFilt
             <span>{formatKm(r.km)}</span>
           </div>
           <div className="flex items-center gap-3 tabular-nums">
-            {r.acc_used_total > 0 && <span className="text-emerald-400">-{r.acc_used_total}</span>}
-            <span className="text-orange-400/80">+{r.wear_total}</span>
+            {r.acc_used_total > 0 && <span className="text-ui-emerald">-{r.acc_used_total}</span>}
+            <span className="text-ui-orange/80">+{r.wear_total}</span>
             <ChevronDown className={cn('h-4 w-4 text-text-dim transition-transform duration-200', isOpen && 'rotate-180')} />
           </div>
         </div>
@@ -200,7 +200,7 @@ function RankingCard({ r, rank, isOpen, onToggle, travel, travelLoading, hasFilt
               style={{ width: `${Math.min(r.decote_pct, 40) / 40 * 100}%` }}
             />
           </div>
-          <span className={cn('text-[10px] font-semibold tabular-nums', r.decote_pct > 20 ? 'text-emerald-400' : r.decote_pct > 10 ? 'text-amber-400' : 'text-red-400')}>
+          <span className={cn('text-[10px] font-semibold tabular-nums', r.decote_pct > 20 ? 'text-ui-emerald' : r.decote_pct > 10 ? 'text-accent-text' : 'text-ui-red')}>
             -{r.decote_pct}%
           </span>
         </div>
@@ -511,7 +511,7 @@ export function RankingPage() {
           {soldCount > 0 && (
             <span className={cn(
               'text-[11px] tabular-nums font-semibold px-1.5 py-0.5 rounded-md transition-colors',
-              hideSold ? 'bg-accent-subtle text-amber-400' : 'bg-tint/[0.06] text-text-dim',
+              hideSold ? 'bg-accent-subtle text-accent-text' : 'bg-tint/[0.06] text-text-dim',
             )}>
               {soldCount}
             </span>
@@ -750,8 +750,8 @@ export function RankingPage() {
                   >
                     <td className={cn(
                       'py-3 pl-5 pr-4 w-12 text-center font-bold font-fraunces',
-                      r.sold ? 'text-red-400/60' :
-                      isPodium && origRank === 1 ? 'text-amber-400' :
+                      r.sold ? 'text-ui-red/60' :
+                      isPodium && origRank === 1 ? 'text-accent-text' :
                       isPodium && origRank === 2 ? 'text-gray-300' :
                       isPodium && origRank === 3 ? 'text-amber-600' : 'text-text-muted',
                     )}>{origRank}</td>
@@ -769,12 +769,12 @@ export function RankingPage() {
                     </td>
                     <td className="py-3 pr-4 text-right tabular-nums text-text-secondary">{formatKm(r.km)}</td>
                     <td className={cn('py-3 pr-4 text-right tabular-nums text-text-primary', r.sold && 'line-through decoration-red-400/50')}>{formatPrice(r.price)}</td>
-                    <td className="py-3 pr-4 text-right text-emerald-400 tabular-nums">
+                    <td className="py-3 pr-4 text-right text-ui-emerald tabular-nums">
                       {r.acc_used_total > 0 ? `-${r.acc_used_total}` : '0'}
                     </td>
                     <td className="py-3 pr-4 text-right font-semibold tabular-nums text-text-primary">{formatPrice(r.effective_price)}</td>
                     <td className="py-3 pr-5 text-right tabular-nums">
-                      <span className={cn('font-semibold', r.decote_pct > 20 ? 'text-emerald-400' : r.decote_pct > 10 ? 'text-amber-400' : 'text-red-400')}>
+                      <span className={cn('font-semibold', r.decote_pct > 20 ? 'text-ui-emerald' : r.decote_pct > 10 ? 'text-accent-text' : 'text-ui-red')}>
                         -{r.decote_pct}%
                       </span>
                       <ChevronDown className={cn('inline h-4 w-4 ml-1.5 text-text-dim transition-transform duration-200', isOpen && 'rotate-180')} />

@@ -304,19 +304,19 @@ export function AdDetailPage() {
 
       {/* Superseded banner */}
       {ad.superseded_by && !editing && (
-        <div className="rounded-xl bg-purple-500/10 border border-purple-500/20 px-4 py-3 text-sm text-purple-300 flex items-center gap-2">
+        <div className="rounded-xl bg-purple-500/10 border border-purple-500/20 px-4 py-3 text-sm text-ui-purple flex items-center gap-2">
           <History className="h-4 w-4 shrink-0" />
           <span>{t('adDetail.supersededBy')} </span>
-          <Link to={modelUrl(`/ads/${ad.superseded_by}`)} className="font-medium underline hover:text-purple-200 transition-colors">
+          <Link to={modelUrl(`/ads/${ad.superseded_by}`)} className="font-medium underline hover:text-ui-purple transition-colors">
             {t('adDetail.supersededByLink', { id: ad.superseded_by })}
           </Link>
-          <span className="text-purple-300/60">{t('adDetail.supersededSuffix')}</span>
+          <span className="text-ui-purple/60">{t('adDetail.supersededSuffix')}</span>
         </div>
       )}
 
       {/* Sold banner */}
       {!!ad.sold && !ad.superseded_by && !editing && (
-        <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-300 flex items-center gap-2">
+        <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-ui-red flex items-center gap-2">
           <Ban className="h-4 w-4 shrink-0" />
           {t('adDetail.soldBanner')}
         </div>
@@ -324,10 +324,10 @@ export function AdDetailPage() {
 
       {/* Repost chain banner */}
       {ad.previous_ad_id && !editing && (
-        <div className="rounded-xl bg-purple-500/10 border border-purple-500/20 px-4 py-3 text-sm text-purple-300 flex items-center gap-2">
+        <div className="rounded-xl bg-purple-500/10 border border-purple-500/20 px-4 py-3 text-sm text-ui-purple flex items-center gap-2">
           <History className="h-4 w-4 shrink-0" />
           <span>{t('adDetail.repostOf')} </span>
-          <Link to={modelUrl(`/ads/${ad.previous_ad_id}`)} className="font-medium underline hover:text-purple-200 transition-colors">
+          <Link to={modelUrl(`/ads/${ad.previous_ad_id}`)} className="font-medium underline hover:text-ui-purple transition-colors">
             {t('adDetail.see', { id: ad.previous_ad_id })}
           </Link>
           {priceHistory && priceHistory.history.length >= 2 && (() => {
@@ -336,7 +336,7 @@ export function AdDetailPage() {
             const delta = last - first
             const reposts = priceHistory.history.filter(h => h.source === 'repost').length
             return (
-              <span className="text-purple-300/70">
+              <span className="text-ui-purple/70">
                 — {t('adDetail.repostInfo', { count: reposts, delta: `${delta < 0 ? '' : '+'}${delta}€` })}
               </span>
             )
@@ -361,10 +361,10 @@ export function AdDetailPage() {
               const decotePct = ((ad.estimated_new_price - ad.price) / ad.estimated_new_price * 100)
               return (
                 <span className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-sm font-semibold tabular-nums ${
-                  decotePct > 20 ? 'bg-emerald-500/15 text-emerald-400' :
-                  decotePct > 10 ? 'bg-accent-subtle text-amber-400' :
-                  decotePct > 0 ? 'bg-red-500/15 text-red-400' :
-                  'bg-red-500/15 text-red-400'
+                  decotePct > 20 ? 'bg-emerald-500/15 text-ui-emerald' :
+                  decotePct > 10 ? 'bg-accent-subtle text-accent-text' :
+                  decotePct > 0 ? 'bg-red-500/15 text-ui-red' :
+                  'bg-red-500/15 text-ui-red'
                 }`}>
                   {decotePct > 0 ? '-' : '+'}{Math.abs(decotePct).toFixed(0)}%
                 </span>
@@ -558,7 +558,7 @@ export function AdDetailPage() {
             {ad.price != null && ad.estimated_new_price != null && (
               <>
                 <span className="text-text-muted">{t('adDetail.newPriceGap')}</span>
-                <span className={ad.price < ad.estimated_new_price ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold'}>
+                <span className={ad.price < ad.estimated_new_price ? 'text-ui-emerald font-semibold' : 'text-ui-red font-semibold'}>
                   {((ad.price - ad.estimated_new_price) / ad.estimated_new_price * 100).toFixed(1)}%
                 </span>
               </>
@@ -597,15 +597,15 @@ export function AdDetailPage() {
                           {formatPrice(entry.price)}
                         </span>
                         {delta !== 0 && (
-                          <span className={`inline-flex items-center gap-0.5 text-xs font-semibold tabular-nums ${isDown ? 'text-emerald-400' : 'text-red-400'}`}>
+                          <span className={`inline-flex items-center gap-0.5 text-xs font-semibold tabular-nums ${isDown ? 'text-ui-emerald' : 'text-ui-red'}`}>
                             {isDown ? <TrendingDown className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />}
                             {isDown ? '' : '+'}{delta}€
                           </span>
                         )}
                         <Badge className={`text-[10px] ${
                           entry.source === 'initial' ? 'bg-tint/[0.06] text-text-dim' :
-                          entry.source === 'repost' ? 'bg-purple-500/15 text-purple-300' :
-                          entry.source === 'price_update' ? 'bg-emerald-500/15 text-emerald-300' :
+                          entry.source === 'repost' ? 'bg-purple-500/15 text-ui-purple' :
+                          entry.source === 'price_update' ? 'bg-emerald-500/15 text-ui-emerald' :
                           'bg-accent-subtle text-accent-text'
                         }`}>
                           {entry.source === 'initial' ? t('adDetail.initialPublication') :
@@ -618,7 +618,7 @@ export function AdDetailPage() {
                         <span>{new Date(entry.recorded_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                         {entry.note && <span className="text-text-dim/70 truncate max-w-xs">{entry.note}</span>}
                         {entry.previous_ad_id && (
-                          <Link to={modelUrl(`/ads/${entry.previous_ad_id}`)} className="text-purple-300/70 hover:text-purple-300 transition-colors shrink-0">
+                          <Link to={modelUrl(`/ads/${entry.previous_ad_id}`)} className="text-ui-purple/70 hover:text-ui-purple transition-colors shrink-0">
                             {t('adDetail.see', { id: entry.previous_ad_id })}
                           </Link>
                         )}
@@ -638,7 +638,7 @@ export function AdDetailPage() {
             return (
               <div className="mt-4 pt-4 border-t border-tint/[0.06] flex items-center gap-4 text-sm">
                 <span className="text-text-muted">{t('adDetail.totalEvolution')}</span>
-                <span className={`font-semibold tabular-nums ${totalDelta < 0 ? 'text-emerald-400' : totalDelta > 0 ? 'text-red-400' : 'text-text-muted'}`}>
+                <span className={`font-semibold tabular-nums ${totalDelta < 0 ? 'text-ui-emerald' : totalDelta > 0 ? 'text-ui-red' : 'text-text-muted'}`}>
                   {totalDelta < 0 ? '' : '+'}{totalDelta}€ ({totalDelta <= 0 ? '' : '+'}{pct}%)
                 </span>
                 <span className="text-text-dim text-xs">
@@ -740,7 +740,7 @@ export function AdDetailPage() {
                         <td className="py-2.5 pr-4 text-text-primary">
                           {a.name}
                           {a.source === 'manual' && (
-                            <span className="ml-2 text-[10px] text-amber-400/60 uppercase">{t('common.manual')}</span>
+                            <span className="ml-2 text-[10px] text-accent-text/60 uppercase">{t('common.manual')}</span>
                           )}
                         </td>
                         <td className="py-2.5 pr-4 text-right text-text-muted">{a.estimated_new_price} &euro;</td>
@@ -753,7 +753,7 @@ export function AdDetailPage() {
                               const idx = currentAccessories.findIndex((x) => x.name === a.name)
                               if (idx >= 0) removeAccessory(idx)
                             }}
-                              className="p-1 rounded-md text-text-dim hover:text-red-400 hover:bg-red-500/10 transition-all"
+                              className="p-1 rounded-md text-text-dim hover:text-ui-red hover:bg-red-500/10 transition-all"
                               title={t('common.removeAccessory')}>
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>

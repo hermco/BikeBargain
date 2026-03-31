@@ -54,7 +54,7 @@ export function AdCard({ ad, index }: AdCardProps) {
               loading="lazy"
             />
           ) : (
-            <div className="flex items-center justify-center h-full text-[#2a3040] text-sm">
+            <div className="flex items-center justify-center h-full text-text-dim text-sm">
               {t('common.noImage')}
             </div>
           )}
@@ -104,7 +104,7 @@ export function AdCard({ ad, index }: AdCardProps) {
               </Badge>
             )}
             {accCount > 0 && (
-              <Badge className="bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20 flex items-center gap-1">
+              <Badge className="bg-emerald-500/10 text-ui-emerald ring-1 ring-emerald-500/20 flex items-center gap-1">
                 <Wrench className="h-3 w-3 shrink-0" />
                 {accCount} acc.
               </Badge>
@@ -133,10 +133,10 @@ export function AdCard({ ad, index }: AdCardProps) {
                 ? 'from-amber-500/80 to-amber-400/60'
                 : 'from-red-500/80 to-red-400/60'
             const textColor = ratio < 0.3
-              ? 'text-emerald-400'
+              ? 'text-ui-emerald'
               : ratio < 0.6
-                ? 'text-amber-400'
-                : 'text-red-400'
+                ? 'text-accent-text'
+                : 'text-ui-red'
             return (
               <div className="flex items-center gap-2" style={{ minHeight: '20px' }}>
                 <CircleGauge className="h-4 w-4 shrink-0 text-text-muted" style={{ overflow: 'visible' }} />

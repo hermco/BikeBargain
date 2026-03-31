@@ -704,7 +704,7 @@ export function CrawlPage() {
             <div className="flex items-center gap-4 text-sm">
               <span className="text-text-muted">{t('crawl.total')} <span className="text-text-primary font-medium">{adStates.length}</span></span>
               <span className="text-text-muted">{t('crawl.processed')} <span className="text-text-primary font-medium">{processedCount}</span></span>
-              <span className="text-text-muted">{t('crawl.confirmed')} <span className="text-green-400 font-medium">{confirmedCount}</span></span>
+              <span className="text-text-muted">{t('crawl.confirmed')} <span className="text-ui-green font-medium">{confirmedCount}</span></span>
               <span className="text-text-muted">{t('crawl.skipped')} <span className="text-text-dim font-medium">{skippedCount}</span></span>
               <span className="text-text-muted">{t('crawl.remaining')} <span className="text-accent-text font-medium">{pendingCount}</span></span>
             </div>
@@ -770,7 +770,7 @@ export function CrawlPage() {
       {!isLoadingSession && (status === 'idle' || status === 'searching') && (
         <div className="flex flex-col items-center justify-center py-20">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400/20 to-amber-600/20 flex items-center justify-center mb-6">
-            <Search className="h-7 w-7 text-amber-400" />
+            <Search className="h-7 w-7 text-accent-text" />
           </div>
           <h2 className="text-lg font-semibold text-text-primary mb-2 font-fraunces">
             {t('crawl.searchTitle')}
@@ -794,10 +794,10 @@ export function CrawlPage() {
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {configs.map(c => (
-                    <span key={c.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 text-xs font-medium">
+                    <span key={c.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-accent-text text-xs font-medium">
                       {c.keyword}
                       {(c.min_cc || c.max_cc) && (
-                        <span className="text-amber-400/60 text-[10px]">
+                        <span className="text-accent-text/60 text-[10px]">
                           {c.min_cc || '?'}-{c.max_cc || '?'}cc
                         </span>
                       )}
@@ -807,7 +807,7 @@ export function CrawlPage() {
               </div>
             ) : (
               <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-center">
-                <p className="text-xs text-amber-400 mb-1">{t('crawl.noSearchConfigs')}</p>
+                <p className="text-xs text-accent-text mb-1">{t('crawl.noSearchConfigs')}</p>
                 <Link to={`/models/${slug}/settings`} className="text-xs text-accent hover:underline">
                   {t('crawl.configureSearch')}
                 </Link>
@@ -828,7 +828,7 @@ export function CrawlPage() {
             )}
           </Button>
           {searchMut.error && (
-            <div className="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400 max-w-md">
+            <div className="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-ui-red max-w-md">
               {(searchMut.error as Error).message}
             </div>
           )}
@@ -883,7 +883,7 @@ export function CrawlPage() {
                   <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <Link to={modelUrl(`/ads/${pc.id}`)} className="text-sm font-medium text-text-primary hover:text-amber-400 transition-colors truncate">
+                        <Link to={modelUrl(`/ads/${pc.id}`)} className="text-sm font-medium text-text-primary hover:text-accent-text transition-colors truncate">
                           {pc.subject || `#${pc.id}`}
                         </Link>
                         {pc.city && (
@@ -894,7 +894,7 @@ export function CrawlPage() {
                         <span className="text-sm text-text-muted tabular-nums">{formatPrice(pc.current_price)}</span>
                         <ArrowRight className="h-3 w-3 text-text-dim" />
                         <span className="text-sm font-semibold tabular-nums text-text-primary">{formatPrice(pc.new_price)}</span>
-                        <span className={`text-xs font-semibold tabular-nums ${pc.price_delta < 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        <span className={`text-xs font-semibold tabular-nums ${pc.price_delta < 0 ? 'text-ui-emerald' : 'text-ui-red'}`}>
                           {pc.price_delta < 0 ? '' : '+'}{pc.price_delta}€
                         </span>
                       </div>
@@ -922,7 +922,7 @@ export function CrawlPage() {
                       </div>
                     )}
                     {isConfirmed && (
-                      <Badge className="bg-green-500/15 text-green-300 text-[10px]">
+                      <Badge className="bg-green-500/15 text-ui-green text-[10px]">
                         <Check className="h-3 w-3 mr-1" />
                         {t('crawl.priceChangeConfirmed')}
                       </Badge>
@@ -938,7 +938,7 @@ export function CrawlPage() {
       {/* Done state */}
       {status === 'done' && (
         <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-6 mb-6 text-center">
-          <Check className="h-8 w-8 text-green-400 mx-auto mb-3" />
+          <Check className="h-8 w-8 text-ui-green mx-auto mb-3" />
           <h3 className="text-lg font-semibold text-text-primary mb-1 font-fraunces">
             {t('crawl.doneTitle')}
           </h3>
@@ -1012,7 +1012,7 @@ export function CrawlPage() {
             </h3>
             {currentAd.existsInDb && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-subtle border border-amber-500/20">
-                <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+                <AlertTriangle className="h-3.5 w-3.5 text-accent-text" />
                 <span className="text-xs font-medium text-accent-text">{t('crawl.existsInDb')}</span>
               </div>
             )}
@@ -1022,8 +1022,8 @@ export function CrawlPage() {
           {currentAd.potentialDuplicates && currentAd.potentialDuplicates.length > 0 && (
             <div className="rounded-xl bg-purple-500/10 border border-purple-500/20 p-4 mb-4">
               <div className="flex items-center gap-2 mb-3">
-                <Copy className="h-4 w-4 text-purple-400" />
-                <h4 className="text-xs uppercase tracking-widest font-semibold text-purple-300">
+                <Copy className="h-4 w-4 text-ui-purple" />
+                <h4 className="text-xs uppercase tracking-widest font-semibold text-ui-purple">
                   {t('crawl.repostProbable')}
                 </h4>
               </div>
@@ -1039,11 +1039,11 @@ export function CrawlPage() {
                             {dup.city && <span>{dup.city}</span>}
                             {dup.mileage_km != null && <span>{dup.mileage_km.toLocaleString('fr-FR')} km</span>}
                             {dup.color && <Badge className={variantColor(dup.color)}>{dup.color}</Badge>}
-                            {dup.sold && <Badge className="bg-red-500/20 text-red-300 text-[10px]">Vendue</Badge>}
+                            {dup.sold && <Badge className="bg-red-500/20 text-ui-red text-[10px]">Vendue</Badge>}
                           </div>
                           <div className="flex flex-wrap gap-1.5 mt-2">
                             {dup.reasons.map((r, i) => (
-                              <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300/80">{r}</span>
+                              <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-ui-purple/80">{r}</span>
                             ))}
                           </div>
                         </div>
@@ -1055,15 +1055,15 @@ export function CrawlPage() {
                             'bg-tint/[0.04] border border-tint/[0.06]'
                           }`}>
                             <span className={`text-lg font-bold tabular-nums ${
-                              dup.price_delta < 0 ? 'text-emerald-400' :
-                              dup.price_delta > 0 ? 'text-red-400' :
+                              dup.price_delta < 0 ? 'text-ui-emerald' :
+                              dup.price_delta > 0 ? 'text-ui-red' :
                               'text-text-muted'
                             }`}>
                               {dup.price_delta === 0 ? '=' : dup.price_delta < 0 ? `${dup.price_delta}€` : `+${dup.price_delta}€`}
                             </span>
                             <p className={`text-[10px] mt-0.5 ${
-                              dup.price_delta < 0 ? 'text-emerald-400/70' :
-                              dup.price_delta > 0 ? 'text-red-400/70' :
+                              dup.price_delta < 0 ? 'text-ui-emerald/70' :
+                              dup.price_delta > 0 ? 'text-ui-red/70' :
                               'text-text-dim'
                             }`}>
                               {dup.price_delta < 0 ? t('crawl.priceDown') : dup.price_delta > 0 ? t('crawl.priceUp') : t('crawl.priceSame')}
@@ -1316,18 +1316,18 @@ export function CrawlPage() {
                   <div key={diff.field} className="flex items-start gap-3 text-sm">
                     <span className="text-text-muted w-28 shrink-0">{diff.label}</span>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-red-400 line-through">{String(diff.old ?? t('common.na'))}</span>
+                      <span className="text-ui-red line-through">{String(diff.old ?? t('common.na'))}</span>
                       <ArrowRight className="h-3 w-3 text-text-dim shrink-0" />
-                      <span className="text-green-400">{String(diff.new ?? t('common.na'))}</span>
+                      <span className="text-ui-green">{String(diff.new ?? t('common.na'))}</span>
                     </div>
                     {diff.field === 'accessories' && (
                       <div className="text-xs text-text-dim ml-2">
                         {diff.added && diff.added.length > 0 && (
-                          <span className="text-green-400">+{diff.added.join(', ')}</span>
+                          <span className="text-ui-green">+{diff.added.join(', ')}</span>
                         )}
                         {diff.added && diff.added.length > 0 && diff.removed && diff.removed.length > 0 && ' / '}
                         {diff.removed && diff.removed.length > 0 && (
-                          <span className="text-red-400">-{diff.removed.join(', ')}</span>
+                          <span className="text-ui-red">-{diff.removed.join(', ')}</span>
                         )}
                       </div>
                     )}
@@ -1410,7 +1410,7 @@ export function CrawlPage() {
                     )}
                     <span className="text-xs text-text-dim">{acc.estimated_new_price} &euro; {t('common.new')}</span>
                     <button onClick={() => removeAccessory(i)}
-                      className="p-1 rounded-md text-text-dim opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                      className="p-1 rounded-md text-text-dim opacity-0 group-hover:opacity-100 hover:text-ui-red hover:bg-red-500/10 transition-all"
                       title={t('common.removeAccessory')}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -1473,11 +1473,11 @@ export function CrawlPage() {
               : 'bg-tint/[0.04] border border-tint/[0.06]'
           }`}>
             {transition.type === 'confirmed' ? (
-              <Check className="h-4 w-4 text-green-400" />
+              <Check className="h-4 w-4 text-ui-green" />
             ) : (
               <SkipForward className="h-4 w-4 text-text-dim" />
             )}
-            <span className={`text-sm font-medium ${transition.type === 'confirmed' ? 'text-green-300' : 'text-text-dim'}`}>
+            <span className={`text-sm font-medium ${transition.type === 'confirmed' ? 'text-ui-green' : 'text-text-dim'}`}>
               {transition.type === 'confirmed' ? t('crawl.adRegistered') : t('crawl.adSkipped')}
             </span>
           </div>
@@ -1545,9 +1545,9 @@ export function CrawlPage() {
                     key={state.summary.id}
                     className="flex items-center gap-3 py-2 px-3 rounded-lg bg-tint/[0.02] text-sm"
                   >
-                    {state.action === 'confirmed' && <Check className="h-4 w-4 text-green-400 shrink-0" />}
+                    {state.action === 'confirmed' && <Check className="h-4 w-4 text-ui-green shrink-0" />}
                     {state.action === 'skipped' && <SkipForward className="h-4 w-4 text-text-dim shrink-0" />}
-                    {state.action === 'error' && <X className="h-4 w-4 text-red-400 shrink-0" />}
+                    {state.action === 'error' && <X className="h-4 w-4 text-ui-red shrink-0" />}
                     <span className="text-text-primary truncate flex-1">{state.summary.subject}</span>
                     <span className="text-text-dim text-xs shrink-0">
                       {state.summary.price != null ? formatPrice(state.summary.price) : ''}
@@ -1557,7 +1557,7 @@ export function CrawlPage() {
                     )}
                     {state.potentialDuplicates && state.potentialDuplicates.length > 0 && (
                       <Link to={modelUrl(`/ads/${state.potentialDuplicates[0].id}`)} target="_blank">
-                        <Badge className="bg-purple-500/10 text-purple-300 text-[10px] hover:bg-purple-500/20 transition-colors">
+                        <Badge className="bg-purple-500/10 text-ui-purple text-[10px] hover:bg-purple-500/20 transition-colors">
                           {t('crawl.repostOf', { id: state.potentialDuplicates[0].id })}
                         </Badge>
                       </Link>
@@ -1583,7 +1583,7 @@ export function CrawlPage() {
                   </span>
                 )}
                 {newListingCount > 0 && (
-                  <span className="ml-1 text-blue-300 font-normal">
+                  <span className="ml-1 text-ui-blue font-normal">
                     · {t('crawl.newListingCount', { count: newListingCount })}
                   </span>
                 )}
@@ -1601,7 +1601,7 @@ export function CrawlPage() {
                   <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${hideNewListings ? 'bg-blue-500/40' : 'bg-tint/[0.08]'}`}>
                     <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 mt-0.5 ${hideNewListings ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
                   </span>
-                  <span className={hideNewListings ? 'text-blue-300' : ''}>
+                  <span className={hideNewListings ? 'text-ui-blue' : ''}>
                     {t('crawl.hideNewListings')} ({newListingCount})
                   </span>
                 </button>
@@ -1653,8 +1653,8 @@ export function CrawlPage() {
                 {isConfirmed && (
                   <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
                     <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/20 backdrop-blur-sm border border-green-500/30">
-                      <Check className="h-4 w-4 text-green-400" />
-                      <span className="text-xs font-semibold text-green-300">{t('crawl.added')}</span>
+                      <Check className="h-4 w-4 text-ui-green" />
+                      <span className="text-xs font-semibold text-ui-green">{t('crawl.added')}</span>
                     </div>
                   </div>
                 )}
@@ -1669,14 +1669,14 @@ export function CrawlPage() {
                 {isError && (
                   <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
                     <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/20 backdrop-blur-sm border border-red-500/30">
-                      <X className="h-4 w-4 text-red-400" />
-                      <span className="text-xs font-semibold text-red-300">{t('common.error')}</span>
+                      <X className="h-4 w-4 text-ui-red" />
+                      <span className="text-xs font-semibold text-ui-red">{t('common.error')}</span>
                     </div>
                   </div>
                 )}
                 {isWaiting && (
                   <div className="absolute top-2 right-10 z-10 flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/20 backdrop-blur-sm border border-amber-500/30">
-                    <Pencil className="h-3 w-3 text-amber-400" />
+                    <Pencil className="h-3 w-3 text-accent-text" />
                     <span className="text-[10px] font-semibold text-accent-text uppercase tracking-wide">{t('crawl.inProgress')}</span>
                   </div>
                 )}
@@ -1688,7 +1688,7 @@ export function CrawlPage() {
                     setAdStates((prev) => prev.filter((s) => s.summary.id !== state.summary.id))
                     if (sessionId) removeAdMut.mutate({ sessionId, adId: state.summary.id })
                   }}
-                  className="absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/35 hover:text-red-200 transition-colors backdrop-blur-sm"
+                  className="absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-red-500/20 text-ui-red hover:bg-red-500/35 hover:text-ui-red transition-colors backdrop-blur-sm"
                   title={t('crawl.removeFromList')}
                 >
                   <X className="h-3.5 w-3.5" />
@@ -1696,19 +1696,19 @@ export function CrawlPage() {
                 )}
                 {inDb && isPending && (
                   <div className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/20 backdrop-blur-sm border border-amber-500/30">
-                    <AlertTriangle className="h-3 w-3 text-amber-400" />
+                    <AlertTriangle className="h-3 w-3 text-accent-text" />
                     <span className="text-[10px] font-semibold text-accent-text uppercase tracking-wide">{t('crawl.inDb')}</span>
                   </div>
                 )}
                 {!inDb && isPending && state.summary.possible_repost_of && (
                   <div className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-1 rounded-md bg-purple-500/20 backdrop-blur-sm border border-purple-500/30">
-                    <Copy className="h-3 w-3 text-purple-400" />
-                    <span className="text-[10px] font-semibold text-purple-300 uppercase tracking-wide">{t('crawl.repostQuestion')}</span>
+                    <Copy className="h-3 w-3 text-ui-purple" />
+                    <span className="text-[10px] font-semibold text-ui-purple uppercase tracking-wide">{t('crawl.repostQuestion')}</span>
                   </div>
                 )}
                 {state.summary.is_new_listing && isPending && !inDb && !state.summary.possible_repost_of && (
                   <div className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-1 rounded-md bg-blue-500/20 backdrop-blur-sm border border-blue-500/30">
-                    <span className="text-[10px] font-semibold text-blue-300 uppercase tracking-wide">{t('crawl.newListingBadge')}</span>
+                    <span className="text-[10px] font-semibold text-ui-blue uppercase tracking-wide">{t('crawl.newListingBadge')}</span>
                   </div>
                 )}
                 {state.summary.thumbnail && (
@@ -1735,15 +1735,15 @@ export function CrawlPage() {
                     const repost = state.summary.possible_repost_of
                     const delta = repost.price_delta
                     return (
-                      <div className="flex items-center gap-1.5 text-[11px] text-purple-300/80 flex-wrap">
+                      <div className="flex items-center gap-1.5 text-[11px] text-ui-purple/80 flex-wrap">
                         <Copy className="h-3 w-3 shrink-0" />
                         <span>{t('crawl.possibleRepost')} </span>
-                        <Link to={modelUrl(`/ads/${repost.id}`)} target="_blank" className="text-purple-300 underline hover:text-purple-200" onClick={(e) => e.stopPropagation()}>
+                        <Link to={modelUrl(`/ads/${repost.id}`)} target="_blank" className="text-ui-purple underline hover:text-ui-purple" onClick={(e) => e.stopPropagation()}>
                           #{repost.id}
                         </Link>
-                        {repost.sold && <span className="text-red-400">({t('common.sold').toLowerCase()})</span>}
+                        {repost.sold && <span className="text-ui-red">({t('common.sold').toLowerCase()})</span>}
                         {delta != null && delta !== 0 && (
-                          <span className={`font-semibold tabular-nums ${delta < 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          <span className={`font-semibold tabular-nums ${delta < 0 ? 'text-ui-emerald' : 'text-ui-red'}`}>
                             {delta < 0 ? '' : '+'}{delta}€
                           </span>
                         )}
