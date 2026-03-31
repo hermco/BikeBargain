@@ -58,6 +58,7 @@
     "ranking": "Ranking",
     "search": "Search",
     "accessories": "Accessories",
+    "settings": "Settings",
     "allModels": "All models",
     "main": "Main",
     "explore": "Explore"
@@ -304,7 +305,10 @@
     "priceChangeConfirmed": "Price updated",
     "noPriceChanges": "No price changes detected",
     "checkedCount": "{{count}} ads checked",
-    "priceChangedBadge": "Price changed"
+    "priceChangedBadge": "Price changed",
+    "searchConfigs": "{{count}} search config(s)",
+    "noSearchConfigs": "No search configurations",
+    "configureSearch": "Configure search"
   },
   "catalog": {
     "title": "Accessory catalog",
@@ -414,6 +418,41 @@
       "esthetique": "Mirrors, fender, stickers...",
       "performance": "Exhaust, air filter, ECU flash...",
       "autre": "Lock, center stand, cover..."
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "searchConfig": {
+      "title": "Search Configuration",
+      "subtitle": "Parameters sent to LeBonCoin during crawl",
+      "keyword": "Keyword",
+      "keywordPlaceholder": "E.g.: Himalayan 450",
+      "minCc": "Min CC",
+      "maxCc": "Max CC",
+      "locations": "Location",
+      "locationsPlaceholder": "All of France",
+      "ownerType": "Seller type",
+      "ownerTypeOptions": {
+        "private": "Private",
+        "pro": "Professional",
+        "all": "All"
+      },
+      "priceMin": "Min price",
+      "priceMax": "Max price",
+      "sort": "Sort",
+      "sortOptions": {
+        "relevance": "Relevance",
+        "newest": "Newest first",
+        "oldest": "Oldest first",
+        "cheapest": "Cheapest first",
+        "expensive": "Most expensive first"
+      },
+      "searchInTitleOnly": "Title only",
+      "addConfig": "Add search config",
+      "deleteConfirm": "Delete this configuration?",
+      "emptyState": "No search configurations. Add one to start crawling.",
+      "ccRange": "{{min}}-{{max}} cc",
+      "priceRange": "{{min}}-{{max}} EUR"
     }
   }
 }

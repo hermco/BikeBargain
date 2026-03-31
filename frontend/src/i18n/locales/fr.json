@@ -58,6 +58,7 @@
     "ranking": "Classement",
     "search": "Recherche",
     "accessories": "Accessoires",
+    "settings": "Réglages",
     "allModels": "Tous les modeles",
     "main": "Principal",
     "explore": "Explorer"
@@ -304,7 +305,10 @@
     "priceChangeConfirmed": "Prix mis à jour",
     "noPriceChanges": "Aucun changement de prix détecté",
     "checkedCount": "{{count}} annonces vérifiées",
-    "priceChangedBadge": "Prix modifié"
+    "priceChangedBadge": "Prix modifié",
+    "searchConfigs": "{{count}} recherche(s) configurée(s)",
+    "noSearchConfigs": "Aucune recherche configurée",
+    "configureSearch": "Configurer la recherche"
   },
   "catalog": {
     "title": "Catalogue accessoires",
@@ -414,6 +418,41 @@
       "esthetique": "Retros, garde-boue, stickers...",
       "performance": "Echappement, filtre a air, reprog...",
       "autre": "Antivol, bequille centrale, housse..."
+    }
+  },
+  "settings": {
+    "title": "Réglages",
+    "searchConfig": {
+      "title": "Configuration de recherche",
+      "subtitle": "Paramètres envoyés à LeBonCoin lors du crawl",
+      "keyword": "Mot-clé",
+      "keywordPlaceholder": "Ex: Himalayan 450",
+      "minCc": "Cylindrée min",
+      "maxCc": "Cylindrée max",
+      "locations": "Localisation",
+      "locationsPlaceholder": "Toute la France",
+      "ownerType": "Type de vendeur",
+      "ownerTypeOptions": {
+        "private": "Particulier",
+        "pro": "Professionnel",
+        "all": "Tous"
+      },
+      "priceMin": "Prix min",
+      "priceMax": "Prix max",
+      "sort": "Tri",
+      "sortOptions": {
+        "relevance": "Pertinence",
+        "newest": "Plus récents",
+        "oldest": "Plus anciens",
+        "cheapest": "Moins chers",
+        "expensive": "Plus chers"
+      },
+      "searchInTitleOnly": "Titre uniquement",
+      "addConfig": "Ajouter une recherche",
+      "deleteConfirm": "Supprimer cette configuration ?",
+      "emptyState": "Aucune configuration de recherche. Ajoutez-en une pour lancer un crawl.",
+      "ccRange": "{{min}}-{{max}} cc",
+      "priceRange": "{{min}}-{{max}} €"
     }
   }
 }
