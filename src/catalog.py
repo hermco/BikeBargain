@@ -19,16 +19,79 @@ def normalize_text(text: str) -> str:
     return strip_accents(text.lower())
 
 
+# ─── TOLERANCE FAUTES DE FRAPPE (generique, pas lie a un modele) ──────────────
+# Prefixes courants dans les petites annonces moto francaises qui sont souvent
+# tronques ou mal orthographies. Applique automatiquement par _pluralize_word.
+# Format : mot_canonique → [variantes_typo]
+FUZZY_PREFIXES: dict[str, list[str]] = {
+    "pare": ["par", "part"],        # pare-mains → "par main", "part main"
+    "protege": ["proteg", "portege"],  # protege-carter → "proteg carter"
+    "support": ["suport", "supp"],  # support gps → "suport gps"
+}
+
+# Mots generiques des petites annonces dont le 'e' final est souvent omis.
+# Genere automatiquement une alternation (mot|mot sans e) dans _pluralize_word.
+# Note: "pare" et "protege" ne sont PAS ici car deja geres par FUZZY_PREFIXES
+# (qui fournit une tolerance plus large : pare→par/part, protege→proteg/portege).
+TRAILING_E_OPTIONAL: set[str] = {"grille", "platine", "rehausse"}
+
+
+def _fuzzy_prefix_pattern(word: str) -> str | None:
+    """Si le mot est un prefixe connu avec des variantes typo, retourne une alternation.
+
+    Ex: "pare" → "(pare|par|part)" pour matcher "pare-main", "par main", "part main".
+    Generique : s'applique a tout catalogue, tout modele.
+    """
+    if word in FUZZY_PREFIXES:
+        variants = [re.escape(word)] + [re.escape(v) for v in FUZZY_PREFIXES[word]]
+        return rf"\b({'|'.join(variants)})"
+    # Aussi matcher le mot sans son 'e' final (ex: "grille" → "grill(e)?")
+    if word in TRAILING_E_OPTIONAL:
+        stem = re.escape(word[:-1])
+        return rf"\b{stem}e?"
+    return None
+
+
 def _pluralize_word(word: str) -> str:
-    """Genere un pattern regex qui matche singulier et pluriel francais d'un mot."""
+    """Genere un pattern regex qui matche singulier et pluriel francais d'un mot.
+
+    Gere :
+    - Formes masculines/feminines (additionnel/additionnelle)
+    - Singulier/pluriel (feu/feux, lateral/lateraux)
+    - Tolerance fautes de frappe sur les prefixes courants (pare→par/part)
+    """
     if not word:
         return word
 
-    # Mots finissant en -x : fixe (pluriel deja couvert)
-    if word.endswith("x"):
-        return rf"\b{re.escape(word)}\b"
+    # Prefixes avec tolerance typo (generique)
+    fuzzy = _fuzzy_prefix_pattern(word)
+    if fuzzy:
+        return rf"{fuzzy}[sx]?\b"
 
-    # Mots finissant en -s : le s est optionnel (match singulier et pluriel)
+    # Mots finissant en -x : remonter au singulier (feux → feu, lateraux → laterau)
+    if word.endswith("x"):
+        stem = re.escape(word[:-1])
+        return rf"\b{stem}x?\b"
+
+    # Mots finissant en -les (feminins pluriels) : additionnelles → additionnel(le)?s?
+    if word.endswith("lles"):
+        stem = re.escape(word[:-3])  # "additionne" + "lles" → stem "additionnel"
+        return rf"\b{stem}le?s?\b"
+
+    # Mots finissant en -les (feminins pluriels pour -ale) : laterales → lateral(e)?s?
+    if word.endswith("ales"):
+        stem = re.escape(word[:-4])
+        return rf"\b{stem}(ale?s?|aux)\b"
+
+    # Mots finissant en -le (feminin sing) : additionnelle → additionnel(le)?s?
+    if word.endswith("lle") and len(word) > 4:
+        stem = re.escape(word[:-2])  # "additionne" + "lle" → keep "additionnel"
+        return rf"\b{stem}le?s?\b"
+
+    # Mots finissant en -s : le s est optionnel + tolere feminin (additionnels → additionnel(le)?s?)
+    if word.endswith("ls"):
+        stem = re.escape(word[:-1])  # "additionnel"
+        return rf"\b{stem}(le)?s?\b"
     if word.endswith("s"):
         stem = re.escape(word[:-1])
         return rf"\b{stem}s?\b"
@@ -37,10 +100,15 @@ def _pluralize_word(word: str) -> str:
     if word.endswith(("eau", "eu", "au")):
         return rf"\b{re.escape(word)}[sx]?\b"
 
-    # Mots en -al : pluriel en -aux (ex: lateral → lateraux)
+    # Mots en -al : pluriel en -aux + feminin -ale(s) (ex: lateral → lateraux/laterale/laterales)
     if word.endswith("al"):
         stem = word[:-2]
-        return rf"\b{re.escape(stem)}(al|aux)\b"
+        return rf"\b{re.escape(stem)}(ale?s?|al|aux)\b"
+
+    # Mots en -el : feminin -elle(s) (ex: additionnel → additionnelle/additionnels/additionnelles)
+    if word.endswith("el"):
+        stem = re.escape(word[:-2])
+        return rf"\b{stem}el(le)?s?\b"
 
     # Default : mot + [sx]?
     return rf"\b{re.escape(word)}[sx]?\b"
@@ -130,23 +198,49 @@ def suggest_qualifier_alternatives(qualifier: str) -> list[str]:
     return [equiv] if equiv else []
 
 
+# Connecteurs grammaticaux francais automatiquement optionnels entre les mots
+# d'une expression. Evite de devoir declarer optional_words: ["de"] dans chaque
+# entree du catalogue. Generique — s'applique a toute langue romane.
+_OPTIONAL_CONNECTORS: set[str] = {"de", "du", "des", "d", "le", "la", "les", "en", "a"}
+
+
 def _compile_expression(expression: str, optional_words: list[str]) -> str:
-    """Compile une expression en pattern regex avec mots optionnels intercalés."""
+    """Compile une expression en pattern regex avec mots optionnels intercalés.
+
+    Les connecteurs grammaticaux (de, du, des, d', le, la, les, en, a) sont
+    automatiquement rendus optionnels entre les mots de l'expression. Cela
+    permet a "grille de phare" de matcher aussi "grille phare", et a
+    "sacoche de reservoir" de matcher "sacoche reservoir".
+    """
     normalized = normalize_text(expression).replace("-", " ")
     words = normalized.split()
     if not words:
         return ""
 
+    # Separer les mots de contenu des connecteurs grammaticaux.
+    # Les connecteurs presents dans l'expression sont simplement ignores
+    # car ils seront auto-optionnels entre chaque paire de mots de contenu.
+    content_words = [w for w in words if w not in _OPTIONAL_CONNECTORS]
+    if not content_words:
+        content_words = words
+
+    # Mots optionnels declares dans le catalogue (ex: "pilote" pour selle)
+    extra_optional = set()
+    if optional_words:
+        extra_optional.update(normalize_text(w) for w in optional_words)
+
+    # Construire le pattern : entre chaque paire de mots de contenu, inserer
+    # un separateur qui tolere optionnellement les connecteurs grammaticaux
+    # ET les mots optionnels du catalogue.
+    all_optional = _OPTIONAL_CONNECTORS | extra_optional
+    opt_group = "|".join(rf"{re.escape(w)}\s*" for w in sorted(all_optional))
+    optional_sep = rf"[\s-]*(?:({opt_group})[\s-]*)?"
+
     parts = []
-    for i, word in enumerate(words):
+    for i, word in enumerate(content_words):
         parts.append(_pluralize_word(word))
-        if i < len(words) - 1:
-            # Between words: optional separator + optional words
-            sep = r"[\s-]*"
-            if optional_words:
-                opt_group = "|".join(rf"{re.escape(normalize_text(w))}\s*" for w in optional_words)
-                sep += rf"({opt_group})?"
-            parts.append(sep)
+        if i < len(content_words) - 1:
+            parts.append(optional_sep)
 
     return "".join(parts)
 

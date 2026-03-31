@@ -467,7 +467,7 @@ def fetch_ad(url: str, bike_model_id: int, session, *,
     from .database import get_exclusion_patterns
     catalog_patterns = _get_catalog_patterns()
     exclusions = get_exclusion_patterns(session, bike_model_id)
-    accessories = detect_accessories(body, patterns=catalog_patterns, exclusions=exclusions)
+    accessories = detect_accessories(f"{subject}\n{body}", patterns=catalog_patterns, exclusions=exclusions)
 
     # Localisation
     location = _parse_location(ad)

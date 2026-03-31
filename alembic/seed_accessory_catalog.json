@@ -6,7 +6,9 @@
       "category": "protection",
       "expressions": [
         "crash bars",
-        "crash barres"
+        "crash barres",
+        "barre de protection",
+        "arceau de protection"
       ],
       "default_price": 200,
       "variants": [
@@ -25,6 +27,17 @@
           "estimated_new_price": 200,
           "sort_order": -4,
           "notes": "Les crash bars sont de serie sur la Himalayan 450. Seuls les aftermarket avec marque explicite comptent comme accessoire."
+        },
+        {
+          "name": "Crash bars",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 200,
+          "sort_order": 0,
+          "notes": "Generic crash bars without brand"
         }
       ]
     },
@@ -35,7 +48,9 @@
       "expressions": [
         "protege-mains",
         "pare-mains",
-        "handguard"
+        "handguard",
+        "protege poignees",
+        "protege-poignees"
       ],
       "default_price": 120,
       "variants": [
@@ -167,7 +182,10 @@
       "category": "protection",
       "expressions": [
         "protege-carter",
-        "carter protection"
+        "carter protection",
+        "pare carter",
+        "pare-carter",
+        "protection carter"
       ],
       "default_price": 75,
       "variants": [
@@ -200,9 +218,7 @@
           "qualifiers": [],
           "brands": [],
           "product_aliases": [],
-          "optional_words": [
-            "de"
-          ],
+          "optional_words": [],
           "regex_override": null,
           "estimated_new_price": 45,
           "sort_order": 0,
@@ -228,9 +244,7 @@
           "qualifiers": [],
           "brands": [],
           "product_aliases": [],
-          "optional_words": [
-            "de"
-          ],
+          "optional_words": [],
           "regex_override": null,
           "estimated_new_price": 69,
           "sort_order": 0,
@@ -247,7 +261,11 @@
         "protege-phare",
         "headlamp cover",
         "headlight grille",
-        "headlight guard"
+        "headlight guard",
+        "grille phare",
+        "grille protection phare",
+        "grille de protection phare",
+        "grille de protection de phare"
       ],
       "default_price": 80,
       "variants": [
@@ -257,7 +275,7 @@
           "brands": [],
           "product_aliases": [],
           "optional_words": [
-            "de"
+            "protection"
           ],
           "regex_override": null,
           "estimated_new_price": 80,
@@ -281,9 +299,7 @@
           "qualifiers": [],
           "brands": [],
           "product_aliases": [],
-          "optional_words": [
-            "de"
-          ],
+          "optional_words": [],
           "regex_override": null,
           "estimated_new_price": 60,
           "sort_order": 0,
@@ -321,8 +337,12 @@
         "renfort bequille",
         "elargisseur de bequille",
         "extension de bequille",
-        "rehausse de bequille",
-        "side stand extension"
+        "extension bequille",
+        "rehausse bequille",
+        "rehausse bequille laterale",
+        "rehausseur de bequille",
+        "rehausseur bequille",
+        "pied de bequille"
       ],
       "default_price": 55,
       "variants": [
@@ -333,9 +353,7 @@
           "product_aliases": [
             "ryl-reo hima"
           ],
-          "optional_words": [
-            "de"
-          ],
+          "optional_words": [],
           "regex_override": null,
           "estimated_new_price": 55,
           "sort_order": -1,
@@ -360,9 +378,7 @@
           "qualifiers": [],
           "brands": [],
           "product_aliases": [],
-          "optional_words": [
-            "de"
-          ],
+          "optional_words": [],
           "regex_override": null,
           "estimated_new_price": 45,
           "sort_order": 0,
@@ -480,7 +496,11 @@
         "sacoches laterales",
         "valises laterales",
         "paniers aluminium",
-        "bagagerie laterale"
+        "bagagerie laterale",
+        "valises alu",
+        "valises aluminium",
+        "paniers lateraux",
+        "bagagerie"
       ],
       "default_price": 450,
       "variants": [
@@ -598,7 +618,11 @@
         "supports valises laterales",
         "pannier frame",
         "pannier rail",
-        "pannier rack"
+        "pannier rack",
+        "porte valise",
+        "porte-valise",
+        "support valise",
+        "support valises"
       ],
       "default_price": 140,
       "variants": [
@@ -699,7 +723,11 @@
       "name": "Support sacoche reservoir",
       "category": "bagagerie",
       "expressions": [
-        "support sacoche reservoir"
+        "support sacoche reservoir",
+        "support reservoir",
+        "support sacoche de reservoir",
+        "tank lock",
+        "tank ring"
       ],
       "default_price": 40,
       "variants": [
@@ -710,14 +738,39 @@
             "givi"
           ],
           "product_aliases": [
-            "bf92"
+            "bf92",
+            "bf91"
           ],
-          "optional_words": [
-            "de"
-          ],
+          "optional_words": [],
           "regex_override": null,
           "estimated_new_price": 40,
-          "sort_order": -2,
+          "sort_order": -4,
+          "notes": null
+        },
+        {
+          "name": "Support sacoche reservoir SW-Motech",
+          "qualifiers": [],
+          "brands": [
+            "sw-motech"
+          ],
+          "product_aliases": [
+            "pro tank ring"
+          ],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 50,
+          "sort_order": -4,
+          "notes": null
+        },
+        {
+          "name": "Support sacoche reservoir",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 40,
+          "sort_order": 0,
           "notes": null
         }
       ]
@@ -752,9 +805,7 @@
           "qualifiers": [],
           "brands": [],
           "product_aliases": [],
-          "optional_words": [
-            "de"
-          ],
+          "optional_words": [],
           "regex_override": null,
           "estimated_new_price": 279,
           "sort_order": 0,
@@ -778,9 +829,7 @@
           "qualifiers": [],
           "brands": [],
           "product_aliases": [],
-          "optional_words": [
-            "de"
-          ],
+          "optional_words": [],
           "regex_override": null,
           "estimated_new_price": 149,
           "sort_order": 0,
@@ -796,7 +845,9 @@
         "sacoches souples",
         "sacoches etanches",
         "sacoches waterproof",
-        "soft bag"
+        "soft bag",
+        "sacoche waterproof",
+        "sacoche etanche"
       ],
       "default_price": 149,
       "variants": [
@@ -808,7 +859,11 @@
             "waterproof"
           ],
           "brands": [],
-          "product_aliases": [],
+          "product_aliases": [
+            "sacoche shad",
+            "shad tr30",
+            "shad tr40"
+          ],
           "optional_words": [],
           "regex_override": null,
           "estimated_new_price": 149,
@@ -949,7 +1004,10 @@
         "selle confort",
         "selle basse",
         "selle gel",
-        "selle chauffante"
+        "selle chauffante",
+        "selle pilote confort",
+        "siege confort",
+        "siege confort pilote"
       ],
       "default_price": 119,
       "variants": [
@@ -966,7 +1024,9 @@
             "origine"
           ],
           "product_aliases": [],
-          "optional_words": [],
+          "optional_words": [
+            "pilote"
+          ],
           "regex_override": null,
           "estimated_new_price": 119,
           "sort_order": -6,
@@ -983,7 +1043,9 @@
             "re"
           ],
           "product_aliases": [],
-          "optional_words": [],
+          "optional_words": [
+            "pilote"
+          ],
           "regex_override": null,
           "estimated_new_price": 119,
           "sort_order": -4,
@@ -1000,7 +1062,9 @@
           ],
           "brands": [],
           "product_aliases": [],
-          "optional_words": [],
+          "optional_words": [
+            "pilote"
+          ],
           "regex_override": null,
           "estimated_new_price": 119,
           "sort_order": -5,
@@ -1015,7 +1079,9 @@
       "expressions": [
         "selle passager",
         "selle touring",
-        "selle duo"
+        "selle duo",
+        "siege passager",
+        "siege confort passager"
       ],
       "default_price": 99,
       "variants": [
@@ -1098,7 +1164,10 @@
         "rehausse guidon",
         "pontet sureleve",
         "handlebar riser",
-        "handlebar extension"
+        "handlebar extension",
+        "rehausseur de guidon",
+        "rehausseur guidon",
+        "rehausse de guidon"
       ],
       "default_price": 59,
       "variants": [
@@ -1190,9 +1259,7 @@
           "qualifiers": [],
           "brands": [],
           "product_aliases": [],
-          "optional_words": [
-            "de"
-          ],
+          "optional_words": [],
           "regex_override": null,
           "estimated_new_price": 35,
           "sort_order": 0,
@@ -1230,7 +1297,7 @@
           "brands": [],
           "product_aliases": [],
           "optional_words": [],
-          "regex_override": "(?<!support\\s)(?<!suport\\s)\\bgps\\b(?!\\s*/\\s*t[eé]l[eé]phone)(?!\\s*/\\s*smartphone)",
+          "regex_override": "(?<!compteur\\s)(?<!compteur avec\\s)(?<!support\\s)(?<!suport\\s)\\bgps\\b(?!\\s*/\\s*t[eé]l[eé]phone)(?!\\s*/\\s*smartphone)",
           "estimated_new_price": 350,
           "sort_order": 0,
           "notes": "Uses lookbehinds/lookaheads to avoid matching 'support GPS' or 'GPS/telephone'"
@@ -1321,11 +1388,16 @@
       "name": "Phares additionnels",
       "category": "eclairage",
       "expressions": [
+        "phare additionnel",
         "phares additionnels",
+        "feu additionnel",
         "feux additionnels",
+        "feu auxiliaire",
         "feux auxiliaires",
-        "antibrouillards",
+        "antibrouillard",
         "longue portee",
+        "feux longue portee",
+        "feu longue portee",
         "fog light",
         "auxiliary light"
       ],
@@ -1452,6 +1524,32 @@
           "estimated_new_price": 60,
           "sort_order": -1,
           "notes": null
+        },
+        {
+          "name": "Retroviseurs aftermarket",
+          "qualifiers": [
+            "pliable",
+            "reglable",
+            "rizoma"
+          ],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 80,
+          "sort_order": -1,
+          "notes": "Aftermarket mirrors (folding/adjustable)"
+        },
+        {
+          "name": "Retroviseurs",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 60,
+          "sort_order": 1,
+          "notes": "Generic mirror replacement"
         }
       ]
     },
@@ -1611,7 +1709,9 @@
         "silencieux",
         "pot echappement",
         "pot sport",
-        "pot racing"
+        "pot racing",
+        "decata",
+        "decatalysation"
       ],
       "default_price": 350,
       "variants": [
@@ -1663,6 +1763,17 @@
           "estimated_new_price": 350,
           "sort_order": -5,
           "notes": null
+        },
+        {
+          "name": "Echappement",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 250,
+          "sort_order": 0,
+          "notes": "Generic exhaust without brand"
         }
       ]
     },
@@ -1671,7 +1782,9 @@
       "name": "Filtre a air sport",
       "category": "performance",
       "expressions": [
-        "filtre a air sport"
+        "filtre a air sport",
+        "boite a air",
+        "air box"
       ],
       "default_price": 90,
       "variants": [
@@ -1831,7 +1944,9 @@
       "expressions": [
         "antivol",
         "bloque-disque",
-        "u-lock"
+        "u-lock",
+        "bloc disque",
+        "bloc-disque"
       ],
       "default_price": 50,
       "variants": [
@@ -1885,9 +2000,7 @@
           "qualifiers": [],
           "brands": [],
           "product_aliases": [],
-          "optional_words": [
-            "de"
-          ],
+          "optional_words": [],
           "regex_override": null,
           "estimated_new_price": 45,
           "sort_order": 0,
@@ -1973,6 +2086,82 @@
           "regex_override": null,
           "estimated_new_price": 30,
           "sort_order": -1,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "kit_rabaissement",
+      "name": "Kit rabaissement",
+      "category": "autre",
+      "expressions": [
+        "kit rabaissement",
+        "rabaissement",
+        "selle abaissee",
+        "kit de rabaissement"
+      ],
+      "default_price": 150,
+      "variants": [
+        {
+          "name": "Kit rabaissement",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 150,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "dosseret_tc",
+      "name": "Dosseret top case",
+      "category": "bagagerie",
+      "expressions": [
+        "dosseret top case",
+        "dosseret topcase",
+        "dosseret passager"
+      ],
+      "default_price": 50,
+      "variants": [
+        {
+          "name": "Dosseret top case",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [
+            "dosseret givi",
+            "dosseret shad"
+          ],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 50,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "carplay",
+      "name": "CarPlay/multimedia",
+      "category": "navigation",
+      "expressions": [
+        "carplay",
+        "android auto moto",
+        "ecran multimedia moto"
+      ],
+      "default_price": 250,
+      "variants": [
+        {
+          "name": "CarPlay/multimedia",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 250,
+          "sort_order": 0,
           "notes": null
         }
       ]

@@ -272,7 +272,8 @@ def refresh_accessories(
 
     for ad in ads:
         before = len(ad.accessories)
-        detected = detect_accessories(ad.body or "", patterns=patterns, exclusions=exclusions)
+        text = f"{ad.subject or ''}\n{ad.body or ''}"
+        detected = detect_accessories(text, patterns=patterns, exclusions=exclusions)
 
         session.exec(delete(AdAccessory).where(AdAccessory.ad_id == ad.id))
         session.flush()
