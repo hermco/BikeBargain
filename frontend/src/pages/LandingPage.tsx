@@ -118,27 +118,27 @@ export function LandingPage() {
         </div>
 
         {/* Model cards grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
+        <div className="flex flex-wrap justify-center gap-6">
           {models.map((model, i) => {
             const medianPrice = (model as typeof model & { median_price?: number }).median_price
             return (
               <motion.div
                 key={model.id}
+                className="w-72"
                 initial={{ opacity: 0, scale: 0.93, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                whileHover={{ y: -4 }}
                 transition={{ delay: 0.22 + i * 0.09, duration: 0.45, ease: 'easeOut' }}
               >
                 <Link
                   to={`/models/${model.slug}/rankings`}
-                  className="group relative flex flex-col rounded-2xl border border-tint/[0.06] bg-surface overflow-hidden transition-[border-color,box-shadow] duration-500 ease-out hover:border-amber-500/25 hover:shadow-[0_8px_40px_rgba(212,168,83,0.12)]"
+                  className="group relative flex flex-col rounded-2xl border border-tint/[0.06] bg-surface overflow-hidden transition-[border-color,box-shadow,transform] duration-500 ease-out hover:border-amber-500/25 hover:shadow-[0_8px_40px_rgba(212,168,83,0.12)] hover:-translate-y-1"
                 >
                   {/* Full-card background image */}
                   {model.image_url && (
                     <img
                       src={model.image_url}
                       alt={model.name}
-                      className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 ease-out will-change-transform group-hover:scale-105"
+                      className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 ease-out will-change-transform group-hover:scale-105"
                     />
                   )}
 
@@ -147,7 +147,7 @@ export function LandingPage() {
                     className="absolute inset-0 pointer-events-none"
                     style={{
                       background:
-                        'linear-gradient(to bottom, transparent 20%, var(--color-surface) 65%)',
+                        'linear-gradient(to bottom, transparent 35%, var(--color-surface) 75%)',
                     }}
                   />
 
