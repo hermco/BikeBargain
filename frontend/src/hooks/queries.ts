@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { SearchConfig } from '../types'
+import type { SearchConfig, ListingStatus } from '../types'
 import * as api from '../lib/api'
 
 // ─── Bike Models ─────────────────────────────────────────────────────────────
@@ -159,10 +159,10 @@ export function usePriceHistory(slug: string, adId: number) {
   })
 }
 
-export function useMarkAdSold(slug: string) {
+export function useUpdateAdStatus(slug: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, sold }: { id: number; sold: boolean }) => api.markAdSold(slug, id, sold),
+    mutationFn: ({ id, listing_status }: { id: number; listing_status: ListingStatus }) => api.updateAdStatus(slug, id, listing_status),
     onSuccess: (_data, vars) => {
       void qc.invalidateQueries({ queryKey: ['ad', slug, vars.id] })
       void qc.invalidateQueries({ queryKey: ['ads', slug] })
@@ -184,6 +184,18 @@ export function useCheckAdsOnline(slug: string) {
   })
 }
 
+export function useCheckAdsOnlineFull(slug: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.checkAdsOnlineFull(slug),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['stats', slug] })
+      void qc.invalidateQueries({ queryKey: ['rankings', slug] })
+    },
+  })
+}
+
 export function useCheckAdOnline(slug: string) {
   const qc = useQueryClient()
   return useMutation({
@@ -193,6 +205,13 @@ export function useCheckAdOnline(slug: string) {
       void qc.invalidateQueries({ queryKey: ['ads', slug] })
       void qc.invalidateQueries({ queryKey: ['rankings', slug] })
     },
+  })
+}
+
+export function useStatusHistory(slug: string, adId: number) {
+  return useQuery({
+    queryKey: ['status-history', slug, adId],
+    queryFn: () => api.fetchStatusHistory(slug, adId),
   })
 }
 

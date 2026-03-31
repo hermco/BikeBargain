@@ -67,7 +67,7 @@ export interface Ad {
   estimated_new_price: number | null
   extracted_at: string
   updated_at: string
-  sold: number
+  listing_status: 'online' | 'paused' | 'sold'
   previous_ad_id: number | null
   superseded_by: number | null
   accessories: Accessory[]
@@ -141,7 +141,7 @@ export interface ShortTermItem {
 export interface Ranking {
   id: number
   url: string
-  sold: boolean
+  listing_status: 'online' | 'paused' | 'sold'
   city: string
   lat: number | null
   lng: number | null
@@ -292,4 +292,19 @@ export interface LbcEnums {
   departments: { value: string; label: string; code: string; region: string }[]
   sorts: { value: string; label: string }[]
   owner_types: { value: string; label: string }[]
+}
+
+export type ListingStatus = 'online' | 'paused' | 'sold'
+
+export interface StatusHistoryEntry {
+  old_status: ListingStatus
+  new_status: ListingStatus
+  reason: string | null
+  changed_at: string
+}
+
+export interface StatusHistory {
+  ad_id: number
+  current_status: ListingStatus
+  history: StatusHistoryEntry[]
 }

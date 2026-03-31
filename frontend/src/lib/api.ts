@@ -1,7 +1,22 @@
-import type { AdsResponse, AdDetail, Stats, Ranking, CrawlSearchResult, CrawlExtractResult, PriceHistory, CheckPricesResult, BikeModel, BikeModelDetail, BikeVariant, Accessory, SearchConfig, LbcEnums } from '../types'
+import type { AdsResponse, AdDetail, Stats, Ranking, CrawlSearchResult, CrawlExtractResult, PriceHistory, CheckPricesResult, BikeModel, BikeModelDetail, BikeVariant, Accessory, SearchConfig, LbcEnums, ListingStatus, StatusHistory } from '../types'
 import { config } from '../config'
 
 const BASE = `${config.apiBaseUrl}/api`
+
+interface CheckDetailItem {
+  id: number
+  listing_status: ListingStatus
+  previous_status?: ListingStatus | null
+  changed?: boolean
+  reason?: string
+}
+
+interface CheckResult {
+  checked: number
+  changes: number
+  back_online: number
+  details: CheckDetailItem[]
+}
 
 async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${url}`, init)
@@ -102,16 +117,20 @@ export function refreshAdAccessories(slug: string, adId: number): Promise<{ id: 
   return fetchJSON(`/bike-models/${slug}/ads/${adId}/refresh-accessories`, { method: 'POST' })
 }
 
-export function markAdSold(slug: string, id: number, sold: boolean): Promise<{ updated: number }> {
+export function updateAdStatus(slug: string, id: number, listing_status: ListingStatus): Promise<{ updated: number }> {
   return fetchJSON(`/bike-models/${slug}/ads/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sold: sold ? 1 : 0 }),
+    body: JSON.stringify({ listing_status }),
   })
 }
 
-export function checkAdsOnline(slug: string): Promise<{ checked: number; newly_sold: number; details: Array<{ id: number; sold: boolean; reason?: string }> }> {
+export function checkAdsOnline(slug: string): Promise<CheckResult> {
   return fetchJSON(`/bike-models/${slug}/ads/check-online`, { method: 'POST' })
+}
+
+export function checkAdsOnlineFull(slug: string): Promise<CheckResult> {
+  return fetchJSON(`/bike-models/${slug}/ads/check-online-full`, { method: 'POST' })
 }
 
 export function mergeAd(slug: string, newAdData: Record<string, unknown>, oldAdId: number): Promise<{ id: number; old_ad_id: number; price_delta: number; subject: string }> {
@@ -126,8 +145,12 @@ export function fetchPriceHistory(slug: string, adId: number): Promise<PriceHist
   return fetchJSON<PriceHistory>(`/bike-models/${slug}/ads/${adId}/price-history`)
 }
 
-export function checkAdOnline(slug: string, id: number): Promise<{ id: number; sold: boolean; reason?: string }> {
+export function checkAdOnline(slug: string, id: number): Promise<CheckDetailItem> {
   return fetchJSON(`/bike-models/${slug}/ads/${id}/check-online`, { method: 'POST' })
+}
+
+export function fetchStatusHistory(slug: string, adId: number): Promise<StatusHistory> {
+  return fetchJSON<StatusHistory>(`/bike-models/${slug}/ads/${adId}/status-history`)
 }
 
 export function fetchStats(slug: string): Promise<Stats> {
