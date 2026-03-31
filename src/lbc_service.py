@@ -25,6 +25,12 @@ class SearchRequest(BaseModel):
     keyword: str = "Himalayan"
     min_cc: int | None = None
     max_cc: int | None = None
+    locations: list[str] | None = None
+    owner_type: str | None = None
+    price_min: int | None = None
+    price_max: int | None = None
+    sort: str | None = None
+    search_in_title_only: bool = False
 
 
 class FetchAdRequest(BaseModel):
@@ -51,7 +57,17 @@ def search(req: SearchRequest):
     from .crawler import search_all_ads
 
     try:
-        return search_all_ads(keyword=req.keyword, min_cc=req.min_cc, max_cc=req.max_cc)
+        return search_all_ads(
+            keyword=req.keyword,
+            min_cc=req.min_cc,
+            max_cc=req.max_cc,
+            locations=req.locations,
+            owner_type=req.owner_type,
+            price_min=req.price_min,
+            price_max=req.price_max,
+            sort=req.sort,
+            search_in_title_only=req.search_in_title_only,
+        )
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Erreur recherche LeBonCoin : {e}")
 

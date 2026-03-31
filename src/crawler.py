@@ -69,20 +69,33 @@ def _parse_search_ads(results) -> list[dict]:
     return ads
 
 
-def search_all_ads(keyword: str = "Himalayan", min_cc: int | None = None, max_cc: int | None = None) -> dict:
+def _resolve_locations(location_names: list[str]) -> list:
+    """Resout les noms de locations en objets lbc.Region/Department."""
+    resolved = []
+    region_map = {r.name: r for r in lbc.Region}
+    dept_map = {d.name: d for d in lbc.Department}
+    for name in location_names:
+        upper = name.upper()
+        if upper in region_map:
+            resolved.append(region_map[upper])
+        elif upper in dept_map:
+            resolved.append(dept_map[upper])
+    return resolved
+
+
+def search_all_ads(
+    keyword: str = "Himalayan",
+    min_cc: int | None = None,
+    max_cc: int | None = None,
+    locations: list[str] | None = None,
+    owner_type: str | None = None,
+    price_min: int | None = None,
+    price_max: int | None = None,
+    sort: str | None = None,
+    search_in_title_only: bool = False,
+) -> dict:
     """
     Lance la recherche sur toutes les pages et retourne tous les resultats.
-
-    Utilise un seul client (meme session/cookies) et respecte un delai
-    entre les pages pour eviter le blocage DataDome.
-
-    Args:
-        keyword: Mot-cle de recherche.
-        min_cc: Cylindree minimum (optionnel, pas de filtre si None).
-        max_cc: Cylindree maximum (optionnel, pas de filtre si None).
-
-    Returns:
-        dict avec total et liste complete d'annonces legeres.
     """
     from .extractor import get_lbc_client
     client = get_lbc_client()
@@ -93,11 +106,39 @@ def search_all_ads(keyword: str = "Himalayan", min_cc: int | None = None, max_cc
         "category": SEARCH_CATEGORY,
         "limit": RESULTS_PER_PAGE,
         "page": 1,
+        "search_in_title_only": search_in_title_only,
     }
+
     if min_cc is not None or max_cc is not None:
         cc_min = min_cc or 0
         cc_max = max_cc or 99999
         search_kwargs["cubic_capacity"] = (cc_min, cc_max)
+
+    if locations:
+        resolved = _resolve_locations(locations)
+        if resolved:
+            search_kwargs["locations"] = resolved
+
+    if owner_type:
+        owner_map = {"private": lbc.OwnerType.PRIVATE, "pro": lbc.OwnerType.PRO, "all": lbc.OwnerType.ALL}
+        if owner_type in owner_map:
+            search_kwargs["owner_type"] = owner_map[owner_type]
+
+    if price_min is not None or price_max is not None:
+        p_min = price_min or 0
+        p_max = price_max or 999999
+        search_kwargs["price"] = (p_min, p_max)
+
+    if sort:
+        sort_map = {
+            "relevance": lbc.Sort.RELEVANCE,
+            "newest": lbc.Sort.NEWEST,
+            "oldest": lbc.Sort.OLDEST,
+            "cheapest": lbc.Sort.CHEAPEST,
+            "expensive": lbc.Sort.EXPENSIVE,
+        }
+        if sort in sort_map:
+            search_kwargs["sort"] = sort_map[sort]
 
     # Premiere page
     results = client.search(**search_kwargs)

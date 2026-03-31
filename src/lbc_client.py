@@ -19,13 +19,33 @@ def _base_url() -> str:
     return url.rstrip("/")
 
 
-def search(keyword: str = "Himalayan", min_cc: int | None = None, max_cc: int | None = None) -> dict:
+def search(
+    keyword: str = "Himalayan",
+    min_cc: int | None = None,
+    max_cc: int | None = None,
+    locations: list[str] | None = None,
+    owner_type: str | None = None,
+    price_min: int | None = None,
+    price_max: int | None = None,
+    sort: str | None = None,
+    search_in_title_only: bool = False,
+) -> dict:
     """Lance la recherche LeBonCoin via le service local."""
-    payload: dict = {"keyword": keyword}
+    payload: dict = {"keyword": keyword, "search_in_title_only": search_in_title_only}
     if min_cc is not None:
         payload["min_cc"] = min_cc
     if max_cc is not None:
         payload["max_cc"] = max_cc
+    if locations:
+        payload["locations"] = locations
+    if owner_type:
+        payload["owner_type"] = owner_type
+    if price_min is not None:
+        payload["price_min"] = price_min
+    if price_max is not None:
+        payload["price_max"] = price_max
+    if sort:
+        payload["sort"] = sort
     r = httpx.post(f"{_base_url()}/search", json=payload, timeout=TIMEOUT)
     r.raise_for_status()
     return r.json()
