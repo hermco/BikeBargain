@@ -11,7 +11,7 @@ import { StatCardSkeleton } from '../components/LoadingSkeleton'
 import { variantChartColor } from '../lib/utils'
 import { useFormatters } from '../hooks/useFormatters'
 import { useCurrentModel } from '../hooks/useCurrentModel'
-import { AnimatedNumber, EASE_OUT_EXPO } from '../components/animations'
+import { EASE_OUT_EXPO } from '../components/animations'
 import { Package, TrendingUp, ArrowUpDown, Gauge } from 'lucide-react'
 
 const TOOLTIP_STYLE = {

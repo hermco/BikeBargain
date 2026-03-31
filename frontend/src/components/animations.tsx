@@ -38,7 +38,7 @@ export function FadeIn({
   const ref = useRef<HTMLDivElement>(null)
   const isInView = useInView(ref, { once, margin: '-40px' })
 
-  const offset = directionOffset[direction]
+  const offset = directionOffset[direction] as { x?: number; y?: number }
   const initial = {
     opacity: 0,
     ...(offset.x != null ? { x: offset.x * distance } : {}),
