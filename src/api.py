@@ -310,7 +310,7 @@ class UpdateCrawlAdAction(BaseModel):
     action: str
 
 
-class SearchConfigCreate(SQLModel):
+class SearchConfigCreate(BaseModel):
     keyword: str
     min_cc: int | None = None
     max_cc: int | None = None
@@ -322,7 +322,7 @@ class SearchConfigCreate(SQLModel):
     search_in_title_only: bool = False
 
 
-class SearchConfigUpdate(SQLModel):
+class SearchConfigUpdate(BaseModel):
     keyword: str | None = None
     min_cc: int | None = None
     max_cc: int | None = None
