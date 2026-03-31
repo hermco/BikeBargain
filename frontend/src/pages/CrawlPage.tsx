@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { CategoryBadge } from '../components/AccessoryBadge'
 import { useToast } from '../components/Toast'
-import { useCrawlSearch, useCrawlExtract, useCrawlConfirm, useMergeAd, useCatalogGroups, useActiveCrawlSession, useCrawlSession, useUpdateCrawlAdAction, useCloseCrawlSession, useRemoveCrawlSessionAd, useCheckPrices, useConfirmPrice, useRedetectAccessories } from '../hooks/queries'
+import { useCrawlSearch, useCrawlExtract, useCrawlConfirm, useMergeAd, useCatalogGroups, useActiveCrawlSession, useCrawlSession, useUpdateCrawlAdAction, useCloseCrawlSession, useRemoveCrawlSessionAd, useCheckPrices, useConfirmPrice, useRedetectAccessories, useSearchConfigs } from '../hooks/queries'
 import { variantColor } from '../lib/utils'
 import { useFormatters } from '../hooks/useFormatters'
 import { useCurrentModel, useVariantOptions } from '../hooks/useCurrentModel'
@@ -99,6 +99,7 @@ export function CrawlPage() {
   const { toast } = useToast()
   const checkPricesMut = useCheckPrices(slug)
   const confirmPriceMut = useConfirmPrice(slug)
+  const { data: configs, isLoading: configsLoading } = useSearchConfigs(slug)
 
   // Keep ref in sync for use inside processNext callback
   useEffect(() => { showInDbRef.current = showInDb }, [showInDb])
@@ -777,6 +778,42 @@ export function CrawlPage() {
           <p className="text-sm text-text-muted mb-6 text-center max-w-md">
             {t('crawl.searchDescription')}
           </p>
+          {/* Search config summary */}
+          <div className="mb-6 w-full max-w-lg">
+            {configsLoading ? (
+              <div className="h-8 animate-pulse bg-tint/5 rounded-lg" />
+            ) : configs && configs.length > 0 ? (
+              <div className="rounded-xl border border-tint/[0.08] bg-tint/[0.03] p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-text-muted font-medium uppercase tracking-wider">
+                    {t('crawl.searchConfigs', { count: configs.length })}
+                  </span>
+                  <Link to={`/models/${slug}/settings`} className="text-xs text-accent hover:underline">
+                    {t('common.edit')}
+                  </Link>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {configs.map(c => (
+                    <span key={c.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 text-xs font-medium">
+                      {c.keyword}
+                      {(c.min_cc || c.max_cc) && (
+                        <span className="text-amber-400/60 text-[10px]">
+                          {c.min_cc || '?'}-{c.max_cc || '?'}cc
+                        </span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-center">
+                <p className="text-xs text-amber-400 mb-1">{t('crawl.noSearchConfigs')}</p>
+                <Link to={`/models/${slug}/settings`} className="text-xs text-accent hover:underline">
+                  {t('crawl.configureSearch')}
+                </Link>
+              </div>
+            )}
+          </div>
           <Button onClick={handleSearch} disabled={status === 'searching'} className="gap-2">
             {status === 'searching' ? (
               <>
