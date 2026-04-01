@@ -155,6 +155,7 @@
     "supersededSuffix": "- it no longer appears in lists and ranking.",
     "soldBanner": "This motorcycle is marked as sold.",
     "pausedBanner": "This motorcycle is paused on LeBonCoin.",
+    "viewOnLbc": "View on LeBonCoin",
     "statusHistory": "Status history",
     "repostOf": "This listing replaces",
     "repostInfo": "- {{count}} repost(s), {{delta}} since the beginning",

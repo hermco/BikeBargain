@@ -1,6 +1,6 @@
 import { useParams, Link, useNavigate, Navigate } from 'react-router-dom'
-import { ArrowLeft, ExternalLink, Trash2, MapPin, Calendar, ChevronLeft, ChevronRight, ChevronDown, Camera, Pencil, X, Check, Plus, RefreshCw, Ban, TrendingDown, TrendingUp, History, Share2, Pause } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { ArrowLeft, ExternalLink, Trash2, MapPin, Calendar, ChevronLeft, ChevronRight, ChevronDown, Camera, Pencil, X, Check, Plus, RefreshCw, Ban, TrendingDown, TrendingUp, History, Share2, Pause, MoreHorizontal } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { useAd, useDeleteAd, useUpdateAd, useCatalogGroups, useRefreshAdAccessories, useUpdateAdStatus, useCheckAdOnline, usePriceHistory, useStatusHistory } from '../hooks/queries'
 import { useCurrentModel, useVariantOptions } from '../hooks/useCurrentModel'
@@ -14,7 +14,7 @@ import { EmptyState } from '../components/EmptyState'
 import { useToast } from '../components/Toast'
 import { variantColor } from '../lib/utils'
 import { useFormatters } from '../hooks/useFormatters'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import * as Accordion from '@radix-ui/react-accordion'
 import * as Dialog from '@radix-ui/react-dialog'
 import type { Accessory } from '../types'
@@ -45,6 +45,8 @@ export function AdDetailPage() {
   const [showAddAccessory, setShowAddAccessory] = useState(false)
   const [accessorySearch, setAccessorySearch] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const moreMenuRef = useRef<HTMLDivElement>(null)
   const { data: catalogGroups } = useCatalogGroups()
   const catalog = catalogGroups?.flatMap(g =>
     g.variants.map(v => ({
@@ -72,6 +74,15 @@ export function AdDetailPage() {
       return () => document.removeEventListener('keydown', handleLightboxKey)
     }
   }, [lightboxIdx, handleLightboxKey])
+
+  useEffect(() => {
+    if (!showMoreMenu) return
+    function handleClick(e: MouseEvent) {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) setShowMoreMenu(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [showMoreMenu])
 
   if (isNaN(adId)) return <Navigate to={modelUrl('/rankings')} replace />
   if (isLoading) return <TableSkeleton rows={12} />
@@ -209,7 +220,7 @@ export function AdDetailPage() {
             <p className="text-sm text-text-muted mt-0.5">{ad.city ?? '?'} — {ad.variant ?? t('common.na')}</p>
           </div>
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {editing ? (
             <>
               <Button variant="ghost" size="sm" onClick={cancelEdit} className="gap-1.5">
@@ -221,6 +232,7 @@ export function AdDetailPage() {
             </>
           ) : (
             <>
+              {/* Primary: status control */}
               <AdStatusControl
                 currentStatus={ad.listing_status}
                 isCheckPending={checkOnlineMut.isPending}
@@ -248,49 +260,90 @@ export function AdDetailPage() {
                   })
                 }}
               />
+
+              {/* Secondary: edit */}
               <Button variant="secondary" size="sm" onClick={startEdit} className="gap-1.5">
                 <Pencil className="h-3.5 w-3.5" /> <span className="hidden sm:inline">{t('common.edit')}</span>
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5"
-                onClick={async () => {
-                  const shareUrl = window.location.href
-                  const shareData = {
-                    title: ad.subject,
-                    text: `${ad.subject} — ${formatPrice(ad.price)}${ad.year ? ` — ${ad.year}` : ''}${ad.mileage_km ? ` — ${formatKm(ad.mileage_km)}` : ''}`,
-                    url: shareUrl,
-                  }
-                  if (navigator.share) {
-                    try {
-                      await navigator.share(shareData)
-                    } catch (err) {
-                      if ((err as Error).name !== 'AbortError') {
-                        toast(t('adDetail.shareError'), 'error')
-                      }
-                    }
-                  } else {
-                    try {
-                      await navigator.clipboard.writeText(shareUrl)
-                      toast(t('adDetail.linkCopied'), 'success')
-                    } catch {
-                      toast(t('adDetail.shareError'), 'error')
-                    }
-                  }
-                }}
-              >
-                <Share2 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t('adDetail.share')}</span>
-              </Button>
+
+              {/* LeBonCoin link */}
               <a href={ad.url} target="_blank" rel="noopener noreferrer">
-                <Button variant="secondary" size="sm" className="gap-1.5">
-                  <ExternalLink className="h-3.5 w-3.5" /> <span className="hidden sm:inline">LeBonCoin</span>
-                </Button>
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                  className="w-8 h-8 rounded-lg bg-tint/[0.06] border border-tint/[0.08] flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-tint/[0.1] hover:border-tint/[0.14] transition-all"
+                  title={t('adDetail.viewOnLbc')}
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </motion.div>
               </a>
-              <Button variant="danger" size="sm" onClick={() => setShowDeleteConfirm(true)} className="gap-1.5">
-                <Trash2 className="h-3.5 w-3.5" /> <span className="hidden sm:inline">{t('common.delete')}</span>
-              </Button>
+
+              {/* More menu: share + delete */}
+              <div ref={moreMenuRef} className="relative">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                  onClick={() => setShowMoreMenu(prev => !prev)}
+                  className="w-8 h-8 rounded-lg bg-tint/[0.04] border border-tint/[0.06] flex items-center justify-center text-text-muted hover:text-text-secondary hover:bg-tint/[0.08] transition-all"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </motion.button>
+                <AnimatePresence>
+                  {showMoreMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -4, scale: 0.95 }}
+                      transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                      className="absolute right-0 top-full mt-1.5 z-50 min-w-[180px]"
+                    >
+                      <div className="rounded-lg border border-tint/[0.1] bg-surface/95 backdrop-blur-xl shadow-xl shadow-black/30 overflow-hidden py-1">
+                        <button
+                          onClick={async () => {
+                            setShowMoreMenu(false)
+                            const shareUrl = window.location.href
+                            const shareData = {
+                              title: ad.subject,
+                              text: `${ad.subject} — ${formatPrice(ad.price)}${ad.year ? ` — ${ad.year}` : ''}${ad.mileage_km ? ` — ${formatKm(ad.mileage_km)}` : ''}`,
+                              url: shareUrl,
+                            }
+                            if (navigator.share) {
+                              try {
+                                await navigator.share(shareData)
+                              } catch (err) {
+                                if ((err as Error).name !== 'AbortError') {
+                                  toast(t('adDetail.shareError'), 'error')
+                                }
+                              }
+                            } else {
+                              try {
+                                await navigator.clipboard.writeText(shareUrl)
+                                toast(t('adDetail.linkCopied'), 'success')
+                              } catch {
+                                toast(t('adDetail.shareError'), 'error')
+                              }
+                            }
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-text-secondary hover:text-text-primary hover:bg-tint/[0.06] transition-colors"
+                        >
+                          <Share2 className="h-3.5 w-3.5" />
+                          {t('adDetail.share')}
+                        </button>
+                        <div className="h-px bg-tint/[0.06] mx-2 my-1" />
+                        <button
+                          onClick={() => { setShowMoreMenu(false); setShowDeleteConfirm(true) }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-ui-red/80 hover:text-ui-red hover:bg-red-500/[0.06] transition-colors"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          {t('common.delete')}
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </>
           )}
         </div>

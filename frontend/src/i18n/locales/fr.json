@@ -155,6 +155,7 @@
     "supersededSuffix": "— elle n'apparaît plus dans les listes et le classement.",
     "soldBanner": "Cette moto est marquée comme vendue.",
     "pausedBanner": "Cette moto est en pause sur LeBonCoin.",
+    "viewOnLbc": "Voir sur LeBonCoin",
     "statusHistory": "Historique des statuts",
     "repostOf": "Cette annonce remplace",
     "repostInfo": "— {{count}} repost(s), {{delta}} depuis le début",
