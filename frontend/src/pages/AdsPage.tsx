@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { X, ScanSearch, TrendingUp, Tag, ArrowUpDown } from 'lucide-react'
+import { X, TrendingUp, Tag, ArrowUpDown } from 'lucide-react'
 import { useAds, useCheckAdsOnline, useCheckAdsOnlineFull } from '../hooks/queries'
 import { AdCard } from '../components/AdCard'
 import { AdForm } from '../components/AdForm'
@@ -10,6 +10,7 @@ import { FilterBar, type SortOption } from '../components/FilterBar'
 import { EmptyState } from '../components/EmptyState'
 import { CardSkeleton } from '../components/LoadingSkeleton'
 import { Button } from '../components/ui/Button'
+import { CheckOnlineButton } from '../components/ui/CheckOnlineButton'
 import { useToast } from '../components/Toast'
 import { useCurrentModel } from '../hooks/useCurrentModel'
 import { useFormatters } from '../hooks/useFormatters'
@@ -128,12 +129,15 @@ export function AdsPage() {
               <X className="h-3.5 w-3.5" /> {t('common.resetFilters')}
             </button>
           )}
-          <Button
-            variant="secondary"
-            size="sm"
-            className="gap-1.5"
-            disabled={checkOnlineMut.isPending || checkFullMut.isPending}
-            onClick={() => {
+          <CheckOnlineButton
+            quickLabel={t('ranking.checkQuick')}
+            fullLabel={t('ranking.checkFull')}
+            checkingLabel={t('common.checking')}
+            quickDescription={t('ranking.checkQuickDesc')}
+            fullDescription={t('ranking.checkFullDesc')}
+            isQuickPending={checkOnlineMut.isPending}
+            isFullPending={checkFullMut.isPending}
+            onQuickCheck={() => {
               checkOnlineMut.mutate(undefined, {
                 onSuccess: (data) => {
                   const changed = data.details.filter((d) => d.changed).length
@@ -147,31 +151,19 @@ export function AdsPage() {
                 onError: (err) => toast((err as Error).message, 'error'),
               })
             }}
-          >
-            <ScanSearch className={`h-3.5 w-3.5 ${checkOnlineMut.isPending ? 'animate-pulse' : ''}`} />
-            <span className="hidden sm:inline">{checkOnlineMut.isPending ? t('common.checking') : t('ranking.checkQuick')}</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1.5"
-            disabled={checkOnlineMut.isPending || checkFullMut.isPending}
-            onClick={() => {
+            onFullCheck={() => {
               checkFullMut.mutate(undefined, {
                 onSuccess: (data) => {
                   const parts: string[] = []
                   if (data.changes > 0) parts.push(t('ranking.statusChanges', { count: data.changes }))
                   if (data.back_online > 0) parts.push(t('ranking.backOnline', { count: data.back_online }))
                   if (parts.length === 0) parts.push(t('ads.checkedNone', { count: data.checked }))
-                  toast(parts.join(' \u00b7 '), data.changes > 0 ? 'success' : 'info')
+                  toast(parts.join(' · '), data.changes > 0 ? 'success' : 'info')
                 },
                 onError: (err) => toast((err as Error).message, 'error'),
               })
             }}
-          >
-            <ScanSearch className={`h-3.5 w-3.5 ${checkFullMut.isPending ? 'animate-pulse' : ''}`} />
-            <span className="hidden sm:inline">{checkFullMut.isPending ? t('common.checking') : t('ranking.checkFull')}</span>
-          </Button>
+          />
           <AdForm autoOpen={autoOpenAdd} onAutoOpened={() => setAutoOpenAdd(false)} />
         </div>
       </motion.div>

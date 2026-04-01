@@ -2,11 +2,12 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, AlertTriangle, ExternalLink, Search, X, ScanSearch, Car } from 'lucide-react'
+import { ChevronDown, AlertTriangle, ExternalLink, Search, X, Car } from 'lucide-react'
 import { useRankings, useCheckAdsOnline, useCheckAdsOnlineFull } from '../hooks/queries'
 import { useCurrentModel } from '../hooks/useCurrentModel'
 import { useToast } from '../components/Toast'
 import { Button } from '../components/ui/Button'
+import { CheckOnlineButton } from '../components/ui/CheckOnlineButton'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { TableSkeleton } from '../components/LoadingSkeleton'
@@ -404,13 +405,15 @@ export function RankingPage() {
             {t('ranking.description')}
           </p>
         </div>
-        {/* Quick check */}
-        <Button
-          variant="secondary"
-          size="sm"
-          className="gap-1.5 shrink-0"
-          disabled={checkOnlineMut.isPending || checkFullMut.isPending}
-          onClick={() => {
+        <CheckOnlineButton
+          quickLabel={t('ranking.checkQuick')}
+          fullLabel={t('ranking.checkFull')}
+          checkingLabel={t('common.checking')}
+          quickDescription={t('ranking.checkQuickDesc')}
+          fullDescription={t('ranking.checkFullDesc')}
+          isQuickPending={checkOnlineMut.isPending}
+          isFullPending={checkFullMut.isPending}
+          onQuickCheck={() => {
             checkOnlineMut.mutate(undefined, {
               onSuccess: (data) => {
                 const changedIds = data.details.filter((d) => d.changed).map((d) => d.id)
@@ -425,17 +428,7 @@ export function RankingPage() {
               onError: (err) => toast((err as Error).message, 'error'),
             })
           }}
-        >
-          <ScanSearch className={`h-3.5 w-3.5 ${checkOnlineMut.isPending ? 'animate-pulse' : ''}`} />
-          <span className="hidden sm:inline">{checkOnlineMut.isPending ? t('common.checking') : t('ranking.checkQuick')}</span>
-        </Button>
-        {/* Full check */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1.5 shrink-0"
-          disabled={checkOnlineMut.isPending || checkFullMut.isPending}
-          onClick={() => {
+          onFullCheck={() => {
             checkFullMut.mutate(undefined, {
               onSuccess: (data) => {
                 const changedIds = data.details.filter((d) => d.changed).map((d) => d.id)
@@ -444,15 +437,12 @@ export function RankingPage() {
                 if (data.changes > 0) parts.push(t('ranking.statusChanges', { count: data.changes }))
                 if (data.back_online > 0) parts.push(t('ranking.backOnline', { count: data.back_online }))
                 if (parts.length === 0) parts.push(t('ads.checkedNone', { count: data.checked }))
-                toast(parts.join(' \u00b7 '), data.changes > 0 ? 'success' : 'info')
+                toast(parts.join(' · '), data.changes > 0 ? 'success' : 'info')
               },
               onError: (err) => toast((err as Error).message, 'error'),
             })
           }}
-        >
-          <ScanSearch className={`h-3.5 w-3.5 ${checkFullMut.isPending ? 'animate-pulse' : ''}`} />
-          <span className="hidden sm:inline">{checkFullMut.isPending ? t('common.checking') : t('ranking.checkFull')}</span>
-        </Button>
+        />
       </div>
 
       {/* Location picker */}
