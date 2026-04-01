@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate, Navigate } from 'react-router-dom'
-import { ArrowLeft, ExternalLink, Trash2, MapPin, Calendar, ChevronLeft, ChevronRight, ChevronDown, Camera, Pencil, X, Check, Plus, RefreshCw, Ban, ScanSearch, TrendingDown, TrendingUp, History, Share2, Pause } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Trash2, MapPin, Calendar, ChevronLeft, ChevronRight, ChevronDown, Camera, Pencil, X, Check, Plus, RefreshCw, Ban, TrendingDown, TrendingUp, History, Share2, Pause } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { useAd, useDeleteAd, useUpdateAd, useCatalogGroups, useRefreshAdAccessories, useUpdateAdStatus, useCheckAdOnline, usePriceHistory, useStatusHistory } from '../hooks/queries'
@@ -7,6 +7,7 @@ import { useCurrentModel, useVariantOptions } from '../hooks/useCurrentModel'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
+import { AdStatusControl } from '../components/ui/AdStatusControl'
 import { CategoryBadge } from '../components/AccessoryBadge'
 import { TableSkeleton } from '../components/LoadingSkeleton'
 import { EmptyState } from '../components/EmptyState'
@@ -220,44 +221,16 @@ export function AdDetailPage() {
             </>
           ) : (
             <>
-              <Button
-                variant={ad.listing_status !== 'online' ? 'secondary' : 'ghost'}
-                size="sm"
-                className="gap-1.5"
-                disabled={updateStatusMut.isPending}
-                onClick={() => {
-                  const next = ad.listing_status === 'online' ? 'sold'
-                    : ad.listing_status === 'sold' ? 'paused'
-                    : 'online'
-                  updateStatusMut.mutate({ id: ad.id, listing_status: next }, {
-                    onSuccess: () => toast(
-                      next === 'sold' ? t('adDetail.markedSold') :
-                      next === 'paused' ? t('adDetail.markedPaused') :
-                      t('adDetail.markedOnline'),
-                      'success'
-                    ),
-                    onError: (err) => toast((err as Error).message, 'error'),
-                  })
-                }}
-              >
-                <Ban className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">
-                  {ad.listing_status === 'online' ? t('adDetail.markSold') :
-                   ad.listing_status === 'sold' ? t('adDetail.markPaused') :
-                   t('adDetail.markOnline')}
-                </span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5"
-                disabled={checkOnlineMut.isPending}
-                onClick={() => {
+              <AdStatusControl
+                currentStatus={ad.listing_status}
+                isCheckPending={checkOnlineMut.isPending}
+                isStatusPending={updateStatusMut.isPending}
+                onCheck={() => {
                   checkOnlineMut.mutate(ad.id, {
                     onSuccess: (data) => {
                       toast(
                         data.changed
-                          ? `${data.previous_status} \u2192 ${data.listing_status}`
+                          ? t('adDetail.statusUpdated', { status: t(`common.${data.listing_status}`) })
                           : t('adDetail.stillOnline'),
                         data.changed ? 'success' : 'info',
                       )
@@ -265,10 +238,16 @@ export function AdDetailPage() {
                     onError: (err) => toast((err as Error).message, 'error'),
                   })
                 }}
-              >
-                <ScanSearch className={`h-3.5 w-3.5 ${checkOnlineMut.isPending ? 'animate-pulse' : ''}`} />
-                <span className="hidden sm:inline">{checkOnlineMut.isPending ? t('common.checking') : t('common.checkOnline')}</span>
-              </Button>
+                onSetStatus={(status) => {
+                  updateStatusMut.mutate({ id: ad.id, listing_status: status }, {
+                    onSuccess: () => toast(
+                      t('adDetail.statusUpdated', { status: t(`common.${status}`) }),
+                      'success'
+                    ),
+                    onError: (err) => toast((err as Error).message, 'error'),
+                  })
+                }}
+              />
               <Button variant="secondary" size="sm" onClick={startEdit} className="gap-1.5">
                 <Pencil className="h-3.5 w-3.5" /> <span className="hidden sm:inline">{t('common.edit')}</span>
               </Button>

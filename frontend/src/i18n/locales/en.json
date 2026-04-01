@@ -133,6 +133,21 @@
     "markedOnline": "Listing marked as online",
     "offlineMarkedSold": "Listing offline - marked as sold",
     "stillOnline": "Listing still online",
+    "currentStatus": "Current status",
+    "changeStatusManually": "Change manually",
+    "checkThisAd": "Check on LBC",
+    "checkThisAdDesc": "Query LeBonCoin to get the actual status",
+    "statusUpdated": "Status updated: {{status}}",
+    "setStatus": {
+      "online": "Set as online",
+      "paused": "Set as paused",
+      "sold": "Set as sold"
+    },
+    "setStatusDesc": {
+      "online": "The listing is available again",
+      "paused": "Seller temporarily paused the listing",
+      "sold": "The motorcycle has been sold"
+    },
     "adUpdated": "Listing updated",
     "adDeleted": "Listing deleted",
     "supersededBy": "This listing has been replaced by",

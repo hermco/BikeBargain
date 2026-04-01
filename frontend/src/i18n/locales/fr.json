@@ -133,6 +133,21 @@
     "markedOnline": "Annonce marquée en ligne",
     "offlineMarkedSold": "Annonce plus en ligne — marquée vendue",
     "stillOnline": "Annonce toujours en ligne",
+    "currentStatus": "Statut actuel",
+    "changeStatusManually": "Changer manuellement",
+    "checkThisAd": "Vérifier sur LBC",
+    "checkThisAdDesc": "Interroge LeBonCoin pour connaître le statut réel",
+    "statusUpdated": "Statut mis à jour : {{status}}",
+    "setStatus": {
+      "online": "Remettre en ligne",
+      "paused": "Marquer en pause",
+      "sold": "Marquer vendue"
+    },
+    "setStatusDesc": {
+      "online": "L'annonce est de nouveau disponible",
+      "paused": "Le vendeur a temporairement suspendu l'annonce",
+      "sold": "La moto a été vendue"
+    },
     "adUpdated": "Annonce mise à jour",
     "adDeleted": "Annonce supprimée",
     "supersededBy": "Cette annonce a été remplacée par",
