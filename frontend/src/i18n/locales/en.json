@@ -264,6 +264,12 @@
     "statusBannerOnline_one": "{{count}} listing back online",
     "statusBannerOnline_other": "{{count}} listings back online",
     "byRoad": "by road",
+    "checkPrices": "Check prices",
+    "checkingPrices": "Checking…",
+    "noPriceChanges": "No price changes ({{count}} ads checked)",
+    "priceChanges_one": "{{count}} price change",
+    "priceChanges_other": "{{count}} price changes",
+    "priceCheckedCount": "{{count}} checked",
     "distanceBand": {
       "close": "Close",
       "medium": "Medium",

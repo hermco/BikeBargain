@@ -2,8 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, AlertTriangle, ExternalLink, Search, X, Car, Pause, CircleOff, RotateCcw, Crown, Medal } from 'lucide-react'
-import { useRankings, useCheckAdsOnline, useCheckAdsOnlineFull } from '../hooks/queries'
+import { ChevronDown, AlertTriangle, ExternalLink, Search, X, Car, Pause, CircleOff, RotateCcw, Crown, Medal, DollarSign, ArrowRight, RefreshCw } from 'lucide-react'
+import { useRankings, useCheckAdsOnline, useCheckAdsOnlineFull, useCheckPrices } from '../hooks/queries'
 import { useCurrentModel } from '../hooks/useCurrentModel'
 import { useToast } from '../components/Toast'
 import { Button } from '../components/ui/Button'
@@ -21,7 +21,7 @@ import {
   fetchTravelTimes, formatDuration,
   type UserLocation, type TravelInfo,
 } from '../lib/geo'
-import type { Ranking, ListingStatus } from '../types'
+import type { Ranking, ListingStatus, PriceChangeEntry } from '../types'
 import type { CheckDetailItem } from '../lib/api'
 
 // ─── Travel badge ─────────────────────────────────────────────────────────────
@@ -285,8 +285,11 @@ export function RankingPage() {
   const { data: rankings, isLoading } = useRankings(slug)
   const checkOnlineMut = useCheckAdsOnline(slug)
   const checkFullMut = useCheckAdsOnlineFull(slug)
+  const checkPricesMut = useCheckPrices(slug)
   const { toast } = useToast()
   const [statusChanges, setStatusChanges] = useState<Map<number, ListingStatus>>(new Map())
+  const [priceChanges, setPriceChanges] = useState<PriceChangeEntry[]>([])
+  const [priceCheckedCount, setPriceCheckedCount] = useState(0)
   const [expanded, setExpanded] = useState<number | null>(null)
   const [sortKey, setSortKey] = useState<SortKey>('rank')
   const [sortAsc, setSortAsc] = useState(true)
@@ -460,11 +463,40 @@ export function RankingPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight font-fraunces">{t('ranking.title')}</h1>
-          <p className="text-xs text-text-dim mt-1.5 max-w-2xl">
+          <p className="text-xs text-text-dim mt-2 max-w-2xl leading-relaxed">
             {t('ranking.description')}
           </p>
         </div>
-        <CheckOnlineButton
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={checkPricesMut.isPending}
+            onClick={() => {
+              checkPricesMut.mutate(undefined, {
+                onSuccess: (data) => {
+                  if (data.price_changes.length > 0) {
+                    setPriceChanges(data.price_changes)
+                    setPriceCheckedCount(data.checked_count)
+                  } else {
+                    toast(t('ranking.noPriceChanges', { count: data.checked_count }), 'info')
+                  }
+                },
+                onError: (err) => toast((err as Error).message, 'error'),
+              })
+            }}
+            className="gap-1.5"
+          >
+            {checkPricesMut.isPending ? (
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <DollarSign className="h-3.5 w-3.5" />
+            )}
+            <span className="hidden sm:inline">
+              {checkPricesMut.isPending ? t('ranking.checkingPrices') : t('ranking.checkPrices')}
+            </span>
+          </Button>
+          <CheckOnlineButton
           quickLabel={t('ranking.checkQuick')}
           fullLabel={t('ranking.checkFull')}
           checkingLabel={t('common.checking')}
@@ -504,6 +536,7 @@ export function RankingPage() {
             })
           }}
         />
+        </div>
       </div>
 
       {/* Location picker */}
@@ -598,16 +631,67 @@ export function RankingPage() {
         })()}
       </AnimatePresence>
 
+      {/* Price changes section */}
+      <AnimatePresence>
+        {priceChanges.length > 0 && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.06] px-5 py-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  {t('ranking.priceChanges', { count: priceChanges.length })}
+                  <span className="text-[10px] font-normal text-text-dim">
+                    ({t('ranking.priceCheckedCount', { count: priceCheckedCount })})
+                  </span>
+                </h3>
+                <button
+                  onClick={() => setPriceChanges([])}
+                  className="text-text-dim hover:text-text-secondary transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {priceChanges.map((pc) => {
+                  const rank = rankings ? rankings.findIndex((r) => r.id === pc.id) + 1 : 0
+                  return (
+                    <Link
+                      key={pc.id}
+                      to={modelUrl(`/ads/${pc.id}`)}
+                      className="inline-flex items-center gap-2 rounded-lg bg-tint/[0.04] border border-tint/[0.06] px-3 py-2 text-sm hover:bg-tint/[0.08] transition-colors"
+                    >
+                      {rank > 0 && <span className="text-text-dim font-fraunces">#{rank}</span>}
+                      <span className="text-text-secondary">{pc.city || pc.subject || `#${pc.id}`}</span>
+                      <span className="text-text-muted tabular-nums">{formatPrice(pc.current_price)}</span>
+                      <ArrowRight className="h-3 w-3 text-text-dim" />
+                      <span className="text-text-primary font-medium tabular-nums">{formatPrice(pc.new_price)}</span>
+                      <span className={cn('text-xs font-semibold tabular-nums', pc.price_delta < 0 ? 'text-ui-emerald' : 'text-ui-red')}>
+                        {pc.price_delta < 0 ? '' : '+'}{pc.price_delta}&euro;
+                      </span>
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Row 1: Search + Hide Sold toggle */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-dim" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-dim transition-colors duration-300 group-focus-within:text-accent-text/70" />
           <input
             type="text"
             placeholder={t('ranking.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl bg-tint/[0.04] border border-tint/[0.06] pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/30 transition-all"
+            className="w-full rounded-xl bg-tint/[0.03] border border-tint/[0.06] pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:bg-tint/[0.05] focus:border-amber-500/25 transition-all duration-300"
           />
         </div>
         <button
@@ -843,7 +927,7 @@ export function RankingPage() {
       <Card className="overflow-x-auto hidden lg:block">
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10 bg-surface">
-            <tr className="text-left text-[11px] text-text-dim uppercase tracking-widest border-b border-tint/[0.06]">
+            <tr className="text-left text-[10px] text-text-dim uppercase tracking-[0.15em] border-b border-tint/[0.06]">
               <SortHeader k="rank" className="pl-5 w-12 text-center">{t('ranking.rank')}</SortHeader>
               <th className="py-4 pr-4">{t('ranking.city')}</th>
               {hasLocation && <SortHeader k="distance" className="text-right w-20">{t('ranking.travel')}</SortHeader>}
@@ -878,8 +962,8 @@ export function RankingPage() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.3, delay: Math.min(rowIdx * 0.03, 0.6), ease: [0.16, 1, 0.3, 1] }}
                     className={cn(
-                      'border-b border-tint/[0.04] cursor-pointer transition-all duration-200 group/row',
-                      isOpen ? 'bg-tint/[0.05]' : 'hover:bg-tint/[0.03]',
+                      'border-b border-tint/[0.04] cursor-pointer transition-all duration-300 group/row',
+                      isOpen ? 'bg-tint/[0.05]' : 'hover:bg-tint/[0.025]',
                       r.listing_status === 'sold' ? 'opacity-50 bg-red-500/[0.04] dark:bg-red-950/20 border-l-2 !border-l-red-500/40' : r.listing_status === 'paused' ? 'opacity-70 bg-amber-500/[0.04] dark:bg-amber-950/20 border-l-2 !border-l-amber-500/40' : podiumStyle,
                     )}
                     onClick={() => setExpanded(isOpen ? null : r.id)}

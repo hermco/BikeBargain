@@ -264,6 +264,12 @@
     "statusBannerOnline_one": "{{count}} annonce de retour en ligne",
     "statusBannerOnline_other": "{{count}} annonces de retour en ligne",
     "byRoad": "par la route",
+    "checkPrices": "Vérifier les prix",
+    "checkingPrices": "Vérification…",
+    "noPriceChanges": "Aucun changement de prix ({{count}} annonces vérifiées)",
+    "priceChanges_one": "{{count}} changement de prix",
+    "priceChanges_other": "{{count}} changements de prix",
+    "priceCheckedCount": "{{count}} vérifiées",
     "distanceBand": {
       "close": "Proche",
       "medium": "Moyen",

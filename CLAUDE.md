@@ -31,7 +31,7 @@ python main.py import-model <file.json>           # Import a bike model config f
 # Run the analyzer/ranking report
 python -m src.analyzer
 
-# Backend API only
+# Backend API only (ALWAYS use --reload in dev)
 uvicorn src.api:app --reload --port 8000
 
 # Frontend only

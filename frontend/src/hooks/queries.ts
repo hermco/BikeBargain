@@ -256,8 +256,17 @@ export function useDeleteAd(slug: string) {
 }
 
 export function useCheckPrices(slug: string) {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: () => api.checkPrices(slug),
+    onSuccess: (data) => {
+      if (data.price_changes.length > 0) {
+        void qc.invalidateQueries({ queryKey: ['rankings', slug] })
+        void qc.invalidateQueries({ queryKey: ['ads', slug] })
+        void qc.invalidateQueries({ queryKey: ['ads-infinite', slug] })
+        void qc.invalidateQueries({ queryKey: ['stats', slug] })
+      }
+    },
   })
 }
 

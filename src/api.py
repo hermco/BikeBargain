@@ -126,6 +126,15 @@ def on_startup():
     # avant uvicorn. En dev local, on les lance au startup.
     if settings.app_env != "production":
         run_migrations()
+        # Avertir si le serveur tourne sans --reload en dev
+        import sys
+        if not any("--reload" in arg for arg in sys.argv):
+            import logging
+            logging.getLogger("uvicorn").warning(
+                "\033[33m⚠  Serveur lance SANS --reload en dev local. "
+                "Les modifications de code ne seront pas prises en compte. "
+                "Utilisez 'make dev' ou ajoutez --reload.\033[0m"
+            )
 
 
 # ─── Shared dependency ──────────────────────────────────────────────────────
@@ -1155,16 +1164,48 @@ def check_prices_scoped(slug: str, session: Session = Depends(get_session)):
     for ad in ads:
         lbc_price = lbc_prices.get(ad.id)
         if lbc_price is not None and ad.price is not None and lbc_price != ad.price:
+            old_price = ad.price
+            new_price = int(lbc_price)
+            price_delta = new_price - old_price
+
+            # Enregistrer l'historique de prix
+            existing_history = session.exec(
+                select(AdPriceHistory).where(AdPriceHistory.ad_id == ad.id)
+            ).first()
+            if not existing_history:
+                session.add(AdPriceHistory(
+                    ad_id=ad.id,
+                    price=old_price,
+                    source="initial",
+                    note=f"Annonce #{ad.id}",
+                    recorded_at=ad.first_publication_date or ad.extracted_at or "",
+                ))
+
+            note = f"Baisse de {abs(price_delta)}€" if price_delta < 0 else f"Hausse de {price_delta}€"
+            session.add(AdPriceHistory(
+                ad_id=ad.id,
+                price=new_price,
+                source="price_update",
+                note=note,
+                recorded_at=datetime.now().isoformat(),
+            ))
+
+            ad.price = new_price
+            ad.updated_at = datetime.now().isoformat()
+
             price_changes.append({
                 "id": ad.id,
                 "subject": ad.subject,
-                "current_price": ad.price,
-                "new_price": lbc_price,
-                "price_delta": int(lbc_price - ad.price),
+                "current_price": old_price,
+                "new_price": new_price,
+                "price_delta": price_delta,
                 "city": ad.city,
                 "department": ad.department,
                 "url": ad.url,
             })
+
+    if price_changes:
+        session.commit()
 
     return {
         "price_changes": price_changes,
