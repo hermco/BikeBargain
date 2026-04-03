@@ -115,6 +115,45 @@ export function travelTimeBand(sec: number): DistanceBand {
   return 'very_far'
 }
 
+// ─── Cache trajet (localStorage) ────────────────────────────────────────────
+
+const TRAVEL_CACHE_KEY = 'travel_cache'
+const TRAVEL_CACHE_TTL = 24 * 60 * 60 * 1000 // 24h
+
+interface TravelCacheEntry {
+  durationSec: number
+  distanceKm: number
+  ts: number
+}
+
+/** Clé de cache : coordonnées origin + destination arrondies à ~1 km. */
+function travelCacheCoordKey(
+  origin: { lat: number; lng: number },
+  dest: { lat: number; lng: number },
+): string {
+  const r = (n: number) => n.toFixed(2)
+  return `${r(origin.lat)},${r(origin.lng)}>${r(dest.lat)},${r(dest.lng)}`
+}
+
+function loadTravelCache(): Record<string, TravelCacheEntry> {
+  try {
+    const raw = localStorage.getItem(TRAVEL_CACHE_KEY)
+    if (!raw) return {}
+    return JSON.parse(raw) as Record<string, TravelCacheEntry>
+  } catch {
+    return {}
+  }
+}
+
+function saveTravelCache(cache: Record<string, TravelCacheEntry>): void {
+  try {
+    localStorage.setItem(TRAVEL_CACHE_KEY, JSON.stringify(cache))
+  } catch {
+    // quota exceeded — purge et retry
+    localStorage.removeItem(TRAVEL_CACHE_KEY)
+  }
+}
+
 export async function fetchTravelTimes(
   origin: { lat: number; lng: number },
   destinations: { id: number; lat: number; lng: number }[],
@@ -122,9 +161,26 @@ export async function fetchTravelTimes(
   const result = new Map<number, TravelInfo>()
   if (destinations.length === 0) return result
 
+  const now = Date.now()
+  const cache = loadTravelCache()
+
+  // Séparer les destinations déjà en cache de celles à fetcher
+  const toFetch: typeof destinations = []
+  for (const d of destinations) {
+    const key = travelCacheCoordKey(origin, d)
+    const entry = cache[key]
+    if (entry && now - entry.ts < TRAVEL_CACHE_TTL) {
+      result.set(d.id, { durationSec: entry.durationSec, distanceKm: entry.distanceKm })
+    } else {
+      toFetch.push(d)
+    }
+  }
+
+  if (toFetch.length === 0) return result
+
   const coords = [
     `${origin.lng},${origin.lat}`,
-    ...destinations.map((d) => `${d.lng},${d.lat}`),
+    ...toFetch.map((d) => `${d.lng},${d.lat}`),
   ].join(';')
 
   try {
@@ -138,12 +194,24 @@ export async function fetchTravelTimes(
     const durations = data.durations[0] as (number | null)[]
     const distances = data.distances[0] as (number | null)[]
 
-    for (let i = 0; i < destinations.length; i++) {
+    let dirty = false
+    for (let i = 0; i < toFetch.length; i++) {
       const dur = durations[i + 1]
       const dist = distances[i + 1]
       if (dur != null && dist != null) {
-        result.set(destinations[i].id, { durationSec: dur, distanceKm: dist / 1000 })
+        const info = { durationSec: dur, distanceKm: dist / 1000 }
+        result.set(toFetch[i].id, info)
+        cache[travelCacheCoordKey(origin, toFetch[i])] = { ...info, ts: now }
+        dirty = true
       }
+    }
+
+    // Purger les entrées expirées et sauver
+    if (dirty) {
+      for (const k of Object.keys(cache)) {
+        if (now - cache[k].ts > TRAVEL_CACHE_TTL) delete cache[k]
+      }
+      saveTravelCache(cache)
     }
   } catch {
     // OSRM indisponible — fallback haversine cote appelant

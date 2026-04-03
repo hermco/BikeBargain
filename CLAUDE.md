@@ -60,7 +60,7 @@ No test suite exists.
 - `main.py` — CLI dispatcher (add/list/show/stats/export/import-model commands). `--model`/`-m` flag selects the bike model; auto-selects when only 1 model exists
 - `src/config.py` — Centralized configuration via `pydantic-settings`. `Settings` class loaded from env vars + `.env` file. Cached via `@lru_cache`. Exposes `APP_ENV`, `DATABASE_URL`, `DEBUG`, `CORS_ORIGIN_REGEX`, `LBC_PROXY_URL`
 - `src/extractor.py` — Fetches ads via the `lbc` library. Variant/color/wheel detection and new price estimation now driven by per-model DB config (`bike_variant_patterns`, `bike_model_configs`). `get_lbc_client()` factory creates `lbc.Client` with optional residential proxy
-- `src/models.py` — SQLModel table models (ORM). Core ad tables: `Ad`, `AdAttribute`, `AdImage`, `AdAccessory`, `CrawlSession`, `CrawlSessionAd`, `AdPriceHistory`, `AdStatusHistory`, `AccessoryOverride`. Bike model tables: `BikeModel`, `BikeModelConfig`, `BikeVariant`, `BikeConsumable`, `BikeAccessoryPattern`, `BikeVariantPattern`, `BikeNewListingPattern`, `BikeExclusionPattern`, `BikeSearchConfig`. Editable catalog tables: `AccessoryCatalogGroup`, `AccessoryCatalogVariant`. All models use SQLModel (SQLAlchemy + Pydantic)
+- `src/models.py` — SQLModel table models (ORM). Core ad tables: `Ad`, `AdAttribute`, `AdImage`, `AdAccessory`, `CrawlSession`, `CrawlSessionAd`, `AdPriceHistory`, `AdStatusHistory`, `AccessoryOverride`. Bike model tables: `BikeModel`, `BikeModelConfig`, `BikeVariant`, `BikeConsumable`, `BikeAccessoryPattern`, `BikeVariantPattern`, `BikeNewListingPattern`, `BikeExclusionPattern`, `BikeSearchConfig`, `BikeTitleFilter`. Editable catalog tables: `AccessoryCatalogGroup`, `AccessoryCatalogVariant`. All models use SQLModel (SQLAlchemy + Pydantic)
 - `src/database.py` — Engine creation (PostgreSQL via `Settings.database_url`), session management (`get_session()` for FastAPI Depends), Alembic migration runner (`run_migrations()`), CRUD functions (`upsert_ad`, `get_all_ads`, `refresh_accessories`, etc.). Catalog CRUD functions for `AccessoryCatalogGroup`/`AccessoryCatalogVariant`
 - `src/accessories.py` — Accessory detection and valuation. `detect_accessories()` takes patterns from `catalog.py` (built from DB catalog). Exclusion patterns loaded from `bike_exclusion_patterns` DB table per model. Unicode normalization (strip accents) applied before matching
 - `src/catalog.py` — Regex compiler and synonym engine. Pure domain logic (no DB dependency). Compiles structured catalog data (expressions, qualifiers, brands, aliases) into regex patterns. Provides synonym suggestions via prefix rules and domain equivalences. `build_patterns_from_catalog()` outputs the same format as the old `ACCESSORY_PATTERNS`
@@ -80,11 +80,12 @@ No test suite exists.
 - **Model routing (API)**: primary endpoints are `/api/bike-models/{slug}/ads`, `/api/bike-models/{slug}/stats`, etc. Legacy flat endpoints (`/api/ads`, `/api/stats`) remain as aliases for single-model backward compatibility
 - **Model routing (frontend)**: landing page at `/` lists model cards. All feature pages are nested under `/models/:slug/`. `ModelLayout` fetches and injects the active `BikeModel` into context. When only one model exists, the app auto-redirects from `/` to `/models/{slug}/`
 - **CLI model flag**: `--model` / `-m` accepts a slug. Omitting it auto-selects the single model or errors when multiple exist. `import-model` subcommand bootstraps a new model from a JSON config file
+- **Title relevance filtering**: during crawl, ad titles are checked against `bike_title_filters` table. `include` patterns require at least one match (e.g., model name variants); `exclude` patterns reject ads matching old/wrong models. Irrelevant ads are flagged `is_irrelevant` on `CrawlSessionAd` and hidden by default in the UI (toggle to show them)
 - **Accessory deduplication**: patterns stored in `bike_accessory_patterns` table use a `groupe_dedup` field. Specific patterns (e.g., "Crash bars SW-Motech") must appear before generic ones ("Crash bars") in the same group — first match wins
-- **Variant detection priority**: version LBC attribute > title > body > color attribute fallback
+- **Color detection priority**: version LBC attribute > title > body > color attribute fallback. `variant_name` on `BikeVariant` is nullable — the Himalayan 450 has no variant concept (colors + wheel_type are the primary identifiers). New price estimation uses color + wheel_type lookup
 - **Upsert logic**: ads are identified by LeBonCoin ID; re-adding an URL updates the existing record
-- **Preview/confirm flow**: extraction is separated from persistence — user reviews and can modify variant, color, wheel type, and accessories before saving (both CLI and web UI)
-- **Ad editing**: stored ads can be edited post-insertion via `PATCH /api/ads/{id}` (web) or CLI; changing variant/color/wheel_type triggers automatic new price recalculation
+- **Preview/confirm flow**: extraction is separated from persistence — user reviews and can modify color, wheel type, and accessories before saving (both CLI and web UI)
+- **Ad editing**: stored ads can be edited post-insertion via `PATCH /api/ads/{id}` (web) or CLI; changing color/wheel_type triggers automatic new price recalculation
 - **Listing status tracking**: ads have a `listing_status` field (`online`/`paused`/`sold`). Can be toggled manually per ad. Quick check (`POST /api/ads/check-online`) verifies online ads only. Full check (`POST /api/ads/check-online-full`) verifies all ads and can detect returns to online. Status transitions logged to `ad_status_history` table. LBC states mapped: active→online, paused→paused, deleted/inaccessible→sold. Non-online ads remain in rankings but are visually dimmed (amber for paused, red for sold)
 - **Repost/duplicate detection**: during crawl, new ads are cross-checked against the database. Requires same city + price ±15% as prerequisites, then scores description similarity (Jaccard on significant words), accessories overlap, mileage proximity, and sold status. Threshold 80pts to avoid false positives. Lightweight pre-check at search time, full check at extraction time
 - **Ad merging**: when a repost is detected, users can merge the new ad with the old one. This marks the old ad as sold, saves the new one with a `previous_ad_id` link, and copies + extends the price history. `POST /api/ads/merge`
@@ -102,8 +103,8 @@ No test suite exists.
 ## Reference Data
 
 - `modeles-prix-neuf.md` — Full catalog of new prices (France, March 2026) with all variants, colors, and wheel types for the Himalayan 450 (used as seed data source)
-- `BikeVariant` rows in DB — Authoritative programmatic source for new prices per model/variant/color/wheel combination
-- Price reference (Himalayan 450): Base 5890€ → Mana Black 6590€
+- `BikeVariant` rows in DB — Authoritative programmatic source for new prices per model/color/wheel combination. `variant_name` is nullable (unused for Himalayan 450)
+- Price reference (Himalayan 450): Kaza Brown 5890€ → Mana Black 6590€
 
 ## LBC Service (mode split production)
 

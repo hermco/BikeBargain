@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Search, Loader2, Play, Pause, SkipForward, Check, X, AlertTriangle, ArrowRight, ExternalLink, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Pencil, Trash2, Plus, Maximize2, Copy, DollarSign, RefreshCw } from 'lucide-react'
+import { Search, Loader2, Play, Pause, SkipForward, Check, X, AlertTriangle, ArrowRight, ExternalLink, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Pencil, Trash2, Plus, Maximize2, Copy, DollarSign, RefreshCw, Sparkles } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { CategoryBadge } from '../components/AccessoryBadge'
@@ -33,7 +33,7 @@ export function CrawlPage() {
   const { t } = useTranslation()
   const { formatPrice } = useFormatters()
   const { slug, modelUrl } = useCurrentModel()
-  const { variantNames, wheelTypes, colorsForVariant } = useVariantOptions()
+  const { colorNames, wheelTypes } = useVariantOptions()
   const { sessionId: urlSessionId, adId: urlAdId } = useParams<{ sessionId?: string; adId?: string }>()
   const navigate = useNavigate()
   const urlSessionIdNum = urlSessionId ? parseInt(urlSessionId, 10) : null
@@ -53,8 +53,9 @@ export function CrawlPage() {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [showDescription, setShowDescription] = useState(true)
   const [isManualPick, setIsManualPick] = useState(false)
-  const [showInDb, setShowInDb] = useState(false)
-  const [hideNewListings, setHideNewListings] = useState(false)
+  const [hideInDb, setHideInDb] = useState(true)
+  const [hideNewListings, setHideNewListings] = useState(true)
+  const [hideIrrelevant, setHideIrrelevant] = useState(true)
   const [priceChanges, setPriceChanges] = useState<PriceChangeEntry[]>([])
   const [confirmedPriceIds, setConfirmedPriceIds] = useState<Set<number>>(new Set())
   const [dismissedPriceIds, setDismissedPriceIds] = useState<Set<number>>(new Set())
@@ -65,8 +66,9 @@ export function CrawlPage() {
 
   const pauseRef = useRef(false)
   const abortRef = useRef(false)
-  const showInDbRef = useRef(false)
-  const hideNewListingsRef = useRef(false)
+  const hideInDbRef = useRef(true)
+  const hideNewListingsRef = useRef(true)
+  const hideIrrelevantRef = useRef(true)
 
   const [sessionId, setSessionId] = useState<number | null>(null)
   const sessionIdRef = useRef(sessionId)
@@ -102,8 +104,9 @@ export function CrawlPage() {
   const { data: configs, isLoading: configsLoading } = useSearchConfigs(slug)
 
   // Keep ref in sync for use inside processNext callback
-  useEffect(() => { showInDbRef.current = showInDb }, [showInDb])
+  useEffect(() => { hideInDbRef.current = hideInDb }, [hideInDb])
   useEffect(() => { hideNewListingsRef.current = hideNewListings }, [hideNewListings])
+  useEffect(() => { hideIrrelevantRef.current = hideIrrelevant }, [hideIrrelevant])
 
   // ─── Restore session on mount ─────────────────────────────────────────
 
@@ -125,6 +128,7 @@ export function CrawlPage() {
         exists_in_db: ad.exists_in_db,
         possible_repost_of: null,
         is_new_listing: ad.is_new_listing,
+        is_irrelevant: ad.is_irrelevant,
       },
       action: ad.action as AdAction,
     }))
@@ -173,7 +177,7 @@ export function CrawlPage() {
     setConfirmedCount(0)
     setSkippedCount(0)
     setIsManualPick(false)
-    setShowInDb(false)
+    setHideInDb(true)
     setTransition(null)
     if (transitionTimerRef.current) { clearInterval(transitionTimerRef.current); transitionTimerRef.current = null }
     abortRef.current = false
@@ -241,8 +245,9 @@ export function CrawlPage() {
     let nextIdx = -1
     for (let i = startIdx; i < states.length; i++) {
       if (states[i].action === 'pending') {
-        if (!showInDbRef.current && states[i].summary.exists_in_db) continue
+        if (hideInDbRef.current && states[i].summary.exists_in_db) continue
         if (hideNewListingsRef.current && states[i].summary.is_new_listing) continue
+        if (hideIrrelevantRef.current && states[i].summary.is_irrelevant) continue
         nextIdx = i
         break
       }
@@ -661,16 +666,16 @@ export function CrawlPage() {
   const pendingCount = adStates.filter((s) => s.action === 'pending').length
   const inDbCount = adStates.filter((s) => s.summary.exists_in_db && s.action === 'pending').length
   const newListingCount = adStates.filter((s) => s.summary.is_new_listing && s.action === 'pending').length
+  const irrelevantCount = adStates.filter((s) => s.summary.is_irrelevant && s.action === 'pending').length
 
-  // Ads filtered by showInDb and hideNewListings toggles
+  // Ads filtered by hideInDb, hideNewListings, and hideIrrelevant toggles
   const visibleAdStates = adStates.filter((s) => {
-    if (!showInDb && s.summary.exists_in_db && s.action === 'pending') return false
+    if (hideInDb && s.summary.exists_in_db && s.action === 'pending') return false
     if (hideNewListings && s.summary.is_new_listing && s.action === 'pending') return false
+    if (hideIrrelevant && s.summary.is_irrelevant && s.action === 'pending') return false
     return true
   })
   const newCount = adStates.filter((s) => !s.summary.exists_in_db && s.action === 'pending').length
-  const variant = currentExtract?.variant as string | null
-  const availableColors = colorsForVariant(variant)
   const accessories = (currentExtract?.accessories ?? []) as Accessory[]
   const catalogFiltered = (catalog ?? []).filter((c) => {
     if (accessories.some((a) => a.name === c.name)) return false
@@ -687,14 +692,52 @@ export function CrawlPage() {
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight font-fraunces">
-            {t('crawl.title')}
-          </h1>
-          <p className="text-sm text-text-muted mt-1">
-            {t('crawl.subtitle')}
-          </p>
+        <div className="flex items-center gap-5">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight font-fraunces">
+              {t('crawl.title')}
+            </h1>
+            <p className="text-sm text-text-muted mt-1">
+              {t('crawl.subtitle')}
+            </p>
+          </div>
+          {/* Step indicator — visible when results exist */}
+          {adStates.length > 0 && (
+            <div className="hidden sm:flex items-center gap-1.5 ml-2">
+              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-colors ${
+                status === 'idle' || status === 'searching'
+                  ? 'bg-accent-subtle text-accent-text'
+                  : 'bg-tint/[0.04] text-text-dim'
+              }`}>
+                <span className="w-4 h-4 rounded-full border-2 border-current flex items-center justify-center text-[9px]">1</span>
+                {t('crawl.stepSearch')}
+              </span>
+              <ChevronRight className="h-3 w-3 text-text-dim" />
+              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-colors ${
+                status !== 'idle' && status !== 'searching'
+                  ? 'bg-accent-subtle text-accent-text'
+                  : 'bg-tint/[0.04] text-text-dim'
+              }`}>
+                <span className="w-4 h-4 rounded-full border-2 border-current flex items-center justify-center text-[9px]">2</span>
+                {t('crawl.stepTriage')}
+              </span>
+            </div>
+          )}
         </div>
+        {/* Refresh search button — visible during triage/done */}
+        {(status === 'ready' || status === 'done' || status === 'paused' || status === 'crawling' || status === 'waiting_validation') && (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={handleSearch}
+            disabled={searchMut.isPending}
+            className="gap-1.5"
+            title={t('crawl.refreshSearchTooltip')}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${searchMut.isPending ? 'animate-spin' : ''}`} />
+            {t('crawl.refreshSearch')}
+          </Button>
+        )}
       </div>
 
       {/* Status bar */}
@@ -710,29 +753,10 @@ export function CrawlPage() {
             </div>
             <div className="flex items-center gap-2">
               {status === 'ready' && (
-                <>
-                  <Button size="sm" variant="secondary" onClick={() => {
-                    if (sessionId) closeSessionMut.mutate(sessionId)
-                    restoredRef.current = true
-                    setSessionId(null)
-                    navigate(modelUrl('crawl'), { replace: true })
-                    setStatus('idle')
-                    setAdStates([])
-                    setCurrentIndex(-1)
-                    setProcessedCount(0)
-                    setConfirmedCount(0)
-                    setSkippedCount(0)
-                    setTransition(null)
-                    if (transitionTimerRef.current) { clearInterval(transitionTimerRef.current); transitionTimerRef.current = null }
-                  }} className="gap-1.5">
-                    <Search className="h-3.5 w-3.5" />
-                    {t('crawl.newSearch')}
-                  </Button>
-                  <Button size="sm" onClick={handleStartCrawl} className="gap-1.5">
-                    <Play className="h-3.5 w-3.5" />
-                    {t('crawl.startProcessing')}
-                  </Button>
-                </>
+                <Button size="sm" onClick={handleStartCrawl} className="gap-1.5">
+                  <Play className="h-3.5 w-3.5" />
+                  {t('crawl.startProcessing')}
+                </Button>
               )}
               {(status === 'crawling' || status === 'waiting_validation') && !isManualPick && (
                 <Button size="sm" variant="secondary" onClick={handlePause} className="gap-1.5">
@@ -766,7 +790,7 @@ export function CrawlPage() {
         </div>
       )}
 
-      {/* Search / start section */}
+      {/* Search / start section — stays visible, loader replaces button */}
       {!isLoadingSession && (status === 'idle' || status === 'searching') && (
         <div className="flex flex-col items-center justify-center py-20">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400/20 to-amber-600/20 flex items-center justify-center mb-6">
@@ -814,42 +838,47 @@ export function CrawlPage() {
               </div>
             )}
           </div>
-          <Button onClick={handleSearch} disabled={status === 'searching'} className="gap-2">
-            {status === 'searching' ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {t('crawl.searching')}
-              </>
-            ) : (
-              <>
-                <Search className="h-4 w-4" />
-                {t('crawl.startSearch')}
-              </>
-            )}
-          </Button>
+          {status === 'searching' ? (
+            <div className="w-full max-w-sm">
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <Loader2 className="h-4 w-4 animate-spin text-accent-text" />
+                <span className="text-sm font-medium text-accent-text">{t('crawl.searching')}</span>
+              </div>
+              <div className="h-1.5 bg-tint/[0.06] rounded-full overflow-hidden">
+                <div className="h-full w-full bg-gradient-to-r from-amber-500/60 via-amber-400 to-amber-500/60 rounded-full animate-[shimmer_1.5s_ease-in-out_infinite]" style={{ backgroundSize: '200% 100%' }} />
+              </div>
+            </div>
+          ) : (
+            <Button onClick={handleSearch} className="gap-2">
+              <Search className="h-4 w-4" />
+              {t('crawl.startSearch')}
+            </Button>
+          )}
           {searchMut.error && (
             <div className="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-ui-red max-w-md">
               {(searchMut.error as Error).message}
             </div>
           )}
-          <Button
-            onClick={handleCheckPrices}
-            disabled={checkPricesMut.isPending}
-            variant="secondary"
-            className="gap-2 mt-3"
-          >
-            {checkPricesMut.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {t('crawl.checkingPrices')}
-              </>
-            ) : (
-              <>
-                <DollarSign className="h-4 w-4" />
-                {t('crawl.checkPrices')}
-              </>
-            )}
-          </Button>
+          {status !== 'searching' && (
+            <Button
+              onClick={handleCheckPrices}
+              disabled={checkPricesMut.isPending}
+              variant="secondary"
+              className="gap-2 mt-3"
+            >
+              {checkPricesMut.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t('crawl.checkingPrices')}
+                </>
+              ) : (
+                <>
+                  <DollarSign className="h-4 w-4" />
+                  {t('crawl.checkPrices')}
+                </>
+              )}
+            </Button>
+          )}
         </div>
       )}
 
@@ -1010,12 +1039,20 @@ export function CrawlPage() {
             <h3 className="text-sm font-semibold text-text-primary">
               {t('crawl.adCounter', { current: currentIndex + 1, total: adStates.length })}
             </h3>
-            {currentAd.existsInDb && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-subtle border border-amber-500/20">
-                <AlertTriangle className="h-3.5 w-3.5 text-accent-text" />
-                <span className="text-xs font-medium text-accent-text">{t('crawl.existsInDb')}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {currentAd.summary.is_new_listing && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/15 border border-blue-500/30">
+                  <Sparkles className="h-3.5 w-3.5 text-blue-400" />
+                  <span className="text-xs font-semibold text-blue-400">{t('crawl.newListingBadge')}</span>
+                </div>
+              )}
+              {currentAd.existsInDb && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-subtle border border-amber-500/20">
+                  <AlertTriangle className="h-3.5 w-3.5 text-accent-text" />
+                  <span className="text-xs font-medium text-accent-text">{t('crawl.existsInDb')}</span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Potential duplicates / repost detection */}
@@ -1040,7 +1077,7 @@ export function CrawlPage() {
                             {dup.mileage_km != null && <span>{dup.mileage_km.toLocaleString('fr-FR')} km</span>}
                             {dup.color && <Badge className={variantColor(dup.color)}>{dup.color}</Badge>}
                             {dup.listing_status === 'sold' && <Badge className="bg-red-500/20 text-ui-red text-[10px]">{t('common.sold')}</Badge>}
-                            {dup.listing_status === 'paused' && <Badge className="bg-amber-500/20 text-amber-400 text-[10px]">{t('common.paused')}</Badge>}
+                            {dup.listing_status === 'paused' && <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-400 text-[10px]">{t('common.paused')}</Badge>}
                           </div>
                           <div className="flex flex-wrap gap-1.5 mt-2">
                             {dup.reasons.map((r, i) => (
@@ -1219,29 +1256,11 @@ export function CrawlPage() {
                   <span className="text-text-muted">{t('common.location')}</span>
                   <span className="text-text-primary">{currentExtract.city as string ?? '?'}, {currentExtract.department as string ?? '?'}</span>
 
-                  {/* Variante - editable */}
-                  <span className="text-text-muted">{t('common.variant')}</span>
-                  {editingField === 'variant' ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {variantNames.map((v) => (
-                        <button key={v} onClick={() => updateExtractField('variant', v)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${v === variant ? 'bg-amber-500/20 text-accent-text ring-1 ring-amber-500/40' : 'bg-tint/[0.04] text-text-muted hover:bg-tint/[0.08]'}`}>
-                          {v}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <button onClick={() => setEditingField('variant')} className="flex items-center gap-1.5 group text-left">
-                      <Badge className={variantColor(currentExtract.color as string)}>{variant ?? t('common.na')}</Badge>
-                      <Pencil className="h-3 w-3 text-text-dim opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </button>
-                  )}
-
                   {/* Couleur - editable */}
                   <span className="text-text-muted">{t('common.color')}</span>
                   {editingField === 'color' ? (
                     <div className="flex flex-wrap gap-1.5">
-                      {availableColors.map((c) => (
+                      {colorNames.map((c) => (
                         <button key={c} onClick={() => updateExtractField('color', c)}
                           className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${c === currentExtract.color ? 'bg-amber-500/20 text-accent-text ring-1 ring-amber-500/40' : 'bg-tint/[0.04] text-text-muted hover:bg-tint/[0.08]'}`}>
                           {c}
@@ -1250,7 +1269,7 @@ export function CrawlPage() {
                     </div>
                   ) : (
                     <button onClick={() => setEditingField('color')} className="flex items-center gap-1.5 group text-left">
-                      <span className="text-text-primary">{currentExtract.color as string ?? t('common.na')}</span>
+                      <Badge className={variantColor(currentExtract.color as string)}>{currentExtract.color as string ?? t('common.na')}</Badge>
                       <Pencil className="h-3 w-3 text-text-dim opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
                   )}
@@ -1575,25 +1594,34 @@ export function CrawlPage() {
         <div className="mt-2">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-0.5">
-                {t('crawl.searchResults')}
-                <span className="ml-1.5 text-text-primary">{t('crawl.new', { count: newCount })}</span>
-                {inDbCount > 0 && (
-                  <span className="ml-1 text-text-dim font-normal">
-                    · {inDbCount} {t('crawl.alreadyInDb')}
-                  </span>
-                )}
-                {newListingCount > 0 && (
-                  <span className="ml-1 text-ui-blue font-normal">
-                    · {t('crawl.newListingCount', { count: newListingCount })}
-                  </span>
-                )}
+              <h3 className="text-sm font-medium text-text-primary mb-0.5">
+                {t('crawl.readyTitle', { count: adStates.length })}
               </h3>
-              <p className="text-xs text-text-dim">
-                {t('crawl.clickToProcess')}
+              <p className="text-xs text-text-muted">
+                {t('crawl.readyDescription')}
+                <span className="mx-1.5 text-text-dim">—</span>
+                <span className="text-text-dim">
+                  {t('crawl.new', { count: newCount })}
+                  {inDbCount > 0 && ` · ${inDbCount} ${t('crawl.alreadyInDb')}`}
+                  {newListingCount > 0 && ` · ${t('crawl.newListingCount', { count: newListingCount })}`}
+                  {irrelevantCount > 0 && ` · ${t('crawl.irrelevantCount', { count: irrelevantCount })}`}
+                </span>
               </p>
             </div>
             <div className="flex items-center gap-4">
+              {irrelevantCount > 0 && (
+                <button
+                  onClick={() => setHideIrrelevant(!hideIrrelevant)}
+                  className="flex items-center gap-2 text-xs text-text-muted hover:text-text-secondary transition-colors"
+                >
+                  <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${hideIrrelevant ? 'bg-red-500/40' : 'bg-tint/[0.08]'}`}>
+                    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 mt-0.5 ${hideIrrelevant ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                  </span>
+                  <span className={hideIrrelevant ? 'text-ui-red' : ''}>
+                    {t('crawl.hideIrrelevant')} ({irrelevantCount})
+                  </span>
+                </button>
+              )}
               {newListingCount > 0 && (
                 <button
                   onClick={() => setHideNewListings(!hideNewListings)}
@@ -1609,14 +1637,14 @@ export function CrawlPage() {
               )}
               {inDbCount > 0 && (
                 <button
-                  onClick={() => setShowInDb(!showInDb)}
+                  onClick={() => setHideInDb(!hideInDb)}
                   className="flex items-center gap-2 text-xs text-text-muted hover:text-text-secondary transition-colors"
                 >
-                  <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${showInDb ? 'bg-amber-500/40' : 'bg-tint/[0.08]'}`}>
-                    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 mt-0.5 ${showInDb ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                  <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${hideInDb ? 'bg-amber-500/40' : 'bg-tint/[0.08]'}`}>
+                    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 mt-0.5 ${hideInDb ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
                   </span>
-                  <span className={showInDb ? 'text-accent-text' : ''}>
-                    {t('crawl.showInDb')} ({inDbCount})
+                  <span className={hideInDb ? 'text-accent-text' : ''}>
+                    {t('crawl.hideInDb')} ({inDbCount})
                   </span>
                 </button>
               )}
@@ -1626,6 +1654,7 @@ export function CrawlPage() {
             {visibleAdStates.map((state) => {
               const index = adStates.indexOf(state)
               const inDb = state.summary.exists_in_db
+              const isIrrelevant = state.summary.is_irrelevant
               const isPending = state.action === 'pending'
               const isWaiting = state.action === 'waiting'
               const isConfirmed = state.action === 'confirmed'
@@ -1645,8 +1674,12 @@ export function CrawlPage() {
                     ? 'bg-tint/[0.01] border border-tint/[0.04] opacity-35'
                     : isError
                     ? 'bg-red-500/[0.04] border border-red-500/15 opacity-50'
+                    : isIrrelevant
+                    ? 'bg-red-500/[0.03] border border-red-500/10 opacity-40 hover:opacity-60'
                     : inDb
                     ? 'bg-amber-500/[0.06] border border-amber-500/20 hover:border-amber-500/30'
+                    : state.summary.is_new_listing
+                    ? 'bg-blue-500/[0.06] border border-blue-500/25 hover:border-blue-500/40'
                     : 'bg-tint/[0.03] border border-tint/[0.06] hover:border-tint/[0.12]'
                 }`}
               >
@@ -1695,7 +1728,13 @@ export function CrawlPage() {
                   <X className="h-3.5 w-3.5" />
                 </button>
                 )}
-                {inDb && isPending && (
+                {isIrrelevant && isPending && (
+                  <div className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-1 rounded-md bg-red-500/20 backdrop-blur-sm border border-red-500/30">
+                    <X className="h-3 w-3 text-ui-red" />
+                    <span className="text-[10px] font-semibold text-ui-red uppercase tracking-wide">{t('crawl.irrelevantBadge')}</span>
+                  </div>
+                )}
+                {!isIrrelevant && inDb && isPending && (
                   <div className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/20 backdrop-blur-sm border border-amber-500/30">
                     <AlertTriangle className="h-3 w-3 text-accent-text" />
                     <span className="text-[10px] font-semibold text-accent-text uppercase tracking-wide">{t('crawl.inDb')}</span>
@@ -1709,7 +1748,8 @@ export function CrawlPage() {
                 )}
                 {state.summary.is_new_listing && isPending && !inDb && !state.summary.possible_repost_of && (
                   <div className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-1 rounded-md bg-blue-500/20 backdrop-blur-sm border border-blue-500/30">
-                    <span className="text-[10px] font-semibold text-ui-blue uppercase tracking-wide">{t('crawl.newListingBadge')}</span>
+                    <Sparkles className="h-3 w-3 text-blue-400" />
+                    <span className="text-[10px] font-semibold text-blue-400 uppercase tracking-wide">{t('crawl.newListingBadge')}</span>
                   </div>
                 )}
                 {state.summary.thumbnail && (
@@ -1743,7 +1783,7 @@ export function CrawlPage() {
                           #{repost.id}
                         </Link>
                         {repost.listing_status === 'sold' && <span className="text-ui-red">({t('common.sold').toLowerCase()})</span>}
-                        {repost.listing_status === 'paused' && <span className="text-amber-400">({t('common.paused').toLowerCase()})</span>}
+                        {repost.listing_status === 'paused' && <span className="text-amber-700 dark:text-amber-400">({t('common.paused').toLowerCase()})</span>}
                         {delta != null && delta !== 0 && (
                           <span className={`font-semibold tabular-nums ${delta < 0 ? 'text-ui-emerald' : 'text-ui-red'}`}>
                             {delta < 0 ? '' : '+'}{delta}€

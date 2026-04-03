@@ -21,7 +21,7 @@ export function AdForm({ autoOpen, onAutoOpened }: AdFormProps) {
   const { t } = useTranslation()
   const { formatPrice } = useFormatters()
   const { slug } = useCurrentModel()
-  const { variantNames, wheelTypes, colorsForVariant } = useVariantOptions()
+  const { colorNames, wheelTypes } = useVariantOptions()
   const [open, setOpen] = useState(false)
   const [url, setUrl] = useState('')
   const [previewData, setPreviewData] = useState<AdDetail | null>(null)
@@ -134,8 +134,6 @@ export function AdForm({ autoOpen, onAutoOpened }: AdFormProps) {
 
   const accessories = (previewData?.accessories ?? []) as Accessory[]
   const images = (previewData?.images as string[]) ?? []
-  const variant = previewData?.variant as string | null
-  const availableColors = colorsForVariant(variant)
   const catalogFiltered = (catalog ?? []).filter((c) => {
     if (accessories.some((a) => a.name === c.name)) return false
     if (!accessorySearch) return true
@@ -317,29 +315,11 @@ export function AdForm({ autoOpen, onAutoOpened }: AdFormProps) {
                   <span className="text-text-muted">{t('common.location')}</span>
                   <span className="text-text-primary">{(previewData.city as string) ?? '?'}, {(previewData.department as string) ?? '?'}</span>
 
-                  {/* Variante - editable */}
-                  <span className="text-text-muted">{t('common.variant')}</span>
-                  {editingField === 'variant' ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {variantNames.map((v) => (
-                        <button key={v} onClick={() => updateField('variant', v)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${v === variant ? 'bg-amber-500/20 text-accent-text ring-1 ring-amber-500/40' : 'bg-tint/[0.04] text-text-muted hover:bg-tint/[0.08]'}`}>
-                          {v}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <button onClick={() => setEditingField('variant')} className="flex items-center gap-1.5 group text-left">
-                      <Badge className={variantColor(previewData?.color as string)}>{variant ?? t('common.na')}</Badge>
-                      <Pencil className="h-3 w-3 text-text-dim opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </button>
-                  )}
-
                   {/* Couleur - editable */}
                   <span className="text-text-muted">{t('common.color')}</span>
                   {editingField === 'color' ? (
                     <div className="flex flex-wrap gap-1.5">
-                      {availableColors.map((c) => (
+                      {colorNames.map((c) => (
                         <button key={c} onClick={() => updateField('color', c)}
                           className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${c === previewData.color ? 'bg-amber-500/20 text-accent-text ring-1 ring-amber-500/40' : 'bg-tint/[0.04] text-text-muted hover:bg-tint/[0.08]'}`}>
                           {c}
@@ -348,7 +328,7 @@ export function AdForm({ autoOpen, onAutoOpened }: AdFormProps) {
                     </div>
                   ) : (
                     <button onClick={() => setEditingField('color')} className="flex items-center gap-1.5 group text-left">
-                      <span className="text-text-primary">{(previewData.color as string) ?? t('common.na')}</span>
+                      <Badge className={variantColor(previewData?.color as string)}>{(previewData.color as string) ?? t('common.na')}</Badge>
                       <Pencil className="h-3 w-3 text-text-dim opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
                   )}

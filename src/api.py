@@ -32,7 +32,7 @@ from .database import (
     refresh_accessories, _ad_to_dict, _replace_accessories,
     get_bike_models, get_bike_model_by_slug, get_bike_model_config,
     get_bike_variants, get_accessory_patterns, get_exclusion_patterns,
-    get_search_configs, get_new_listing_patterns, get_bike_consumables,
+    get_search_configs, get_new_listing_patterns, get_title_filters, get_bike_consumables,
     get_accessory_overrides, set_accessory_override, delete_accessory_override,
     create_search_config, update_search_config, delete_search_config,
     get_catalog_groups, create_catalog_group, update_catalog_group,
@@ -53,6 +53,28 @@ from .extractor import detect_new_listing_light, detect_new_listing
 from .config import get_settings
 
 settings = get_settings()
+
+
+import re as _re
+
+
+def _check_ad_relevance(subject: str | None, title_filters: list) -> bool:
+    """Verifie si le titre d'une annonce est pertinent selon les filtres.
+
+    Retourne True si l'annonce est pertinente, False si irrelevante.
+    """
+    if not title_filters:
+        return True
+    text = subject or ""
+    includes = [f for f in title_filters if f.filter_type == "include"]
+    excludes = [f for f in title_filters if f.filter_type == "exclude"]
+    # Si des patterns include existent, au moins un doit matcher
+    if includes and not any(_re.search(f.regex_pattern, text) for f in includes):
+        return False
+    # Si un pattern exclude matche, l'annonce est irrelevante
+    if any(_re.search(f.regex_pattern, text) for f in excludes):
+        return False
+    return True
 
 
 def _map_lbc_status(reason: str) -> str:
@@ -501,6 +523,9 @@ def clone_bike_model(slug: str, session: Session = Depends(get_session)):
 def list_ads_scoped(
     slug: str,
     variant: Optional[str] = Query(None),
+    color: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    sort: Optional[str] = Query(None),
     min_price: Optional[float] = Query(None),
     max_price: Optional[float] = Query(None),
     limit: int = Query(100, ge=1, le=500),
@@ -513,21 +538,38 @@ def list_ads_scoped(
         Ad.superseded_by == None,  # noqa: E711
         Ad.bike_model_id == model.id,
     ]
-    if variant:
-        conditions.append(Ad.variant == variant)
+    if color:
+        conditions.append(Ad.color == color)
+    elif variant:
+        conditions.append(Ad.color == variant)
     if min_price is not None:
         conditions.append(Ad.price >= min_price)
     if max_price is not None:
         conditions.append(Ad.price <= max_price)
+    if search:
+        q = f"%{search}%"
+        conditions.append(
+            (Ad.city.ilike(q)) | (Ad.subject.ilike(q)) | (Ad.color.ilike(q)) | (Ad.department.ilike(q))
+        )
 
     count_stmt = select(func.count()).select_from(Ad).where(*conditions)
     total = session.exec(count_stmt).one()
+
+    # Tri
+    sort_mapping = {
+        "price_asc": Ad.price.asc(),
+        "price_desc": Ad.price.desc(),
+        "km_asc": Ad.mileage_km.asc(),
+        "km_desc": Ad.mileage_km.desc(),
+        "recent": Ad.first_publication_date.desc(),
+    }
+    order_clause = sort_mapping.get(sort, Ad.first_publication_date.desc())
 
     stmt = (
         select(Ad)
         .options(selectinload(Ad.accessories), selectinload(Ad.images))
         .where(*conditions)
-        .order_by(Ad.price)
+        .order_by(order_clause)
         .offset(offset)
         .limit(limit)
     )
@@ -661,7 +703,7 @@ def update_ad_scoped(slug: str, ad_id: int, req: UpdateAdRequest, session: Sessi
     if req.listing_status is not None:
         _log_status_change(session, ad, req.listing_status, reason="manual")
 
-    if req.variant is not None or req.color is not None or req.wheel_type is not None:
+    if req.color is not None or req.wheel_type is not None:
         new_price = _estimate_new_price(model.id, ad.variant, ad.color, ad.wheel_type, session)
         if new_price:
             ad.estimated_new_price = new_price
@@ -1656,9 +1698,13 @@ def crawl_search_scoped(slug: str, session: Session = Depends(get_session)):
     # Charger les configs de recherche du modele
     search_cfgs = get_search_configs(session, model.id)
 
-    # Charger les prix catalogue pour la detection d'annonces neuves
+    # Charger les filtres de titre pour la pertinence
+    title_filters = get_title_filters(session, model.id)
+
+    # Charger les prix catalogue et couleurs pour la detection d'annonces neuves
     variants = get_bike_variants(session, model.id)
     catalog_prices = [v.new_price for v in variants] if variants else None
+    color_names = list({v.color for v in variants}) if variants else None
 
     all_results_ads = []
     try:
@@ -1730,6 +1776,7 @@ def crawl_search_scoped(slug: str, session: Session = Depends(get_session)):
         ad["price_changed"] = False
         ad["current_db_price"] = None
         ad["price_delta"] = None
+        ad["is_irrelevant"] = not _check_ad_relevance(ad.get("subject"), title_filters)
 
         if ad["id"] in existing_ids:
             db_price = db_prices.get(ad["id"])
@@ -1785,14 +1832,66 @@ def crawl_search_scoped(slug: str, session: Session = Depends(get_session)):
     session.add(crawl_session)
     session.flush()
 
+    # Phase 1 : detection legere sur toutes les annonces
+    DOUBT_MIN, DOUBT_MAX = 1.0, 2.5
+    MAX_PREFETCH = 15
+    doubtful_ads = []
+
     for i, ad in enumerate(results["ads"]):
-        is_new = detect_new_listing_light(
+        is_new, score = detect_new_listing_light(
             subject=ad.get("subject"),
             price=ad.get("price"),
             seller_type=ad.get("seller_type"),
             catalog_prices=catalog_prices,
+            color_names=color_names,
+            return_score=True,
         )
         ad["is_new_listing"] = is_new
+        ad["_new_listing_score"] = score
+        # Ne pre-extraire que les annonces pertinentes (pas hors-sujet)
+        if not is_new and not ad.get("exists_in_db") and not ad.get("is_irrelevant") and DOUBT_MIN <= score <= DOUBT_MAX:
+            doubtful_ads.append(ad)
+
+    # Phase 2 : pre-extraction des cas douteux (tries par score desc) pour affiner la detection
+    if doubtful_ads and catalog_prices:
+        doubtful_ads.sort(key=lambda a: -a["_new_listing_score"])
+        to_check = doubtful_ads[:MAX_PREFETCH]
+        ad_ids = [a["id"] for a in to_check]
+        basics_list = []
+        try:
+            if settings.lbc_service_url:
+                from . import lbc_client
+                basics_list = lbc_client.fetch_ad_basics(ad_ids)
+            else:
+                from .extractor import fetch_ad_basics, get_lbc_client
+                client = get_lbc_client()
+                basics_list = [
+                    {"ad_id": aid, **(fetch_ad_basics(aid, client=client) or {"error": True})}
+                    for aid in ad_ids
+                ]
+        except Exception:
+            basics_list = []
+
+        basics_by_id = {b["ad_id"]: b for b in basics_list if not b.get("error")}
+        for ad in to_check:
+            basics = basics_by_id.get(ad["id"])
+            if not basics:
+                continue
+            is_new_full = detect_new_listing(
+                seller_type=basics.get("seller_type") or ad.get("seller_type"),
+                price=ad.get("price"),
+                mileage_km=basics.get("mileage_km"),
+                subject=basics.get("subject") or ad.get("subject"),
+                body=basics.get("body"),
+                variant=None, color=None, wheel_type=None,
+                bike_model_id=model.id,
+                session=session,
+            )
+            if is_new_full:
+                ad["is_new_listing"] = True
+
+    # Phase 3 : enregistrement en base
+    for i, ad in enumerate(results["ads"]):
         session.add(CrawlSessionAd(
             session_id=crawl_session.id, ad_id=ad["id"], url=ad["url"],
             subject=ad.get("subject"), price=ad.get("price"),
@@ -1800,11 +1899,41 @@ def crawl_search_scoped(slug: str, session: Session = Depends(get_session)):
             thumbnail=ad.get("thumbnail"),
             exists_in_db=1 if ad.get("exists_in_db") else 0,
             position=i,
-            is_new_listing=1 if is_new else 0,
+            is_new_listing=1 if ad.get("is_new_listing") else 0,
+            is_irrelevant=1 if ad.get("is_irrelevant") else 0,
         ))
+        ad.pop("_new_listing_score", None)
 
     session.commit()
     return {**results, "session_id": crawl_session.id}
+
+
+def _refresh_crawl_flags(session: Session, rows: list[CrawlSessionAd], bike_model_id: int) -> None:
+    """Re-run detect_new_listing_light and relevance check on pending ads."""
+    variants = session.exec(select(BikeVariant).where(BikeVariant.bike_model_id == bike_model_id)).all()
+    catalog_prices = [v.new_price for v in variants] if variants else None
+    color_names = list({v.color for v in variants}) if variants else None
+    title_filters = get_title_filters(session, bike_model_id)
+    changed = False
+    for row in rows:
+        if row.action not in ("pending", "waiting"):
+            continue
+        # Refresh new listing flag
+        new_flag = detect_new_listing_light(
+            subject=row.subject, price=row.price, seller_type=None,
+            catalog_prices=catalog_prices, color_names=color_names,
+        )
+        new_val = 1 if new_flag else 0
+        if row.is_new_listing != new_val:
+            row.is_new_listing = new_val
+            changed = True
+        # Refresh irrelevant flag
+        irr_val = 0 if _check_ad_relevance(row.subject, title_filters) else 1
+        if row.is_irrelevant != irr_val:
+            row.is_irrelevant = irr_val
+            changed = True
+    if changed:
+        session.commit()
 
 
 @app.get("/api/bike-models/{slug}/crawl/sessions/active")
@@ -1828,6 +1957,8 @@ def get_active_crawl_session_scoped(slug: str, session: Session = Depends(get_se
         .order_by(CrawlSessionAd.position)
     ).all()
 
+    _refresh_crawl_flags(session, rows, model.id)
+
     ads = []
     for row in rows:
         ads.append({
@@ -1841,6 +1972,7 @@ def get_active_crawl_session_scoped(slug: str, session: Session = Depends(get_se
             "exists_in_db": row.ad_id in existing_ids,
             "action": row.action,
             "is_new_listing": bool(row.is_new_listing),
+            "is_irrelevant": bool(row.is_irrelevant),
         })
 
     return {
@@ -1872,6 +2004,8 @@ def get_crawl_session_by_id(slug: str, session_id: int, session: Session = Depen
         .order_by(CrawlSessionAd.position)
     ).all()
 
+    _refresh_crawl_flags(session, rows, model.id)
+
     ads = []
     for row in rows:
         ads.append({
@@ -1885,6 +2019,7 @@ def get_crawl_session_by_id(slug: str, session_id: int, session: Session = Depen
             "exists_in_db": row.ad_id in existing_ids,
             "action": row.action,
             "is_new_listing": bool(row.is_new_listing),
+            "is_irrelevant": bool(row.is_irrelevant),
         })
 
     return {
@@ -2295,7 +2430,7 @@ def list_ads_compat(
     session: Session = Depends(get_session),
 ):
     model = _resolve_single_model(session)
-    return list_ads_scoped(model.slug, variant, min_price, max_price, limit, offset, session)
+    return list_ads_scoped(model.slug, variant, variant, min_price, max_price, limit, offset, session)
 
 
 @app.get("/api/ads/{ad_id}")

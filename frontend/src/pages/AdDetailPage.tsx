@@ -2,7 +2,7 @@ import { useParams, Link, useNavigate, Navigate } from 'react-router-dom'
 import { ArrowLeft, ExternalLink, Trash2, MapPin, Calendar, ChevronLeft, ChevronRight, ChevronDown, Camera, Pencil, X, Check, Plus, RefreshCw, Ban, TrendingDown, TrendingUp, History, Share2, Pause, MoreHorizontal } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { useAd, useDeleteAd, useUpdateAd, useCatalogGroups, useRefreshAdAccessories, useUpdateAdStatus, useCheckAdOnline, usePriceHistory, useStatusHistory } from '../hooks/queries'
+import { useAd, useDeleteAd, useUpdateAd, useCatalogGroups, useRefreshAdAccessories, useUpdateAdStatus, useCheckAdOnline, usePriceHistory, useStatusHistory, useRankings } from '../hooks/queries'
 import { useCurrentModel, useVariantOptions } from '../hooks/useCurrentModel'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
@@ -14,7 +14,7 @@ import { EmptyState } from '../components/EmptyState'
 import { useToast } from '../components/Toast'
 import { variantColor } from '../lib/utils'
 import { useFormatters } from '../hooks/useFormatters'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import * as Accordion from '@radix-ui/react-accordion'
 import * as Dialog from '@radix-ui/react-dialog'
 import type { Accessory } from '../types'
@@ -25,7 +25,7 @@ export function AdDetailPage() {
   const { t } = useTranslation()
   const { formatPrice, formatKm } = useFormatters()
   const { slug, modelUrl } = useCurrentModel()
-  const { variantNames, wheelTypes, colorsForVariant } = useVariantOptions()
+  const { colorNames, wheelTypes, wheelTypesForColor } = useVariantOptions()
   const { data: ad, isLoading, error } = useAd(slug, adId)
   const deleteMut = useDeleteAd(slug)
   const updateMut = useUpdateAd(slug)
@@ -34,12 +34,17 @@ export function AdDetailPage() {
   const checkOnlineMut = useCheckAdOnline(slug)
   const { data: priceHistory } = usePriceHistory(slug, adId)
   const { data: statusHistory } = useStatusHistory(slug, adId)
+  const { data: rankings } = useRankings(slug)
+  const rank = useMemo(() => {
+    if (!rankings) return null
+    const idx = rankings.findIndex(r => r.id === adId)
+    return idx >= 0 ? { position: idx + 1, total: rankings.length } : null
+  }, [rankings, adId])
   const navigate = useNavigate()
   const { toast } = useToast()
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
   const [editing, setEditing] = useState(false)
   const [editColor, setEditColor] = useState<string | null>(null)
-  const [editVariant, setEditVariant] = useState<string | null>(null)
   const [editWheelType, setEditWheelType] = useState<string | null>(null)
   const [editAccessories, setEditAccessories] = useState<Accessory[] | null>(null)
   const [showAddAccessory, setShowAddAccessory] = useState(false)
@@ -105,7 +110,6 @@ export function AdDetailPage() {
   function startEdit() {
     setEditing(true)
     setEditColor(ad!.color)
-    setEditVariant(ad!.variant)
     setEditWheelType(ad!.wheel_type)
     setEditAccessories([...(ad!.accessories ?? [])])
   }
@@ -113,7 +117,6 @@ export function AdDetailPage() {
   function cancelEdit() {
     setEditing(false)
     setEditColor(null)
-    setEditVariant(null)
     setEditWheelType(null)
     setEditAccessories(null)
     setShowAddAccessory(false)
@@ -132,7 +135,6 @@ export function AdDetailPage() {
   function saveEdit() {
     const changes: Record<string, unknown> = { id: ad!.id }
     if (editColor !== ad!.color) changes.color = editColor
-    if (editVariant !== ad!.variant) changes.variant = editVariant
     if (editWheelType !== ad!.wheel_type) changes.wheel_type = editWheelType
     if (accessoriesChanged()) changes.accessories = editAccessories
 
@@ -171,9 +173,9 @@ export function AdDetailPage() {
     })
   }
 
-  const currentVariant = editing ? editVariant : ad.variant
+  const currentColor = editing ? editColor : ad.color
   const currentAccessories = editing ? (editAccessories ?? []) : (ad.accessories ?? [])
-  const availableColors = colorsForVariant(currentVariant)
+  const availableWheelTypes = wheelTypesForColor(currentColor)
 
   const accByCategory = currentAccessories.reduce(
     (acc, a) => {
@@ -217,7 +219,14 @@ export function AdDetailPage() {
             <h1 className="text-xl font-semibold tracking-tight line-clamp-1 font-fraunces">
               {ad.subject ?? t('common.noTitle')}
             </h1>
-            <p className="text-sm text-text-muted mt-0.5">{ad.city ?? '?'} — {ad.variant ?? t('common.na')}</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-sm text-text-muted">{ad.city ?? '?'} — {ad.color ?? t('common.na')}</p>
+              {rank && (
+                <Link to={modelUrl('/rankings')} className="inline-flex items-center gap-1 rounded-md bg-accent-subtle px-1.5 py-0.5 text-[11px] font-semibold text-accent-text hover:bg-amber-500/25 transition-colors tabular-nums">
+                  #{rank.position}<span className="font-normal text-text-dim">/{rank.total}</span>
+                </Link>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -369,7 +378,7 @@ export function AdDetailPage() {
         </div>
       )}
       {ad.listing_status === 'paused' && !editing && (
-        <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-400 flex items-center gap-2">
+        <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
           <Pause className="h-4 w-4 shrink-0" />
           {t('adDetail.pausedBanner')}
         </div>
@@ -545,26 +554,11 @@ export function AdDetailPage() {
             <span className="text-text-muted">{t('common.mileage')}</span>
             <span className="text-text-primary">{formatKm(ad.mileage_km)}</span>
 
-            {/* Variante */}
-            <span className="text-text-muted">{t('common.variant')}</span>
-            {editing ? (
-              <div className="flex flex-wrap gap-1.5">
-                {variantNames.map((v) => (
-                  <button key={v} onClick={() => setEditVariant(v)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${v === editVariant ? 'bg-amber-500/20 text-accent-text ring-1 ring-amber-500/40' : 'bg-tint/[0.04] text-text-muted hover:bg-tint/[0.08]'}`}>
-                    {v}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <Badge className={variantColor(ad.color)}>{ad.color ?? t('common.na')}</Badge>
-            )}
-
             {/* Couleur */}
             <span className="text-text-muted">{t('common.color')}</span>
             {editing ? (
               <div className="flex flex-wrap gap-1.5">
-                {availableColors.map((c) => (
+                {colorNames.map((c) => (
                   <button key={c} onClick={() => setEditColor(c)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${c === editColor ? 'bg-amber-500/20 text-accent-text ring-1 ring-amber-500/40' : 'bg-tint/[0.04] text-text-muted hover:bg-tint/[0.08]'}`}>
                     {c}
@@ -572,14 +566,14 @@ export function AdDetailPage() {
                 ))}
               </div>
             ) : (
-              <span className="text-text-primary">{ad.color ?? t('common.na')}</span>
+              <Badge className={variantColor(ad.color)}>{ad.color ?? t('common.na')}</Badge>
             )}
 
             {/* Jantes */}
             <span className="text-text-muted">{t('common.wheels')}</span>
             {editing ? (
               <div className="flex gap-1.5">
-                {wheelTypes.map((w) => (
+                {availableWheelTypes.map((w) => (
                   <button key={w} onClick={() => setEditWheelType(w)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${w === editWheelType ? 'bg-amber-500/20 text-accent-text ring-1 ring-amber-500/40' : 'bg-tint/[0.04] text-text-muted hover:bg-tint/[0.08]'}`}>
                     {w}
@@ -715,14 +709,14 @@ export function AdDetailPage() {
               <div key={i} className="flex items-center gap-3 text-xs text-text-muted">
                 <span className="tabular-nums text-text-dim">{new Date(entry.changed_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                 <span className={`px-1.5 py-0.5 rounded ${
-                  entry.old_status === 'online' ? 'bg-emerald-500/10 text-emerald-400' :
-                  entry.old_status === 'paused' ? 'bg-amber-500/10 text-amber-400' :
+                  entry.old_status === 'online' ? 'bg-emerald-500/10 text-ui-emerald' :
+                  entry.old_status === 'paused' ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400' :
                   'bg-red-500/10 text-ui-red'
                 }`}>{t(`common.${entry.old_status}`)}</span>
                 <span>&rarr;</span>
                 <span className={`px-1.5 py-0.5 rounded ${
-                  entry.new_status === 'online' ? 'bg-emerald-500/10 text-emerald-400' :
-                  entry.new_status === 'paused' ? 'bg-amber-500/10 text-amber-400' :
+                  entry.new_status === 'online' ? 'bg-emerald-500/10 text-ui-emerald' :
+                  entry.new_status === 'paused' ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400' :
                   'bg-red-500/10 text-ui-red'
                 }`}>{t(`common.${entry.new_status}`)}</span>
                 {entry.reason && <span className="text-text-dim">({entry.reason})</span>}

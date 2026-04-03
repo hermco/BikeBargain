@@ -26,7 +26,7 @@
     {
       "id": 1,
       "bike_model_id": 1,
-      "variant_name": "Base",
+      "variant_name": null,
       "color": "Kaza Brown",
       "wheel_type": "standard",
       "new_price": 5890,
@@ -35,7 +35,7 @@
     {
       "id": 2,
       "bike_model_id": 1,
-      "variant_name": "Pass",
+      "variant_name": null,
       "color": "Slate Himalayan Salt",
       "wheel_type": "standard",
       "new_price": 5990,
@@ -44,7 +44,7 @@
     {
       "id": 3,
       "bike_model_id": 1,
-      "variant_name": "Pass",
+      "variant_name": null,
       "color": "Slate Poppy Blue",
       "wheel_type": "standard",
       "new_price": 5990,
@@ -53,7 +53,7 @@
     {
       "id": 4,
       "bike_model_id": 1,
-      "variant_name": "Summit",
+      "variant_name": null,
       "color": "Hanle Black",
       "wheel_type": "standard",
       "new_price": 6190,
@@ -62,7 +62,7 @@
     {
       "id": 5,
       "bike_model_id": 1,
-      "variant_name": "Summit",
+      "variant_name": null,
       "color": "Kamet White",
       "wheel_type": "tubeless",
       "new_price": 6440,
@@ -71,7 +71,7 @@
     {
       "id": 6,
       "bike_model_id": 1,
-      "variant_name": "Summit",
+      "variant_name": null,
       "color": "Hanle Black",
       "wheel_type": "tubeless",
       "new_price": 6490,
@@ -80,7 +80,7 @@
     {
       "id": 7,
       "bike_model_id": 1,
-      "variant_name": "Mana Black",
+      "variant_name": null,
       "color": "Mana Black",
       "wheel_type": "tubeless",
       "new_price": 6590,
@@ -1070,7 +1070,7 @@
       "id": 1,
       "bike_model_id": 1,
       "regex_pattern": "mana\\s*black",
-      "matched_variant": "Mana Black",
+      "matched_variant": null,
       "matched_color": "Mana Black",
       "matched_wheel_type": "tubeless",
       "priority": 100
@@ -1079,7 +1079,7 @@
       "id": 2,
       "bike_model_id": 1,
       "regex_pattern": "kamet\\s*white|kamet|blanc\\s*kamet",
-      "matched_variant": "Summit",
+      "matched_variant": null,
       "matched_color": "Kamet White",
       "matched_wheel_type": "tubeless",
       "priority": 99
@@ -1088,7 +1088,7 @@
       "id": 3,
       "bike_model_id": 1,
       "regex_pattern": "hanle\\s*black|hanle|noir\\s*hanle",
-      "matched_variant": "Summit",
+      "matched_variant": null,
       "matched_color": "Hanle Black",
       "matched_wheel_type": null,
       "priority": 98
@@ -1097,7 +1097,7 @@
       "id": 4,
       "bike_model_id": 1,
       "regex_pattern": "himalayan\\s*salt|salt|gris.*rouge",
-      "matched_variant": "Pass",
+      "matched_variant": null,
       "matched_color": "Slate Himalayan Salt",
       "matched_wheel_type": "standard",
       "priority": 97
@@ -1106,7 +1106,7 @@
       "id": 5,
       "bike_model_id": 1,
       "regex_pattern": "poppy\\s*blue|poppy|gris.*bleu",
-      "matched_variant": "Pass",
+      "matched_variant": null,
       "matched_color": "Slate Poppy Blue",
       "matched_wheel_type": "standard",
       "priority": 96
@@ -1115,7 +1115,7 @@
       "id": 6,
       "bike_model_id": 1,
       "regex_pattern": "kaza\\s*brown|kaza|marron",
-      "matched_variant": "Base",
+      "matched_variant": null,
       "matched_color": "Kaza Brown",
       "matched_wheel_type": "standard",
       "priority": 95
@@ -1124,7 +1124,7 @@
       "id": 7,
       "bike_model_id": 1,
       "regex_pattern": "blanc|white",
-      "matched_variant": "Summit",
+      "matched_variant": null,
       "matched_color": "Kamet White",
       "matched_wheel_type": "tubeless",
       "priority": 10
@@ -1133,7 +1133,7 @@
       "id": 8,
       "bike_model_id": 1,
       "regex_pattern": "noir|black",
-      "matched_variant": "Summit",
+      "matched_variant": null,
       "matched_color": "Hanle Black",
       "matched_wheel_type": null,
       "priority": 9
@@ -1142,7 +1142,7 @@
       "id": 9,
       "bike_model_id": 1,
       "regex_pattern": "marron|brown",
-      "matched_variant": "Base",
+      "matched_variant": null,
       "matched_color": "Kaza Brown",
       "matched_wheel_type": "standard",
       "priority": 8
@@ -1151,7 +1151,7 @@
       "id": 10,
       "bike_model_id": 1,
       "regex_pattern": "bleu|blue",
-      "matched_variant": "Pass",
+      "matched_variant": null,
       "matched_color": "Slate Poppy Blue",
       "matched_wheel_type": "standard",
       "priority": 7
@@ -1160,7 +1160,7 @@
       "id": 11,
       "bike_model_id": 1,
       "regex_pattern": "gris|grey|gray",
-      "matched_variant": "Pass",
+      "matched_variant": null,
       "matched_color": null,
       "matched_wheel_type": "standard",
       "priority": 6
@@ -1169,7 +1169,7 @@
       "id": 12,
       "bike_model_id": 1,
       "regex_pattern": "rouge|red",
-      "matched_variant": "Pass",
+      "matched_variant": null,
       "matched_color": "Slate Himalayan Salt",
       "matched_wheel_type": "standard",
       "priority": 5
@@ -1277,14 +1277,14 @@
     {
       "id": 15,
       "bike_model_id": 1,
-      "regex_pattern": "neuf[^t]|flambant\\s*neuf|tout\\s*neuf",
+      "regex_pattern": "neu(?:f(?:[^t]|$)|ve)|flambant\\s*neuf|tout\\s*neuf",
       "category": "generic",
       "weight": 1.0
     },
     {
       "id": 16,
       "bike_model_id": 1,
-      "regex_pattern": "v[eé]hicule\\s*de\\s*d[eé]monstration|demo",
+      "regex_pattern": "v[eé]hicule\\s*de\\s*d[eé]monstration|\\bd[eé]mo(?:nstration)?\\b",
       "category": "generic",
       "weight": 0.8
     },
@@ -1343,6 +1343,27 @@
       "regex_pattern": "essai\\s*(gratuit|sur\\s*rendez[\\s-]*vous)|reprise",
       "category": "dealer",
       "weight": 2.0
+    },
+    {
+      "id": 25,
+      "bike_model_id": 1,
+      "regex_pattern": "\\bdispo(?:nible)?\\b|en\\s*stock|à\\s*partir\\s*de",
+      "category": "dealer",
+      "weight": 0.5
+    },
+    {
+      "id": 26,
+      "bike_model_id": 1,
+      "regex_pattern": "\\bpromo\\b",
+      "category": "dealer",
+      "weight": 0.5
+    },
+    {
+      "id": 27,
+      "bike_model_id": 1,
+      "regex_pattern": "permis\\s*a\\d?\\b|bridable\\s*a2",
+      "category": "dealer",
+      "weight": 0.5
     }
   ],
   "bike_exclusion_patterns": [
@@ -1369,6 +1390,22 @@
       "keyword": "Himalayan",
       "min_cc": 420,
       "max_cc": 99999
+    }
+  ],
+  "bike_title_filters": [
+    {
+      "id": 1,
+      "bike_model_id": 1,
+      "filter_type": "include",
+      "regex_pattern": "(?i)himalayan|himlayan|hymalayan|himalyan",
+      "description": "Nom du modele (variantes orthographiques)"
+    },
+    {
+      "id": 2,
+      "bike_model_id": 1,
+      "filter_type": "exclude",
+      "regex_pattern": "(?i)\\b411\\b|\\bbullet\\s+500\\b",
+      "description": "Ancien modele Himalayan (411cc / Bullet 500)"
     }
   ],
   "ads": [

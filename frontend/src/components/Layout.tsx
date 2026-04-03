@@ -7,7 +7,7 @@ export function Layout() {
   const isDark = theme === 'dark'
 
   return (
-    <div className="flex min-h-screen relative">
+    <div className="min-h-screen relative">
       {/* Layered ambient atmosphere — different treatment per theme */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         {isDark ? (
@@ -27,12 +27,15 @@ export function Layout() {
         {/* Top edge accent — shared, adapts via opacity */}
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/[0.08] to-transparent" />
       </div>
-      <Sidebar />
-      <main className="flex-1 ml-0 md:ml-60 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 relative z-10">
-        <div className="max-w-7xl mx-auto px-5 py-8">
-          <Outlet />
-        </div>
-      </main>
+      {/* Centered shell */}
+      <div className="max-w-[1600px] mx-auto flex relative">
+        <Sidebar />
+        <main className="flex-1 min-w-0 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 relative z-10">
+          <div className="max-w-7xl mx-auto px-5 py-8">
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
   )
 }

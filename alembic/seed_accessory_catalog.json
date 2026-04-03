@@ -190,6 +190,21 @@
       "default_price": 75,
       "variants": [
         {
+          "name": "Pare-carter SW-Motech",
+          "qualifiers": [],
+          "brands": [
+            "sw-motech",
+            "sw motech",
+            "swmotech"
+          ],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 180,
+          "sort_order": -1,
+          "notes": null
+        },
+        {
           "name": "Protege-carter",
           "qualifiers": [],
           "brands": [],
@@ -429,13 +444,30 @@
           "notes": null
         },
         {
+          "name": "Top case SW-Motech",
+          "qualifiers": [
+            "alu",
+            "aluminium"
+          ],
+          "brands": [
+            "sw-motech"
+          ],
+          "product_aliases": [
+            "trax"
+          ],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 520,
+          "sort_order": -7,
+          "notes": "Top case aluminium SW-Motech (TRAX, etc.)"
+        },
+        {
           "name": "Top case aluminium aftermarket",
           "qualifiers": [
             "alu",
             "aluminium"
           ],
           "brands": [
-            "sw-motech",
             "givi",
             "shad",
             "hepco"
@@ -494,6 +526,7 @@
       "category": "bagagerie",
       "expressions": [
         "sacoches laterales",
+        "sacoches",
         "valises laterales",
         "paniers aluminium",
         "bagagerie laterale",
@@ -520,6 +553,23 @@
           "notes": "SHAD TR series (TR30, TR40...) = sacoches laterales semi-rigides + support integre"
         },
         {
+          "name": "Sacoches SW-Motech",
+          "qualifiers": [
+            "laterales"
+          ],
+          "brands": [
+            "sw-motech"
+          ],
+          "product_aliases": [
+            "sysbag"
+          ],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 800,
+          "sort_order": -9,
+          "notes": "Sacoches laterales SW-Motech (sans support). SysBag = gamme de sacoches SW-Motech (WP, WP S, WP L, etc.)"
+        },
+        {
           "name": "Sacoches laterales aftermarket",
           "qualifiers": [
             "laterales"
@@ -527,7 +577,6 @@
           "brands": [
             "shad",
             "givi",
-            "sw-motech",
             "hepco",
             "kappa"
           ],
@@ -556,20 +605,35 @@
           "notes": null
         },
         {
+          "name": "Paniers SW-Motech",
+          "qualifiers": [
+            "alu",
+            "aluminium"
+          ],
+          "brands": [
+            "sw-motech"
+          ],
+          "product_aliases": [
+            "trax"
+          ],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 800,
+          "sort_order": -8,
+          "notes": "Paniers aluminium SW-Motech (TRAX, etc.) sans support"
+        },
+        {
           "name": "Paniers aluminium aftermarket",
           "qualifiers": [
             "alu",
             "aluminium"
           ],
           "brands": [
-            "sw-motech",
             "givi",
             "shad",
             "hepco"
           ],
-          "product_aliases": [
-            "trax"
-          ],
+          "product_aliases": [],
           "optional_words": [],
           "regex_override": null,
           "estimated_new_price": 500,
@@ -626,6 +690,17 @@
       ],
       "default_price": 140,
       "variants": [
+        {
+          "name": "Support sacoches SW-Motech",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": "\\bsupport[sx]?\\b(?=[\\s\\S]{0,30}\\bsw[\\s-]?motech\\b)",
+          "estimated_new_price": 240,
+          "sort_order": -5,
+          "notes": "Support/cadre pour sacoches laterales SW-Motech"
+        },
         {
           "name": "Porte-bagages aluminium RE",
           "qualifiers": [
@@ -783,7 +858,7 @@
         "sacoche de reservoir",
         "tank bag"
       ],
-      "default_price": 279,
+      "default_price": 50,
       "variants": [
         {
           "name": "Sacoche reservoir Givi XS307 15L",
@@ -807,7 +882,7 @@
           "product_aliases": [],
           "optional_words": [],
           "regex_override": null,
-          "estimated_new_price": 279,
+          "estimated_new_price": 50,
           "sort_order": 0,
           "notes": null
         }
@@ -2161,6 +2236,47 @@
           "optional_words": [],
           "regex_override": null,
           "estimated_new_price": 250,
+          "sort_order": 0,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "group_key": "regulateur_vitesse",
+      "name": "Régulateur de vitesse",
+      "category": "confort",
+      "expressions": [
+        "regulateur de vitesse",
+        "régulateur de vitesse",
+        "cruise control",
+        "régulateur vitesse"
+      ],
+      "default_price": 110,
+      "variants": [
+        {
+          "name": "Régulateur Beracruise",
+          "qualifiers": [],
+          "brands": [
+            "beracruise",
+            "bera cruise"
+          ],
+          "product_aliases": [
+            "beracruise"
+          ],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 110,
+          "sort_order": -1,
+          "notes": "Régulateur de vitesse électronique Beracruise, compatible Himalayan 450"
+        },
+        {
+          "name": "Régulateur de vitesse",
+          "qualifiers": [],
+          "brands": [],
+          "product_aliases": [],
+          "optional_words": [],
+          "regex_override": null,
+          "estimated_new_price": 110,
           "sort_order": 0,
           "notes": null
         }

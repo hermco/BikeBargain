@@ -38,32 +38,35 @@
 
 /* ── Light mode ─────────────────────────────────────── */
 :root {
-  --color-bg: #f7f6f3;
+  --color-bg: #f3f2ef;
   --color-surface: #ffffff;
-  --color-surface-hover: #f2f0ed;
-  --color-border: #e2dfd8;
-  --color-text-primary: #1c1a17;
-  --color-text-secondary: #544f45;
-  --color-text-muted: #8a8478;
-  --color-text-dim: #b5afa3;
-  --color-accent: #c08c0a;
-  --color-accent-text: #8b5a10;
-  --color-accent-subtle: rgba(192, 140, 10, 0.08);
+  --color-surface-hover: #faf9f7;
+  --color-border: #dfdcd5;
+  --color-text-primary: #1a1918;
+  --color-text-secondary: #44403a;
+  --color-text-muted: #78736a;
+  --color-text-dim: #b3ada4;
+  --color-accent: #a87608;
+  --color-accent-text: #8c5e00;
+  --color-accent-subtle: rgba(168, 118, 8, 0.09);
   --color-tint: rgb(0 0 0);
   --color-gauge-dot: #ffffff;
-  --shimmer-lo: rgba(140, 120, 80, 0.04);
-  --shimmer-hi: rgba(140, 120, 80, 0.08);
-  --noise-opacity: 0.02;
-  --selection-bg: rgba(192, 140, 10, 0.18);
-  --color-ui-red: #dc2626;
-  --color-ui-green: #15803d;
-  --color-ui-emerald: #047857;
-  --color-ui-blue: #2563eb;
-  --color-ui-purple: #7c3aed;
-  --color-ui-orange: #c2410c;
-  --color-ui-cyan: #0e7490;
-  --color-ui-yellow: #a16207;
-  --color-ui-pink: #be185d;
+  --shimmer-lo: rgba(100, 90, 70, 0.04);
+  --shimmer-hi: rgba(100, 90, 70, 0.10);
+  --noise-opacity: 0.018;
+  --selection-bg: rgba(168, 118, 8, 0.14);
+  /* Glow / focus colors — adapted for light backgrounds */
+  --glow-accent: rgba(168, 118, 8, 0.25);
+  --glow-accent-soft: rgba(168, 118, 8, 0.12);
+  --color-ui-red: #be1d1d;
+  --color-ui-green: #15793a;
+  --color-ui-emerald: #0b6e54;
+  --color-ui-blue: #1a5abd;
+  --color-ui-purple: #6530c8;
+  --color-ui-orange: #a8370c;
+  --color-ui-cyan: #0a6880;
+  --color-ui-yellow: #8a5c08;
+  --color-ui-pink: #a51652;
 }
 
 /* ── Dark mode ──────────────────────────────────────── */
@@ -85,6 +88,8 @@
   --shimmer-hi: rgba(255, 255, 255, 0.08);
   --noise-opacity: 0.015;
   --selection-bg: rgba(212, 168, 83, 0.3);
+  --glow-accent: rgba(212, 168, 83, 0.35);
+  --glow-accent-soft: rgba(212, 168, 83, 0.15);
   --color-ui-red: #f87171;
   --color-ui-green: #4ade80;
   --color-ui-emerald: #34d399;
@@ -195,8 +200,8 @@ body::before {
 
 /* Subtle glow pulse for accent elements */
 @keyframes glowPulse {
-  0%, 100% { box-shadow: 0 0 12px rgba(212, 168, 83, 0.15); }
-  50% { box-shadow: 0 0 24px rgba(212, 168, 83, 0.3); }
+  0%, 100% { box-shadow: 0 0 12px var(--glow-accent-soft); }
+  50% { box-shadow: 0 0 24px var(--glow-accent); }
 }
 
 /* Mileage bar fill animation */
@@ -206,8 +211,8 @@ body::before {
 
 /* Focus ring animation */
 @keyframes focusRing {
-  0% { box-shadow: 0 0 0 0 rgba(212, 168, 83, 0.4); }
-  100% { box-shadow: 0 0 0 4px rgba(212, 168, 83, 0); }
+  0% { box-shadow: 0 0 0 0 var(--glow-accent); }
+  100% { box-shadow: 0 0 0 4px transparent; }
 }
 
 /* Gradient text shimmer */
@@ -219,8 +224,8 @@ body::before {
 
 /* Smooth border glow on hover */
 @keyframes borderGlow {
-  0%, 100% { border-color: rgba(212, 168, 83, 0.15); }
-  50% { border-color: rgba(212, 168, 83, 0.3); }
+  0%, 100% { border-color: var(--glow-accent-soft); }
+  50% { border-color: var(--glow-accent); }
 }
 
 /* Floating effect for hero elements */
@@ -270,15 +275,15 @@ button:focus-visible {
   transition: background-color 0.2s ease;
 }
 
-/* Light mode: warm-tinted shadows for depth and cohesion */
+/* Light mode: natural shadows — warm but not muddy */
 :root:not(.dark) .shadow-xl {
-  --tw-shadow: 0 4px 24px -6px rgba(120, 90, 40, 0.1), 0 2px 6px -2px rgba(120, 90, 40, 0.06);
+  --tw-shadow: 0 4px 24px -6px rgba(60, 50, 35, 0.08), 0 2px 8px -2px rgba(60, 50, 35, 0.05);
 }
 :root:not(.dark) .shadow-2xl {
-  --tw-shadow: 0 8px 40px -8px rgba(120, 90, 40, 0.14), 0 4px 12px -4px rgba(120, 90, 40, 0.08);
+  --tw-shadow: 0 8px 40px -8px rgba(60, 50, 35, 0.12), 0 4px 12px -4px rgba(60, 50, 35, 0.06);
 }
 :root:not(.dark) .shadow-lg {
-  --tw-shadow: 0 4px 16px -4px rgba(120, 90, 40, 0.1), 0 1px 4px -1px rgba(120, 90, 40, 0.05);
+  --tw-shadow: 0 4px 16px -4px rgba(60, 50, 35, 0.08), 0 1px 4px -1px rgba(60, 50, 35, 0.04);
 }
 /* Dark mode: deeper shadows for contrast */
 .dark .shadow-xl {
@@ -288,17 +293,37 @@ button:focus-visible {
   --tw-shadow-color: rgba(0, 0, 0, 0.3);
 }
 
-/* Light mode: warm scrollbar */
+/* Light mode: subtle scrollbar */
 :root:not(.dark) ::-webkit-scrollbar-thumb {
-  background: rgba(140, 120, 80, 0.15);
+  background: rgba(80, 70, 55, 0.12);
 }
 :root:not(.dark) ::-webkit-scrollbar-thumb:hover {
-  background: rgba(140, 120, 80, 0.25);
+  background: rgba(80, 70, 55, 0.22);
 }
 
-/* Light mode: warm Recharts tooltip */
+/* Light mode: Recharts tooltip */
 :root:not(.dark) .recharts-default-tooltip {
-  box-shadow: 0 8px 32px -8px rgba(120, 90, 40, 0.15) !important;
+  box-shadow: 0 8px 32px -8px rgba(60, 50, 35, 0.12) !important;
+}
+
+/* Light mode: subtle warm gradient on body for atmosphere */
+:root:not(.dark) body {
+  background: linear-gradient(168deg, #f3f2ef 0%, #efeee9 40%, #f0eeea 100%);
+  background-attachment: fixed;
+}
+
+/* Light mode: crisper card borders — slight inset shadow for depth */
+:root:not(.dark) [class*="rounded-2xl"][class*="border"][class*="bg-surface"] {
+  box-shadow:
+    0 1px 2px rgba(60, 50, 35, 0.04),
+    0 4px 16px -6px rgba(60, 50, 35, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* Light mode: sidebar feels more grounded */
+:root:not(.dark) aside {
+  background: rgba(249, 248, 246, 0.85);
+  border-right-color: rgba(0, 0, 0, 0.06);
 }
 
 /* Theme transition — applied to root for smooth toggles */

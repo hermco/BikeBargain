@@ -15,7 +15,7 @@ export interface BikeModel {
 export interface BikeVariant {
   id: number
   bike_model_id: number
-  variant_name: string
+  variant_name: string | null
   color: string
   wheel_type: string
   new_price: number
@@ -185,6 +185,7 @@ export interface CrawlAdSummary {
   exists_in_db: boolean
   possible_repost_of: CrawlRepostMatch | null
   is_new_listing?: boolean
+  is_irrelevant?: boolean
   price_changed?: boolean
   current_db_price?: number | null
   price_delta?: number | null

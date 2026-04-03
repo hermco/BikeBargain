@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, AlertTriangle, ExternalLink, Search, X, Car } from 'lucide-react'
+import { ChevronDown, AlertTriangle, ExternalLink, Search, X, Car, Pause, CircleOff, RotateCcw, Crown, Medal } from 'lucide-react'
 import { useRankings, useCheckAdsOnline, useCheckAdsOnlineFull } from '../hooks/queries'
 import { useCurrentModel } from '../hooks/useCurrentModel'
 import { useToast } from '../components/Toast'
@@ -21,7 +21,8 @@ import {
   fetchTravelTimes, formatDuration,
   type UserLocation, type TravelInfo,
 } from '../lib/geo'
-import type { Ranking } from '../types'
+import type { Ranking, ListingStatus } from '../types'
+import type { CheckDetailItem } from '../lib/api'
 
 // ─── Travel badge ─────────────────────────────────────────────────────────────
 
@@ -40,7 +41,15 @@ function TravelBadge({ travel, loading }: { travel?: TravelInfo; loading?: boole
   )
 }
 
-// ─── Ranking detail (expanded row) ───────────────────────────────────────────
+// ─── Detail panel (staggered columns) ────────────────────────────────────────
+
+const detailPanelVariants = {
+  hidden: { opacity: 0, y: 8 },
+  visible: (i: number) => ({
+    opacity: 1, y: 0,
+    transition: { delay: i * 0.08, duration: 0.35, ease: [0.16, 1, 0.3, 1] },
+  }),
+}
 
 function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
   const { t } = useTranslation()
@@ -51,11 +60,12 @@ function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
       initial={{ height: 0, opacity: 0 }}
       animate={{ height: 'auto', opacity: 1 }}
       exit={{ height: 0, opacity: 0 }}
+      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
       className="overflow-hidden"
     >
       <div className="px-5 pb-5 pt-3 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
         {/* Accessories */}
-        <div className="rounded-xl bg-tint/[0.02] border border-tint/[0.04] p-4">
+        <motion.div custom={0} variants={detailPanelVariants} initial="hidden" animate="visible" className="rounded-xl bg-tint/[0.02] border border-tint/[0.04] p-4 hover:bg-tint/[0.04] transition-colors duration-300">
           <h4 className="text-[10px] text-text-muted uppercase tracking-widest font-semibold mb-3">
             {t('ranking.accessories')} ({r.acc_count}) — <span className="text-ui-emerald">{formatPrice(r.acc_used_total)}</span>
           </h4>
@@ -71,10 +81,10 @@ function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
           ) : (
             <p className="text-text-dim">{t('common.none')}</p>
           )}
-        </div>
+        </motion.div>
 
         {/* Consumables */}
-        <div className="rounded-xl bg-tint/[0.02] border border-tint/[0.04] p-4">
+        <motion.div custom={1} variants={detailPanelVariants} initial="hidden" animate="visible" className="rounded-xl bg-tint/[0.02] border border-tint/[0.04] p-4 hover:bg-tint/[0.04] transition-colors duration-300">
           <h4 className="text-[10px] text-text-muted uppercase tracking-widest font-semibold mb-3">
             {t('ranking.consumables')} — <span className="text-ui-orange">+{formatPrice(r.wear_total)}</span>
           </h4>
@@ -89,10 +99,10 @@ function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
           <p className="text-[10px] text-text-dim mt-3 pt-2 border-t border-tint/[0.04]">
             {t('ranking.mechanical')} : +{formatPrice(r.mechanical_wear)} · {t('ranking.conditionRisk')} : +{formatPrice(r.condition_risk)} ({r.km} km)
           </p>
-        </div>
+        </motion.div>
 
         {/* Warranty & alerts */}
-        <div className="rounded-xl bg-tint/[0.02] border border-tint/[0.04] p-4">
+        <motion.div custom={2} variants={detailPanelVariants} initial="hidden" animate="visible" className="rounded-xl bg-tint/[0.02] border border-tint/[0.04] p-4 hover:bg-tint/[0.04] transition-colors duration-300">
           <h4 className="text-[10px] text-text-muted uppercase tracking-widest font-semibold mb-3">
             {t('ranking.warranty')} — {r.warranty.remaining_years} {t('ranking.years')} — <span className="text-ui-blue">{formatPrice(r.warranty.value)}</span>
           </h4>
@@ -131,11 +141,49 @@ function RankingDetail({ r, travel }: { r: Ranking; travel?: TravelInfo }) {
               <ExternalLink className="h-3 w-3" /> LBC
             </a>
           </div>
-        </div>
+        </motion.div>
       </div>
     </motion.div>
   )
 }
+
+// ─── Rank display with podium treatment ──────────────────────────────────────
+
+function RankBadge({ rank, status, isPodium }: { rank: number; status: string; isPodium: boolean }) {
+  if (!isPodium || status !== 'online') {
+    return (
+      <span className={cn(
+        'text-lg font-bold font-fraunces',
+        status === 'sold' ? 'text-ui-red/60' : status === 'paused' ? 'text-amber-600/60 dark:text-amber-400/60' : 'text-text-muted',
+      )}>
+        #{rank}
+      </span>
+    )
+  }
+  if (rank === 1) {
+    return (
+      <span className="relative inline-flex items-center justify-center">
+        <span className="absolute inset-0 rounded-full bg-amber-400/20 blur-md" />
+        <span className="relative flex items-center gap-1 text-lg font-bold font-fraunces text-amber-400">
+          <Crown className="h-4 w-4 text-amber-400" />1
+        </span>
+      </span>
+    )
+  }
+  if (rank === 2) {
+    return (
+      <span className="flex items-center gap-1 text-lg font-bold font-fraunces text-gray-300">
+        <Medal className="h-3.5 w-3.5 text-gray-300/70" />2
+      </span>
+    )
+  }
+  return (
+    <span className="flex items-center gap-1 text-lg font-bold font-fraunces text-amber-600">
+      <Medal className="h-3.5 w-3.5 text-amber-600/70" />3
+    </span>
+  )
+}
+
 
 // ─── Mobile card ─────────────────────────────────────────────────────────────
 
@@ -144,6 +192,7 @@ function RankingCard({ r, rank, isOpen, onToggle, travel, travelLoading, hasFilt
 }) {
   const { t } = useTranslation()
   const { formatPrice, formatKm } = useFormatters()
+  const { modelUrl } = useCurrentModel()
   const colorStr = `${r.color || '?'}${r.wheel_type === 'tubeless' ? ' TL' : ''}`
   const isPodium = !filtered && r.listing_status === 'online' && rank <= 3
   const podiumBorder = isPodium && rank === 1
@@ -155,26 +204,36 @@ function RankingCard({ r, rank, isOpen, onToggle, travel, travelLoading, hasFilt
         : ''
 
   return (
-    <Card className={cn('overflow-hidden', r.listing_status === 'sold' ? 'opacity-50 !border-red-500/25 bg-red-950/15' : r.listing_status === 'paused' ? 'opacity-70 !border-amber-500/25 bg-amber-950/15' : podiumBorder)}>
+    <Card className={cn('overflow-hidden', r.listing_status === 'sold' ? 'opacity-50 !border-red-500/25 bg-red-500/[0.04] dark:bg-red-950/15' : r.listing_status === 'paused' ? 'opacity-70 !border-amber-500/25 bg-amber-500/[0.04] dark:bg-amber-950/15' : podiumBorder)}>
       <button onClick={onToggle} className="w-full text-left p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className={cn('text-lg font-bold font-fraunces', r.listing_status === 'sold' ? 'text-ui-red/60' : r.listing_status === 'paused' ? 'text-amber-400/60' : 'text-text-muted')}>#{rank}</span>
+            <RankBadge rank={rank} status={r.listing_status} isPodium={isPodium} />
             <div>
               <p className="text-sm font-medium text-text-primary flex items-center gap-2 flex-wrap">
                 {r.city}
                 <TravelBadge travel={travel} loading={travelLoading} />
-                {r.listing_status === 'sold' && <span className="text-[10px] text-red-100 uppercase font-bold bg-red-500/30 border border-red-500/40 px-2 py-0.5 rounded-md tracking-wider shadow-sm shadow-red-500/10">{t('common.sold')}</span>}
-                {r.listing_status === 'paused' && <span className="text-[10px] text-amber-100 uppercase font-bold bg-amber-500/30 border border-amber-500/40 px-2 py-0.5 rounded-md tracking-wider shadow-sm shadow-amber-500/10">{t('common.paused')}</span>}
+                {r.listing_status === 'sold' && <span className="text-[10px] text-red-700 dark:text-red-100 uppercase font-bold bg-red-500/15 dark:bg-red-500/30 border border-red-500/30 dark:border-red-500/40 px-2 py-0.5 rounded-md tracking-wider">{t('common.sold')}</span>}
+                {r.listing_status === 'paused' && <span className="text-[10px] text-amber-700 dark:text-amber-100 uppercase font-bold bg-amber-500/15 dark:bg-amber-500/30 border border-amber-500/30 dark:border-amber-500/40 px-2 py-0.5 rounded-md tracking-wider">{t('common.paused')}</span>}
               </p>
               <Badge className={variantColor(r.color)}>{colorStr}</Badge>
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-sm font-semibold text-text-primary tabular-nums">{formatPrice(r.effective_price)}</p>
-            <span className={cn('text-xs font-semibold', r.decote_pct > 20 ? 'text-ui-emerald' : r.decote_pct > 10 ? 'text-accent-text' : 'text-ui-red')}>
-              -{r.decote_pct}%
-            </span>
+          <div className="flex items-center gap-2">
+            <div className="text-right">
+              <p className="text-sm font-semibold text-text-primary tabular-nums">{formatPrice(r.effective_price)}</p>
+              <span className={cn('text-xs font-semibold', r.decote_pct > 20 ? 'text-ui-emerald' : r.decote_pct > 10 ? 'text-accent-text' : 'text-ui-red')}>
+                -{r.decote_pct}%
+              </span>
+            </div>
+            <Link
+              to={modelUrl(`/ads/${r.id}`)}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-text-dim hover:text-accent-text hover:bg-tint/[0.06] transition-colors"
+              title={t('ranking.viewAd')}
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Link>
           </div>
         </div>
 
@@ -227,7 +286,7 @@ export function RankingPage() {
   const checkOnlineMut = useCheckAdsOnline(slug)
   const checkFullMut = useCheckAdsOnlineFull(slug)
   const { toast } = useToast()
-  const [newlySoldIds, setNewlySoldIds] = useState<Set<number>>(new Set())
+  const [statusChanges, setStatusChanges] = useState<Map<number, ListingStatus>>(new Map())
   const [expanded, setExpanded] = useState<number | null>(null)
   const [sortKey, setSortKey] = useState<SortKey>('rank')
   const [sortAsc, setSortAsc] = useState(true)
@@ -341,7 +400,7 @@ export function RankingPage() {
     if (hideFilter === 'offline' && r.listing_status !== 'online') return false
     if (search) {
       const q = search.toLowerCase()
-      if (!r.city.toLowerCase().includes(q) && !r.color?.toLowerCase().includes(q) && !r.variant.toLowerCase().includes(q)) return false
+      if (!r.city.toLowerCase().includes(q) && !r.color?.toLowerCase().includes(q)) return false
     }
     if (filterColors.size > 0 && !filterColors.has(r.color)) return false
     if (filterWheel && r.wheel_type !== filterWheel) return false
@@ -379,7 +438,7 @@ export function RankingPage() {
   if (!rankings?.length) return <EmptyState icon="trophy" title={t('ranking.emptyTitle')} description={t('ranking.emptyDescription')} />
 
   const hasLocation = userLoc != null
-  const colSpan = hasLocation ? 9 : 8
+  const colSpan = hasLocation ? 10 : 9
 
   const SortHeader = ({ k, children, className: cls }: { k: SortKey; children: React.ReactNode; className?: string }) => (
     <th
@@ -416,8 +475,9 @@ export function RankingPage() {
           onQuickCheck={() => {
             checkOnlineMut.mutate(undefined, {
               onSuccess: (data) => {
-                const changedIds = data.details.filter((d) => d.changed).map((d) => d.id)
-                setNewlySoldIds(new Set(changedIds))
+                const changes = new Map<number, ListingStatus>()
+                data.details.filter((d) => d.changed).forEach((d) => changes.set(d.id, d.listing_status))
+                setStatusChanges(changes)
                 toast(
                   data.changes > 0
                     ? t('ranking.statusChanges', { count: data.changes })
@@ -431,8 +491,9 @@ export function RankingPage() {
           onFullCheck={() => {
             checkFullMut.mutate(undefined, {
               onSuccess: (data) => {
-                const changedIds = data.details.filter((d) => d.changed).map((d) => d.id)
-                setNewlySoldIds(new Set(changedIds))
+                const changes = new Map<number, ListingStatus>()
+                data.details.filter((d) => d.changed).forEach((d) => changes.set(d.id, d.listing_status))
+                setStatusChanges(changes)
                 const parts: string[] = []
                 if (data.changes > 0) parts.push(t('ranking.statusChanges', { count: data.changes }))
                 if (data.back_online > 0) parts.push(t('ranking.backOnline', { count: data.back_online }))
@@ -448,50 +509,93 @@ export function RankingPage() {
       {/* Location picker */}
       <LocationPicker location={userLoc} onChange={handleLocationChange} />
 
-      {/* Newly sold banner */}
+      {/* Status changes banner */}
       <AnimatePresence>
-        {newlySoldIds.size > 0 && rankings && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-5 py-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-accent-text flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  {t('ranking.newlySoldBanner', { count: newlySoldIds.size })}
-                </h3>
-                <button
-                  onClick={() => setNewlySoldIds(new Set())}
-                  className="text-text-dim hover:text-text-secondary transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+        {statusChanges.size > 0 && rankings && (() => {
+          const groups = [
+            {
+              key: 'sold' as const,
+              ids: [...statusChanges.entries()].filter(([, s]) => s === 'sold').map(([id]) => id),
+              icon: CircleOff,
+              borderColor: 'border-red-500/20',
+              bgColor: 'bg-red-500/[0.06]',
+              titleColor: 'text-red-400',
+              i18nKey: 'ranking.statusBannerSold',
+            },
+            {
+              key: 'paused' as const,
+              ids: [...statusChanges.entries()].filter(([, s]) => s === 'paused').map(([id]) => id),
+              icon: Pause,
+              borderColor: 'border-amber-500/20',
+              bgColor: 'bg-amber-500/[0.06]',
+              titleColor: 'text-amber-700 dark:text-amber-400',
+              i18nKey: 'ranking.statusBannerPaused',
+            },
+            {
+              key: 'online' as const,
+              ids: [...statusChanges.entries()].filter(([, s]) => s === 'online').map(([id]) => id),
+              icon: RotateCcw,
+              borderColor: 'border-emerald-500/20',
+              bgColor: 'bg-emerald-500/[0.06]',
+              titleColor: 'text-emerald-400',
+              i18nKey: 'ranking.statusBannerOnline',
+            },
+          ].filter((g) => g.ids.length > 0)
+
+          return (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-text-secondary flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    {t('ranking.statusChanges', { count: statusChanges.size })}
+                  </h3>
+                  <button
+                    onClick={() => setStatusChanges(new Map())}
+                    className="text-text-dim hover:text-text-secondary transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                {groups.map((group) => {
+                  const Icon = group.icon
+                  return (
+                    <div key={group.key} className={cn('rounded-xl border px-5 py-4', group.borderColor, group.bgColor)}>
+                      <h4 className={cn('text-xs font-semibold flex items-center gap-2 mb-3', group.titleColor)}>
+                        <Icon className="h-3.5 w-3.5" />
+                        {t(group.i18nKey, { count: group.ids.length })}
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {rankings
+                          .filter((r) => group.ids.includes(r.id))
+                          .map((r) => {
+                            const origRank = (rankMap.get(r.id) ?? 0) + 1
+                            return (
+                              <Link
+                                key={r.id}
+                                to={modelUrl(`/ads/${r.id}`)}
+                                className="inline-flex items-center gap-2 rounded-lg bg-tint/[0.04] border border-tint/[0.06] px-3 py-2 text-sm hover:bg-tint/[0.08] transition-colors"
+                              >
+                                <span className="text-text-dim font-fraunces">#{origRank}</span>
+                                <span className="text-text-secondary">{r.city}</span>
+                                <Badge className={cn(variantColor(r.color), 'text-[10px]')}>{r.color || '?'}</Badge>
+                                <span className="text-text-primary font-medium tabular-nums">{formatPrice(r.price)}</span>
+                              </Link>
+                            )
+                          })}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
-              <div className="flex flex-wrap gap-2">
-                {rankings
-                  .filter((r) => newlySoldIds.has(r.id))
-                  .map((r) => {
-                    const origRank = (rankMap.get(r.id) ?? 0) + 1
-                    return (
-                      <Link
-                        key={r.id}
-                        to={modelUrl(`/ads/${r.id}`)}
-                        className="inline-flex items-center gap-2 rounded-lg bg-tint/[0.04] border border-tint/[0.06] px-3 py-2 text-sm hover:bg-tint/[0.08] transition-colors"
-                      >
-                        <span className="text-text-dim font-fraunces">#{origRank}</span>
-                        <span className="text-text-secondary">{r.city}</span>
-                        <Badge className={cn(variantColor(r.color), 'text-[10px]')}>{r.color || '?'}</Badge>
-                        <span className="text-text-primary font-medium tabular-nums">{formatPrice(r.price)}</span>
-                      </Link>
-                    )
-                  })}
-              </div>
-            </div>
-          </motion.div>
-        )}
+            </motion.div>
+          )
+        })()}
       </AnimatePresence>
 
       {/* Row 1: Search + Hide Sold toggle */}
@@ -675,37 +779,37 @@ export function RankingPage() {
           {search && (
             <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-accent-text">
               "{search}"
-              <button onClick={() => setSearch('')} className="hover:text-amber-100 transition-colors"><X className="h-2.5 w-2.5" /></button>
+              <button onClick={() => setSearch('')} className="hover:text-accent-text transition-colors"><X className="h-2.5 w-2.5" /></button>
             </span>
           )}
           {[...filterColors].map((c) => (
             <span key={c} className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-accent-text">
               {c}
-              <button onClick={() => toggleColor(c)} className="hover:text-amber-100 transition-colors"><X className="h-2.5 w-2.5" /></button>
+              <button onClick={() => toggleColor(c)} className="hover:text-accent-text transition-colors"><X className="h-2.5 w-2.5" /></button>
             </span>
           ))}
           {filterWheel && (
             <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-accent-text">
               {filterWheel === 'rayons' ? t('ranking.spoked') : t('ranking.tubeless')}
-              <button onClick={() => setFilterWheel('')} className="hover:text-amber-100 transition-colors"><X className="h-2.5 w-2.5" /></button>
+              <button onClick={() => setFilterWheel('')} className="hover:text-accent-text transition-colors"><X className="h-2.5 w-2.5" /></button>
             </span>
           )}
           {maxKm && (
             <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-accent-text">
               ≤ {Number(maxKm).toLocaleString()} km
-              <button onClick={() => setMaxKm('')} className="hover:text-amber-100 transition-colors"><X className="h-2.5 w-2.5" /></button>
+              <button onClick={() => setMaxKm('')} className="hover:text-accent-text transition-colors"><X className="h-2.5 w-2.5" /></button>
             </span>
           )}
           {maxPrice && (
             <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-accent-text">
               ≤ {Number(maxPrice).toLocaleString()} €
-              <button onClick={() => setMaxPrice('')} className="hover:text-amber-100 transition-colors"><X className="h-2.5 w-2.5" /></button>
+              <button onClick={() => setMaxPrice('')} className="hover:text-accent-text transition-colors"><X className="h-2.5 w-2.5" /></button>
             </span>
           )}
           {maxTrajet && (
             <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15 px-2.5 py-1 text-[11px] text-accent-text">
               ≤ {Math.round(Number(maxTrajet) / 60)}h
-              <button onClick={() => setMaxTrajet('')} className="hover:text-amber-100 transition-colors"><X className="h-2.5 w-2.5" /></button>
+              <button onClick={() => setMaxTrajet('')} className="hover:text-accent-text transition-colors"><X className="h-2.5 w-2.5" /></button>
             </span>
           )}
           {filtered.length < rankings.length && (
@@ -748,46 +852,45 @@ export function RankingPage() {
               <SortHeader k="price" className="text-right">{t('ranking.listed')}</SortHeader>
               <SortHeader k="acc_used_total" className="text-right">{t('ranking.acc')}</SortHeader>
               <SortHeader k="effective_price" className="text-right">{t('ranking.effective')}</SortHeader>
-              <SortHeader k="decote_pct" className="pr-5 text-right">{t('ranking.discount')}</SortHeader>
+              <SortHeader k="decote_pct" className="pr-2 text-right">{t('ranking.discount')}</SortHeader>
+              <th className="w-8"></th>
             </tr>
           </thead>
           <tbody>
-            {sorted.map((r) => {
+            {sorted.map((r, rowIdx) => {
               const origRank = (rankMap.get(r.id) ?? 0) + 1
               const isOpen = expanded === r.id
               const colorStr = `${r.color || '?'}${r.wheel_type === 'tubeless' ? ' TL' : ''}`
 
               const isPodium = !hasFilters && r.listing_status === 'online' && origRank <= 3
               const podiumStyle = isPodium && origRank === 1
-                ? 'border-l-2 border-l-amber-400/60 bg-amber-500/[0.04]'
+                ? 'border-l-2 border-l-amber-400/60 bg-gradient-to-r from-amber-500/[0.06] to-transparent'
                 : isPodium && origRank === 2
-                  ? 'border-l-2 border-l-gray-300/40 bg-tint/[0.02]'
+                  ? 'border-l-2 border-l-gray-300/40 bg-gradient-to-r from-gray-300/[0.03] to-transparent'
                   : isPodium && origRank === 3
-                    ? 'border-l-2 border-l-amber-700/40 bg-amber-900/[0.03]'
+                    ? 'border-l-2 border-l-amber-700/40 bg-gradient-to-r from-amber-700/[0.04] to-transparent'
                     : ''
 
               return (
                 <React.Fragment key={r.id}>
-                  <tr
+                  <motion.tr
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, delay: Math.min(rowIdx * 0.03, 0.6), ease: [0.16, 1, 0.3, 1] }}
                     className={cn(
                       'border-b border-tint/[0.04] cursor-pointer transition-all duration-200 group/row',
-                      isOpen ? 'bg-tint/[0.04]' : 'hover:bg-tint/[0.03]',
-                      r.listing_status === 'sold' ? 'opacity-50 bg-red-950/20 border-l-2 !border-l-red-500/40' : r.listing_status === 'paused' ? 'opacity-70 bg-amber-950/20 border-l-2 !border-l-amber-500/40' : podiumStyle,
+                      isOpen ? 'bg-tint/[0.05]' : 'hover:bg-tint/[0.03]',
+                      r.listing_status === 'sold' ? 'opacity-50 bg-red-500/[0.04] dark:bg-red-950/20 border-l-2 !border-l-red-500/40' : r.listing_status === 'paused' ? 'opacity-70 bg-amber-500/[0.04] dark:bg-amber-950/20 border-l-2 !border-l-amber-500/40' : podiumStyle,
                     )}
                     onClick={() => setExpanded(isOpen ? null : r.id)}
                   >
-                    <td className={cn(
-                      'py-3 pl-5 pr-4 w-12 text-center font-bold font-fraunces',
-                      r.listing_status === 'sold' ? 'text-ui-red/60' :
-                      r.listing_status === 'paused' ? 'text-amber-400/60' :
-                      isPodium && origRank === 1 ? 'text-accent-text' :
-                      isPodium && origRank === 2 ? 'text-gray-300' :
-                      isPodium && origRank === 3 ? 'text-amber-600' : 'text-text-muted',
-                    )}>{origRank}</td>
+                    <td className="py-3 pl-5 pr-4 w-12 text-center">
+                      <RankBadge rank={origRank} status={r.listing_status} isPodium={isPodium} />
+                    </td>
                     <td className="py-3 pr-4 text-text-secondary">
                       {r.city}
-                      {r.listing_status === 'sold' && <span className="ml-2 text-[10px] text-red-100 uppercase font-bold bg-red-500/30 border border-red-500/40 px-2 py-0.5 rounded-md tracking-wider shadow-sm shadow-red-500/10">{t('common.sold')}</span>}
-                      {r.listing_status === 'paused' && <span className="ml-2 text-[10px] text-amber-100 uppercase font-bold bg-amber-500/30 border border-amber-500/40 px-2 py-0.5 rounded-md tracking-wider shadow-sm shadow-amber-500/10">{t('common.paused')}</span>}
+                      {r.listing_status === 'sold' && <span className="ml-2 text-[10px] text-red-700 dark:text-red-100 uppercase font-bold bg-red-500/15 dark:bg-red-500/30 border border-red-500/30 dark:border-red-500/40 px-2 py-0.5 rounded-md tracking-wider">{t('common.sold')}</span>}
+                      {r.listing_status === 'paused' && <span className="ml-2 text-[10px] text-amber-700 dark:text-amber-100 uppercase font-bold bg-amber-500/15 dark:bg-amber-500/30 border border-amber-500/30 dark:border-amber-500/40 px-2 py-0.5 rounded-md tracking-wider">{t('common.paused')}</span>}
                     </td>
                     {hasLocation && (
                       <td className="py-3 pr-4 text-right w-20">
@@ -798,18 +901,28 @@ export function RankingPage() {
                       <Badge className={variantColor(r.color)}>{colorStr}</Badge>
                     </td>
                     <td className="py-3 pr-4 text-right tabular-nums text-text-secondary">{formatKm(r.km)}</td>
-                    <td className={cn('py-3 pr-4 text-right tabular-nums text-text-primary', r.listing_status === 'sold' && 'line-through decoration-red-400/50')}>{formatPrice(r.price)}</td>
+                    <td className="py-3 pr-4 text-right tabular-nums text-text-primary">{formatPrice(r.price)}</td>
                     <td className="py-3 pr-4 text-right text-ui-emerald tabular-nums">
-                      {r.acc_used_total > 0 ? `-${r.acc_used_total}` : '0'}
+                      {r.acc_used_total > 0 ? `-${r.acc_used_total}` : <span className="text-text-dim">0</span>}
                     </td>
                     <td className="py-3 pr-4 text-right font-semibold tabular-nums text-text-primary">{formatPrice(r.effective_price)}</td>
-                    <td className="py-3 pr-5 text-right tabular-nums">
+                    <td className="py-3 pr-2 text-right tabular-nums">
                       <span className={cn('font-semibold', r.decote_pct > 20 ? 'text-ui-emerald' : r.decote_pct > 10 ? 'text-accent-text' : 'text-ui-red')}>
                         -{r.decote_pct}%
                       </span>
-                      <ChevronDown className={cn('inline h-4 w-4 ml-1.5 text-text-dim transition-transform duration-200', isOpen && 'rotate-180')} />
+                      <ChevronDown className={cn('inline h-4 w-4 ml-1.5 text-text-dim transition-transform duration-300', isOpen && 'rotate-180')} />
                     </td>
-                  </tr>
+                    <td className="py-3 pr-5 w-8">
+                      <Link
+                        to={modelUrl(`/ads/${r.id}`)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center justify-center h-7 w-7 rounded-lg text-text-dim opacity-0 group-hover/row:opacity-100 hover:!text-accent-text hover:bg-tint/[0.08] transition-all duration-200"
+                        title={t('ranking.viewAd')}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Link>
+                    </td>
+                  </motion.tr>
                   <AnimatePresence>
                     {isOpen && (
                       <tr>

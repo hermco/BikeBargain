@@ -1,41 +1,18 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { X, TrendingUp, Tag, ArrowUpDown } from 'lucide-react'
-import { useAds, useCheckAdsOnline, useCheckAdsOnlineFull } from '../hooks/queries'
+import { X, TrendingUp, Tag, ArrowUpDown, Loader2 } from 'lucide-react'
+import { useInfiniteAds, useRankings, useCheckAdsOnline, useCheckAdsOnlineFull } from '../hooks/queries'
 import { AdCard } from '../components/AdCard'
 import { AdForm } from '../components/AdForm'
 import { FilterBar, type SortOption } from '../components/FilterBar'
 import { EmptyState } from '../components/EmptyState'
 import { CardSkeleton } from '../components/LoadingSkeleton'
-import { Button } from '../components/ui/Button'
 import { CheckOnlineButton } from '../components/ui/CheckOnlineButton'
 import { useToast } from '../components/Toast'
 import { useCurrentModel } from '../hooks/useCurrentModel'
 import { useFormatters } from '../hooks/useFormatters'
-import type { Ad } from '../types'
-
-function sortAds(ads: Ad[], sort: SortOption): Ad[] {
-  const sorted = [...ads]
-  switch (sort) {
-    case 'price_asc':
-      return sorted.sort((a, b) => (a.price ?? 0) - (b.price ?? 0))
-    case 'price_desc':
-      return sorted.sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
-    case 'km_asc':
-      return sorted.sort((a, b) => (a.mileage_km ?? 0) - (b.mileage_km ?? 0))
-    case 'km_desc':
-      return sorted.sort((a, b) => (b.mileage_km ?? 0) - (a.mileage_km ?? 0))
-    case 'recent':
-    default:
-      return sorted.sort((a, b) => {
-        const da = a.first_publication_date ?? a.extracted_at
-        const db = b.first_publication_date ?? b.extracted_at
-        return db.localeCompare(da)
-      })
-  }
-}
 
 export function AdsPage() {
   const { t } = useTranslation()
@@ -45,7 +22,29 @@ export function AdsPage() {
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortOption>('recent')
   const [autoOpenAdd, setAutoOpenAdd] = useState(false)
-  const { data, isLoading } = useAds(slug)
+
+  // Debounce search to avoid spamming API on every keystroke
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  const queryParams = useMemo(() => ({
+    ...(variant ? { variant } : {}),
+    ...(debouncedSearch ? { search: debouncedSearch } : {}),
+    ...(sort !== 'recent' ? { sort } : {}),
+  }), [variant, debouncedSearch, sort])
+
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useInfiniteAds(slug, queryParams)
+
+  const { data: rankings } = useRankings(slug)
   const checkOnlineMut = useCheckAdsOnline(slug)
   const checkFullMut = useCheckAdsOnlineFull(slug)
   const { toast } = useToast()
@@ -58,37 +57,51 @@ export function AdsPage() {
     }
   }, [searchParams, setSearchParams])
 
-  const filtered = useMemo(() => {
-    if (!data?.ads) return []
-    let ads = data.ads
-    if (variant) ads = ads.filter((a) => a.color === variant)
-    if (search) {
-      const q = search.toLowerCase()
-      ads = ads.filter(
-        (a) =>
-          (a.city ?? '').toLowerCase().includes(q) ||
-          (a.subject ?? '').toLowerCase().includes(q) ||
-          (a.color ?? '').toLowerCase().includes(q) ||
-          (a.department ?? '').toLowerCase().includes(q),
-      )
+  // Infinite scroll via IntersectionObserver
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage()
+        }
+      },
+      { rootMargin: '400px' },
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
+
+  const allAds = useMemo(
+    () => data?.pages.flatMap((p) => p.ads) ?? [],
+    [data],
+  )
+  const totalCount = data?.pages[0]?.total ?? 0
+
+  const rankMap = useMemo(() => {
+    const map = new Map<number, number>()
+    if (rankings) {
+      rankings.forEach((r, i) => map.set(r.id, i + 1))
     }
-    return sortAds(ads, sort)
-  }, [data, variant, search, sort])
+    return map
+  }, [rankings])
 
   const hasFilters = variant || search
-  const totalCount = data?.total ?? 0
 
   const kpiStats = useMemo(() => {
-    if (!data?.ads?.length) return null
-    const prices = data.ads.map(a => a.price).filter((p): p is number => p != null)
+    if (!totalCount) return null
+    // KPI stats are based on first page data — approximate but avoids loading all ads
+    const prices = allAds.map(a => a.price).filter((p): p is number => p != null)
     if (!prices.length) return null
     const avg = Math.round(prices.reduce((s, p) => s + p, 0) / prices.length)
     const min = Math.min(...prices)
     const max = Math.max(...prices)
-    const soldCount = data.ads.filter(a => a.listing_status === 'sold').length
-    const pausedCount = data.ads.filter(a => a.listing_status === 'paused').length
+    const soldCount = allAds.filter(a => a.listing_status === 'sold').length
+    const pausedCount = allAds.filter(a => a.listing_status === 'paused').length
     return { avg, min, max, soldCount, pausedCount }
-  }, [data])
+  }, [allAds, totalCount])
 
   function clearFilters() {
     setVariant('')
@@ -113,9 +126,14 @@ export function AdsPage() {
           {data && (
             <p className="text-sm text-text-muted mt-1">
               {hasFilters ? (
-                <span>{filtered.length} / {t('ads.ad', { count: totalCount })}</span>
+                <span>{t('ads.ad', { count: totalCount })}</span>
               ) : (
                 <span>{t('ads.recorded', { count: totalCount })}</span>
+              )}
+              {allAds.length < totalCount && (
+                <span className="ml-2 text-text-dim">
+                  — {t('ads.loaded', { loaded: allAds.length, total: totalCount })}
+                </span>
               )}
             </p>
           )}
@@ -196,7 +214,7 @@ export function AdsPage() {
           {kpiStats.pausedCount > 0 && (
             <div className="flex items-center gap-1.5">
               <span className="text-text-muted">{t('ads.paused')}</span>
-              <span className="text-amber-400/80 tabular-nums">{kpiStats.pausedCount}</span>
+              <span className="text-amber-700/80 dark:text-amber-400/80 tabular-nums">{kpiStats.pausedCount}</span>
             </div>
           )}
         </motion.div>
@@ -217,18 +235,29 @@ export function AdsPage() {
             <CardSkeleton key={i} index={i} />
           ))}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : allAds.length === 0 ? (
         <EmptyState
           icon="grid"
           title={t('ads.emptyTitle')}
           description={t('ads.emptyDescription')}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map((ad, i) => (
-            <AdCard key={ad.id} ad={ad} index={i} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {allAds.map((ad, i) => (
+              <AdCard key={ad.id} ad={ad} index={i} rank={rankMap.get(ad.id)} />
+            ))}
+          </div>
+
+          {/* Sentinel for infinite scroll */}
+          <div ref={sentinelRef} className="h-1" />
+
+          {isFetchingNextPage && (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-text-dim" />
+            </div>
+          )}
+        </>
       )}
     </motion.div>
   )

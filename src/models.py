@@ -53,6 +53,10 @@ class BikeModel(SQLModel, table=True):
         back_populates="bike_model",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},
     )
+    title_filters: list["BikeTitleFilter"] = Relationship(
+        back_populates="bike_model",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
 
 
 class BikeModelConfig(SQLModel, table=True):
@@ -73,13 +77,13 @@ class BikeModelConfig(SQLModel, table=True):
 
 class BikeVariant(SQLModel, table=True):
     __tablename__ = "bike_variants"
-    __table_args__ = (UniqueConstraint("bike_model_id", "variant_name", "color", "wheel_type"),)
+    __table_args__ = (UniqueConstraint("bike_model_id", "color", "wheel_type"),)
 
     id: int | None = Field(default=None, primary_key=True)
     bike_model_id: int = Field(
         sa_column=Column(Integer, ForeignKey("bike_models.id", ondelete="CASCADE"), nullable=False, index=True),
     )
-    variant_name: str
+    variant_name: str | None = None
     color: str
     wheel_type: str = Field(default="default")
     new_price: int
@@ -128,7 +132,7 @@ class BikeVariantPattern(SQLModel, table=True):
         sa_column=Column(Integer, ForeignKey("bike_models.id", ondelete="CASCADE"), nullable=False, index=True),
     )
     regex_pattern: str
-    matched_variant: str
+    matched_variant: str | None = None
     matched_color: str | None = None
     matched_wheel_type: str | None = None
     priority: int = Field(default=0)
@@ -180,6 +184,20 @@ class BikeSearchConfig(SQLModel, table=True):
     search_in_title_only: bool = Field(default=False)
 
     bike_model: BikeModel | None = Relationship(back_populates="search_configs")
+
+
+class BikeTitleFilter(SQLModel, table=True):
+    __tablename__ = "bike_title_filters"
+
+    id: int | None = Field(default=None, primary_key=True)
+    bike_model_id: int = Field(
+        sa_column=Column(Integer, ForeignKey("bike_models.id", ondelete="CASCADE"), nullable=False, index=True),
+    )
+    filter_type: str  # "include" ou "exclude"
+    regex_pattern: str
+    description: str | None = None
+
+    bike_model: BikeModel | None = Relationship(back_populates="title_filters")
 
 
 # ─── Ads ─────────────────────────────────────────────────────────────────────
@@ -328,6 +346,7 @@ class CrawlSessionAd(SQLModel, table=True):
     action: str = Field(default="pending")
     position: int = Field(default=0)
     is_new_listing: int = Field(default=0)
+    is_irrelevant: int = Field(default=0)
 
     session: CrawlSession | None = Relationship(back_populates="session_ads")
 

@@ -23,7 +23,7 @@ function ThemeToggle() {
   return (
     <motion.button
       onClick={handleToggle}
-      className="flex items-center justify-center w-8 h-8 rounded-lg bg-tint/[0.04] border border-tint/[0.06] text-text-dim hover:text-accent-text hover:bg-tint/[0.08] transition-all mr-4"
+      className="flex items-center justify-center w-8 h-8 rounded-lg bg-tint/[0.04] border border-tint/[0.06] text-text-dim hover:text-accent-text hover:bg-tint/[0.08] transition-all"
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.9 }}
       title={isDark ? 'Light mode' : 'Dark mode'}
@@ -48,32 +48,29 @@ function LanguageSwitcher() {
   const currentLang = i18n.language?.startsWith('fr') ? 'fr' : 'en'
 
   return (
-    <div className="flex items-center gap-1.5 px-4">
-      <Globe className="h-3.5 w-3.5 text-text-dim shrink-0" />
-      <div className="flex rounded-lg bg-tint/[0.04] border border-tint/[0.06] p-0.5">
-        <button
-          onClick={() => i18n.changeLanguage('fr')}
-          className={cn(
-            'px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all',
-            currentLang === 'fr'
-              ? 'bg-accent-subtle text-accent-text shadow-sm'
-              : 'text-text-dim hover:text-text-secondary',
-          )}
-        >
-          FR
-        </button>
-        <button
-          onClick={() => i18n.changeLanguage('en')}
-          className={cn(
-            'px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all',
-            currentLang === 'en'
-              ? 'bg-accent-subtle text-accent-text shadow-sm'
-              : 'text-text-dim hover:text-text-secondary',
-          )}
-        >
-          EN
-        </button>
-      </div>
+    <div className="flex rounded-lg bg-tint/[0.04] border border-tint/[0.06] p-0.5">
+      <button
+        onClick={() => i18n.changeLanguage('fr')}
+        className={cn(
+          'px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all',
+          currentLang === 'fr'
+            ? 'bg-accent-subtle text-accent-text shadow-sm'
+            : 'text-text-dim hover:text-text-secondary',
+        )}
+      >
+        FR
+      </button>
+      <button
+        onClick={() => i18n.changeLanguage('en')}
+        className={cn(
+          'px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all',
+          currentLang === 'en'
+            ? 'bg-accent-subtle text-accent-text shadow-sm'
+            : 'text-text-dim hover:text-text-secondary',
+        )}
+      >
+        EN
+      </button>
     </div>
   )
 }
@@ -99,14 +96,13 @@ function NavItem({ to, icon: Icon, label, index = 0 }: { to: string; icon: React
       >
         {({ isActive }) => (
           <>
-            {/* Left accent bar — animated */}
+            {/* Left accent bar */}
             <motion.span
               className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full bg-amber-400"
               initial={false}
               animate={{ height: isActive ? 20 : 0, opacity: isActive ? 1 : 0 }}
               transition={{ duration: 0.25, ease: EASE_OUT_EXPO }}
             />
-            {/* Hover glow background */}
             <span className="absolute inset-0 rounded-xl bg-amber-500/0 group-hover:bg-amber-500/[0.03] transition-colors duration-300" />
             <Icon
               className={cn(
@@ -122,14 +118,6 @@ function NavItem({ to, icon: Icon, label, index = 0 }: { to: string; icon: React
   )
 }
 
-function NavSectionLabel({ label }: { label: string }) {
-  return (
-    <p className="px-4 pt-1 pb-0.5 text-[10px] font-semibold tracking-widest uppercase text-text-dim select-none">
-      {label}
-    </p>
-  )
-}
-
 function SidebarStats() {
   const ctx = useContext(ModelCtx)
   const slug = ctx?.slug ?? ''
@@ -138,46 +126,30 @@ function SidebarStats() {
   const { formatPrice } = useFormatters()
   if (!ctx || !stats) return null
 
+  const items = [
+    { label: t('sidebar.ads'), value: String(stats.count), color: 'bg-sky-400/70' },
+    { label: t('sidebar.avgPrice'), value: formatPrice(stats.price.mean), color: 'bg-amber-400/80', accent: true },
+    { label: t('sidebar.medianPrice'), value: formatPrice(stats.price.median), color: 'bg-emerald-400/70' },
+  ]
+
   return (
     <motion.div
-      className="mx-3 rounded-xl overflow-hidden border border-tint/[0.06] shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+      className="space-y-1.5"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3, duration: 0.4, ease: EASE_OUT_EXPO }}
     >
-      {/* Colored top accent line */}
-      <div className="h-[3px] bg-gradient-to-r from-amber-500/60 via-amber-400/80 to-amber-500/40" />
-      <div className="px-4 py-3 bg-tint/[0.02]">
-        <p className="text-[10px] text-text-dim uppercase tracking-widest font-semibold mb-3">
-          {t('sidebar.summary')}
-        </p>
-        <div className="space-y-2.5 text-xs">
-          {/* Ads count */}
-          <div className="flex justify-between items-center group/stat">
-            <span className="text-text-muted flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-sky-400/70 shrink-0 transition-transform group-hover/stat:scale-150" />
-              {t('sidebar.ads')}
-            </span>
-            <span className="text-text-primary font-medium tabular-nums">{stats.count}</span>
-          </div>
-          {/* Avg price */}
-          <div className="flex justify-between items-center group/stat">
-            <span className="text-text-muted flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400/80 shrink-0 transition-transform group-hover/stat:scale-150" />
-              {t('sidebar.avgPrice')}
-            </span>
-            <span className="text-accent-text font-medium tabular-nums">{formatPrice(stats.price.mean)}</span>
-          </div>
-          {/* Median price */}
-          <div className="flex justify-between items-center group/stat">
-            <span className="text-text-muted flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/70 shrink-0 transition-transform group-hover/stat:scale-150" />
-              {t('sidebar.medianPrice')}
-            </span>
-            <span className="text-text-primary font-medium tabular-nums">{formatPrice(stats.price.median)}</span>
-          </div>
+      {items.map((item) => (
+        <div key={item.label} className="flex justify-between items-center group/stat">
+          <span className="text-text-dim text-[11px] flex items-center gap-2">
+            <span className={cn('w-1.5 h-1.5 rounded-full shrink-0 transition-transform duration-300 group-hover/stat:scale-[2]', item.color)} />
+            {item.label}
+          </span>
+          <span className={cn('text-xs font-semibold tabular-nums', item.accent ? 'text-accent-text' : 'text-text-primary')}>
+            {item.value}
+          </span>
         </div>
-      </div>
+      ))}
     </motion.div>
   )
 }
@@ -206,22 +178,36 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col bg-bg/80 backdrop-blur-xl border-r border-tint/[0.06] z-30">
+      {/* Desktop sidebar — floating panel */}
+      <div className="hidden md:block sticky top-0 w-64 shrink-0 pt-3 pl-3 pb-3 z-30 max-h-screen">
+      <aside className="flex flex-col max-h-[calc(100vh-1.5rem)] rounded-2xl bg-surface/70 backdrop-blur-xl border border-tint/[0.06] shadow-xl overflow-y-auto overflow-x-hidden">
 
-        {/* Logo area — more breathing room + separator */}
+        {/* Hero image with gradient fade */}
+        {ctx?.model.image_url && (
+          <div className="relative overflow-hidden rounded-t-2xl">
+            <img
+              src={ctx.model.image_url}
+              alt={`${ctx.model.brand} ${ctx.model.name}`}
+              className="w-full h-28 object-cover transition-transform duration-700 ease-out hover:scale-105"
+              style={{ animation: 'zoomIn 0.6s ease-out both' }}
+            />
+            <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-surface to-transparent" />
+          </div>
+        )}
+
+        {/* Logo + brand — sits on top of the image fade */}
         <motion.div
-          className="flex items-center gap-3 px-6 pt-7 pb-5"
+          className={cn('relative flex items-center gap-3 px-4 pb-2', ctx?.model.image_url ? '-mt-8' : 'pt-4')}
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
         >
           <motion.div
-            className="w-9 h-9 shrink-0 flex items-center justify-center"
+            className="w-8 h-8 shrink-0 flex items-center justify-center"
             whileHover={{ scale: 1.1, rotate: -5 }}
             transition={{ type: 'spring', stiffness: 400, damping: 15 }}
           >
-            <svg width="36" height="36" viewBox="0 0 110 110" fill="none" style={{ filter: 'drop-shadow(0 4px 12px rgba(212,168,83,0.3))' }}>
+            <svg width="32" height="32" viewBox="0 0 110 110" fill="none" style={{ filter: 'drop-shadow(0 3px 8px rgba(212,168,83,0.25))' }}>
               <defs>
                 <linearGradient id="sidebarGauge" x1="0" y1="0" x2="110" y2="110" gradientUnits="userSpaceOnUse">
                   <stop offset="0%" stopColor="#fbbf24"/>
@@ -238,28 +224,28 @@ export function Sidebar() {
               <circle cx="55" cy="55" r="2.5" fill="var(--color-gauge-dot)"/>
             </svg>
           </motion.div>
-          <div>
-            <span className="font-semibold text-sm tracking-tight text-text-primary">BikeBargain</span>
-            {ctx && (
-              <motion.span
-                className="block text-[10px] text-text-muted tracking-widest uppercase"
+          <div className="min-w-0">
+            {ctx ? (
+              <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2, duration: 0.3 }}
               >
-                {ctx.model.brand} {ctx.model.name}
-              </motion.span>
+                <span className="block text-[9px] text-text-secondary font-medium tracking-[0.15em] uppercase drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">{ctx.model.brand}</span>
+                <span className="block font-semibold text-sm tracking-tight text-text-primary drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">{ctx.model.name}</span>
+              </motion.div>
+            ) : (
+              <span className="font-semibold text-[13px] tracking-tight text-text-primary drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">BikeBargain</span>
             )}
           </div>
         </motion.div>
-        {/* Subtle separator below logo */}
-        <div className="h-px bg-gradient-to-r from-transparent via-tint/[0.08] to-transparent mx-4 mb-3" />
 
+        {/* Back link */}
         {ctx && (
-          <div className="px-4 mb-2">
+          <div className="px-4 mb-1">
             <NavLink
               to="/?browse=1"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] text-text-dim hover:text-text-secondary hover:bg-tint/[0.03] transition-all"
+              className="flex items-center gap-2 px-2 py-1 rounded-lg text-[11px] text-text-dim hover:text-text-secondary hover:bg-tint/[0.03] transition-all"
             >
               <ArrowLeft className="h-3 w-3" />
               {t('nav.allModels')}
@@ -267,84 +253,58 @@ export function Sidebar() {
           </div>
         )}
 
-        {ctx?.model.image_url && (
-          <div className="mx-3 mb-3 rounded-xl overflow-hidden border border-tint/[0.06]">
-            <img
-              src={ctx.model.image_url}
-              alt={`${ctx.model.brand} ${ctx.model.name}`}
-              className="w-full h-28 object-cover transition-transform duration-700 ease-out hover:scale-105"
-              style={{ animation: 'zoomIn 0.6s ease-out both' }}
-            />
-          </div>
-        )}
+        {/* Separator */}
+        <div className="h-px bg-gradient-to-r from-transparent via-tint/[0.06] to-transparent mx-4 mb-1" />
 
         {/* Navigation */}
-        <nav className="flex flex-col gap-0.5 p-3">
-          {primaryNav.length > 0 && (
-            <>
-              <NavSectionLabel label={t('nav.main')} />
-              {primaryNav.map((n, i) => (
-                <NavItem key={n.to} to={n.to} icon={n.icon} label={t(n.labelKey)} index={i} />
-              ))}
-              <div className="h-px bg-tint/[0.04] mx-2 my-1.5" />
-            </>
+        <nav className="flex flex-col gap-px px-3 py-1">
+          {primaryNav.map((n, i) => (
+            <NavItem key={n.to} to={n.to} icon={n.icon} label={t(n.labelKey)} index={i} />
+          ))}
+          {primaryNav.length > 0 && secondaryNav.length > 0 && (
+            <div className="h-px bg-tint/[0.04] mx-3 my-1.5" />
           )}
-          {secondaryNav.length > 0 && (
-            <>
-              <NavSectionLabel label={t('nav.explore')} />
-              {secondaryNav.map((n, i) => (
-                <NavItem key={n.to} to={n.to} icon={n.icon} label={t(n.labelKey)} index={i + primaryNav.length} />
-              ))}
-            </>
-          )}
+          {secondaryNav.map((n, i) => (
+            <NavItem key={n.to} to={n.to} icon={n.icon} label={t(n.labelKey)} index={i + primaryNav.length} />
+          ))}
         </nav>
 
-        <div className="mt-4">
+        {/* Stats */}
+        <div className="mt-2 mx-3 rounded-xl bg-tint/[0.03] border border-tint/[0.04] px-3 py-3">
           <SidebarStats />
         </div>
 
-        <div className="mt-auto p-4 space-y-3">
+        {/* Bottom */}
+        <div className="px-3 pt-3 pb-3 space-y-2.5">
           {ctx && (
             <motion.button
               onClick={() => navigate(ctx.modelUrl('/ads?add=true'))}
-              className={cn(
-                'relative flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl w-full',
-                'bg-gradient-to-r from-amber-500 to-amber-600 text-bg text-xs font-semibold',
-                'shadow-[0_0_16px_rgba(245,158,11,0.35)]',
-                'transition-colors duration-200 hover:from-amber-400 hover:to-amber-500',
-              )}
-              whileHover={{ scale: 1.03, boxShadow: '0 0 28px rgba(245,158,11,0.5)' }}
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl w-full bg-accent-subtle border border-amber-500/20 text-accent-text text-xs font-semibold hover:bg-amber-500/15 transition-colors"
+              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               transition={{ type: 'spring', stiffness: 400, damping: 20 }}
             >
-              <motion.span
-                animate={{ rotate: [0, 0, 90, 0] }}
-                transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 5, ease: 'easeInOut' }}
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </motion.span>
+              <Plus className="h-3.5 w-3.5" />
               {t('sidebar.addAd')}
             </motion.button>
           )}
-          <div className="h-px bg-gradient-to-r from-transparent via-tint/[0.06] to-transparent" />
+
           <div className="flex items-center justify-between">
             <LanguageSwitcher />
             <ThemeToggle />
           </div>
-          <div className="h-px bg-gradient-to-r from-transparent via-tint/[0.06] to-transparent" />
-          <p className="text-[10px] text-text-dim text-center">
-            {t('sidebar.footer')}
-          </p>
+
           {__GIT_BRANCH__ !== 'master' && __GIT_BRANCH__ !== 'main' && (
-            <div className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/20">
+            <div className="flex items-center justify-center gap-1.5 px-3 py-1 rounded-lg bg-violet-500/10 border border-violet-500/20">
               <div className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
               <span className="text-[10px] text-ui-purple font-mono font-medium truncate">{__GIT_BRANCH__}</span>
             </div>
           )}
         </div>
       </aside>
+      </div>
 
-      {/* Mobile bottom nav — glass effect + active indicators */}
+      {/* Mobile bottom nav */}
       <nav
         className={cn(
           'md:hidden fixed bottom-0 left-0 right-0 z-30',
@@ -377,7 +337,6 @@ export function Sidebar() {
                   <n.icon className="h-5 w-5" />
                 </motion.span>
                 <span>{t(n.labelKey)}</span>
-                {/* Active dot indicator — animated */}
                 <motion.span
                   className="absolute bottom-0.5 left-1/2 -translate-x-1/2 rounded-full bg-amber-400"
                   initial={false}

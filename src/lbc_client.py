@@ -59,6 +59,13 @@ def fetch_ad(url: str) -> dict:
     return r.json()
 
 
+def fetch_ad_basics(ad_ids: list[int]) -> list[dict]:
+    """Recupere les donnees de base de plusieurs annonces via le service local."""
+    r = httpx.post(f"{_base_url()}/fetch-ad-basics", json={"ad_ids": ad_ids}, timeout=TIMEOUT)
+    r.raise_for_status()
+    return r.json()
+
+
 def check_ad(ad_id: int) -> dict:
     """Verifie si une annonce est en ligne via le service local."""
     r = httpx.post(f"{_base_url()}/check-ad", json={"ad_id": ad_id}, timeout=TIMEOUT)

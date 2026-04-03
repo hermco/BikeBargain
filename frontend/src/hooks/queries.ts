@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { SearchConfig, ListingStatus } from '../types'
 import * as api from '../lib/api'
 
@@ -33,6 +33,22 @@ export function useAds(slug: string, params?: Parameters<typeof api.fetchAds>[1]
   return useQuery({
     queryKey: ['ads', slug, params],
     queryFn: () => api.fetchAds(slug, params),
+    enabled: !!slug,
+  })
+}
+
+const ADS_PAGE_SIZE = 24
+
+export function useInfiniteAds(slug: string, params?: Omit<api.FetchAdsParams, 'limit' | 'offset'>) {
+  return useInfiniteQuery({
+    queryKey: ['ads-infinite', slug, params],
+    queryFn: ({ pageParam = 0 }) =>
+      api.fetchAds(slug, { ...params, limit: ADS_PAGE_SIZE, offset: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+      const nextOffset = (lastPageParam as number) + ADS_PAGE_SIZE
+      return nextOffset < lastPage.total ? nextOffset : undefined
+    },
     enabled: !!slug,
   })
 }
@@ -73,6 +89,7 @@ export function useConfirmAd(slug: string) {
     mutationFn: (adData: Record<string, unknown>) => api.confirmAd(slug, adData),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite', slug] })
       void qc.invalidateQueries({ queryKey: ['stats', slug] })
       void qc.invalidateQueries({ queryKey: ['rankings', slug] })
       void qc.invalidateQueries({ queryKey: ['bike-models'] })
@@ -86,6 +103,7 @@ export function useAddAd(slug: string) {
     mutationFn: (url: string) => api.addAd(slug, url),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite', slug] })
       void qc.invalidateQueries({ queryKey: ['stats', slug] })
       void qc.invalidateQueries({ queryKey: ['rankings', slug] })
       void qc.invalidateQueries({ queryKey: ['bike-models'] })
@@ -101,6 +119,7 @@ export function useUpdateAd(slug: string) {
     onSuccess: (_data, vars) => {
       void qc.invalidateQueries({ queryKey: ['ad', slug, vars.id] })
       void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite', slug] })
       void qc.invalidateQueries({ queryKey: ['stats', slug] })
       void qc.invalidateQueries({ queryKey: ['rankings', slug] })
     },
@@ -113,6 +132,7 @@ export function useRefreshAllAccessories(slug: string) {
     mutationFn: () => api.refreshAllAccessories(slug),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite', slug] })
       void qc.invalidateQueries({ queryKey: ['stats', slug] })
       void qc.invalidateQueries({ queryKey: ['rankings', slug] })
     },
@@ -126,6 +146,7 @@ export function useRefreshAdAccessories(slug: string) {
     onSuccess: (_data, adId) => {
       void qc.invalidateQueries({ queryKey: ['ad', slug, adId] })
       void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite', slug] })
       void qc.invalidateQueries({ queryKey: ['stats', slug] })
       void qc.invalidateQueries({ queryKey: ['rankings', slug] })
     },
@@ -139,6 +160,7 @@ export function useMergeAd(slug: string) {
       api.mergeAd(slug, newAdData, oldAdId),
     onSuccess: (data) => {
       void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite', slug] })
       void qc.invalidateQueries({ queryKey: ['ad', slug, data.id] })
       void qc.invalidateQueries({ queryKey: ['ad', slug, data.old_ad_id] })
       void qc.invalidateQueries({ queryKey: ['stats', slug] })
@@ -166,6 +188,7 @@ export function useUpdateAdStatus(slug: string) {
     onSuccess: (_data, vars) => {
       void qc.invalidateQueries({ queryKey: ['ad', slug, vars.id] })
       void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite', slug] })
       void qc.invalidateQueries({ queryKey: ['stats', slug] })
       void qc.invalidateQueries({ queryKey: ['rankings', slug] })
     },
@@ -178,6 +201,7 @@ export function useCheckAdsOnline(slug: string) {
     mutationFn: () => api.checkAdsOnline(slug),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite', slug] })
       void qc.invalidateQueries({ queryKey: ['stats', slug] })
       void qc.invalidateQueries({ queryKey: ['rankings', slug] })
     },
@@ -190,6 +214,7 @@ export function useCheckAdsOnlineFull(slug: string) {
     mutationFn: () => api.checkAdsOnlineFull(slug),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite', slug] })
       void qc.invalidateQueries({ queryKey: ['stats', slug] })
       void qc.invalidateQueries({ queryKey: ['rankings', slug] })
     },
@@ -203,6 +228,7 @@ export function useCheckAdOnline(slug: string) {
     onSuccess: (_data, id) => {
       void qc.invalidateQueries({ queryKey: ['ad', slug, id] })
       void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite', slug] })
       void qc.invalidateQueries({ queryKey: ['rankings', slug] })
     },
   })
@@ -221,6 +247,7 @@ export function useDeleteAd(slug: string) {
     mutationFn: (id: number) => api.deleteAd(slug, id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite', slug] })
       void qc.invalidateQueries({ queryKey: ['stats', slug] })
       void qc.invalidateQueries({ queryKey: ['rankings', slug] })
       void qc.invalidateQueries({ queryKey: ['bike-models'] })
@@ -242,6 +269,7 @@ export function useConfirmPrice(slug: string) {
     onSuccess: (_data, vars) => {
       void qc.invalidateQueries({ queryKey: ['ad', slug, vars.adId] })
       void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite', slug] })
       void qc.invalidateQueries({ queryKey: ['stats', slug] })
       void qc.invalidateQueries({ queryKey: ['rankings', slug] })
       void qc.invalidateQueries({ queryKey: ['price-history', slug, vars.adId] })
@@ -274,6 +302,7 @@ export function useCreateCatalogGroup() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['catalog-groups'] })
       void qc.invalidateQueries({ queryKey: ['ads'] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite'] })
       void qc.invalidateQueries({ queryKey: ['rankings'] })
     },
   })
@@ -287,6 +316,7 @@ export function useUpdateCatalogGroup() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['catalog-groups'] })
       void qc.invalidateQueries({ queryKey: ['ads'] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite'] })
       void qc.invalidateQueries({ queryKey: ['rankings'] })
     },
   })
@@ -299,6 +329,7 @@ export function useDeleteCatalogGroup() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['catalog-groups'] })
       void qc.invalidateQueries({ queryKey: ['ads'] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite'] })
       void qc.invalidateQueries({ queryKey: ['rankings'] })
     },
   })
@@ -312,6 +343,7 @@ export function useCreateCatalogVariant() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['catalog-groups'] })
       void qc.invalidateQueries({ queryKey: ['ads'] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite'] })
       void qc.invalidateQueries({ queryKey: ['rankings'] })
     },
   })
@@ -325,6 +357,7 @@ export function useUpdateCatalogVariant() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['catalog-groups'] })
       void qc.invalidateQueries({ queryKey: ['ads'] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite'] })
       void qc.invalidateQueries({ queryKey: ['rankings'] })
     },
   })
@@ -337,6 +370,7 @@ export function useDeleteCatalogVariant() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['catalog-groups'] })
       void qc.invalidateQueries({ queryKey: ['ads'] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite'] })
       void qc.invalidateQueries({ queryKey: ['rankings'] })
     },
   })
@@ -373,6 +407,7 @@ export function useResetCatalog() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['catalog-groups'] })
       void qc.invalidateQueries({ queryKey: ['ads'] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite'] })
       void qc.invalidateQueries({ queryKey: ['rankings'] })
     },
   })
@@ -391,6 +426,7 @@ export function useImportCatalog() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['catalog-groups'] })
       void qc.invalidateQueries({ queryKey: ['ads'] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite'] })
       void qc.invalidateQueries({ queryKey: ['rankings'] })
     },
   })
@@ -463,6 +499,7 @@ export function useActiveCrawlSession(slug: string) {
     queryKey: ['crawl-session', slug],
     queryFn: () => api.fetchActiveCrawlSession(slug),
     retry: false,
+    staleTime: 0,
     enabled: !!slug,
   })
 }
@@ -505,6 +542,7 @@ export function useCrawlConfirm(slug: string) {
     mutationFn: (adData: Record<string, unknown>) => api.confirmAd(slug, adData),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['ads', slug] })
+      void qc.invalidateQueries({ queryKey: ['ads-infinite', slug] })
       void qc.invalidateQueries({ queryKey: ['stats', slug] })
       void qc.invalidateQueries({ queryKey: ['rankings', slug] })
       void qc.invalidateQueries({ queryKey: ['bike-models'] })

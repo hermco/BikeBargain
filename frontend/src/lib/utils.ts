@@ -24,7 +24,7 @@ export function formatDate(dateStr: string | null | undefined, locale = 'fr-FR')
 export function variantColor(color: string | null): string {
   switch (color) {
     case 'Kaza Brown':
-      return 'bg-[#2a3040] text-[#9aa5b8]'
+      return 'bg-amber-800/15 text-amber-900 dark:bg-[#2a3040] dark:text-[#9aa5b8]'
     case 'Slate Himalayan Salt':
     case 'Slate Poppy Blue':
       return 'bg-blue-500/15 text-ui-blue'

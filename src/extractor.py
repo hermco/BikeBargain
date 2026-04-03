@@ -137,27 +137,38 @@ def _detect_variant(subject: str, body: str, attributes, bike_model_id: int, ses
 
 def _estimate_new_price(bike_model_id: int, variant: Optional[str], color: Optional[str],
                         wheel_type: Optional[str], session) -> Optional[float]:
-    """Estime le prix neuf de reference en fonction de la variante detectee.
+    """Estime le prix neuf de reference en fonction de la couleur et du type de jantes.
 
     Charge les variantes depuis la DB (table bike_variants).
+    Priorite: color + wheel_type exact, puis color seul (prix min), puis variant seul.
     """
-    if not variant:
-        return None
-
     from .database import get_bike_variants
     variants = get_bike_variants(session, bike_model_id)
 
+    if not variants:
+        return None
+
     wt = wheel_type or "default"
 
-    # Match exact : variant + color + wheel_type
-    for v in variants:
-        if v.variant_name == variant and v.color == color and v.wheel_type == wt:
-            return v.new_price
+    # Match exact : color + wheel_type
+    if color:
+        for v in variants:
+            if v.color == color and v.wheel_type == wt:
+                return v.new_price
 
-    # Fallback : match sur variant seul (prix min)
-    prices_for_variant = [v.new_price for v in variants if v.variant_name == variant]
-    if prices_for_variant:
-        return min(prices_for_variant)
+        # Fallback : color seul (prix min)
+        prices_for_color = [v.new_price for v in variants if v.color == color]
+        if prices_for_color:
+            return min(prices_for_color)
+
+    # Fallback legacy : match sur variant_name (pour compatibilite)
+    if variant:
+        for v in variants:
+            if v.variant_name == variant and v.wheel_type == wt:
+                return v.new_price
+        prices_for_variant = [v.new_price for v in variants if v.variant_name == variant]
+        if prices_for_variant:
+            return min(prices_for_variant)
 
     return None
 
@@ -357,6 +368,10 @@ def detect_new_listing(*, seller_type, price, mileage_km, subject, body,
     """
     from .database import get_new_listing_patterns, get_bike_variants
 
+    # Regle absolue : 0-1 km = neuf
+    if mileage_km is not None and mileage_km <= 1:
+        return True
+
     score = 0.0
 
     # Signal vendeur pro
@@ -370,7 +385,7 @@ def detect_new_listing(*, seller_type, price, mileage_km, subject, body,
         score += 1.0
 
     # Signal prix proche du neuf (dans les 5% du prix catalogue)
-    if price and variant:
+    if price:
         variants = get_bike_variants(session, bike_model_id)
         catalog_prices = [v.new_price for v in variants]
         if catalog_prices:
@@ -390,7 +405,9 @@ def detect_new_listing(*, seller_type, price, mileage_km, subject, body,
     return score >= 3.0
 
 
-def detect_new_listing_light(subject, price, seller_type, catalog_prices: list[int] | None = None) -> bool:
+def detect_new_listing_light(subject, price, seller_type, catalog_prices: list[int] | None = None,
+                              *, color_names: list[str] | None = None,
+                              return_score: bool = False) -> bool | tuple[bool, float]:
     """
     Detection legere d'une annonce neuve (pour la page de crawl, sans body).
 
@@ -401,9 +418,11 @@ def detect_new_listing_light(subject, price, seller_type, catalog_prices: list[i
         price: Prix affiche.
         seller_type: Type vendeur LBC.
         catalog_prices: Liste des prix catalogue. Si None, pas de check prix.
+        color_names: Noms des couleurs catalogue (ex: ["Kamet White", "Hanle Black"]).
+        return_score: Si True, retourne (is_new, score) au lieu de juste is_new.
 
     Returns:
-        True si l'annonce est probablement neuve.
+        True si l'annonce est probablement neuve, ou (bool, float) si return_score=True.
     """
     score = 0.0
 
@@ -412,20 +431,100 @@ def detect_new_listing_light(subject, price, seller_type, catalog_prices: list[i
         score += 2.0
 
     # Prix dans la fourchette neuf
+    price_exact_match = False
+    price_in_promo_range = False
     if price and catalog_prices:
         min_catalog = min(catalog_prices)
         max_catalog = max(catalog_prices)
         if min_catalog * 0.95 <= price <= max_catalog * 1.05:
             score += 1.5
+        # Prix promo concessionnaire (remise 5-20% sous le catalogue)
+        elif min_catalog * 0.80 <= price < min_catalog * 0.95:
+            score += 1.0
+            price_in_promo_range = True
+        # Prix exactement un prix catalogue → signal fort
+        if any(abs(price - cp) <= 1 for cp in catalog_prices):
+            score += 1.0
+            price_exact_match = True
 
     # Patterns titre generiques
     title_lower = (subject or "").lower()
-    if re.search(r"\b0\s*km\b|\bzero\s*km\b", title_lower):
+    has_neuf = bool(re.search(r"\bneu(?:f(?:[^t]|$)|ve)\b|flambant\s*neuf", title_lower))
+    has_zero_km = bool(re.search(r"\b0\s*km\b|\bzero\s*km\b", title_lower))
+    has_demo = bool(re.search(r"\bd[ée]mo(?:nstration)?\b|v[ée]hicule\s*de\s*d[ée]mo", title_lower))
+    has_dealer_signal = bool(re.search(r"\bdispo(?:nible)?\b|en\s*stock|à\s*partir\s*de", title_lower))
+    has_guarantee = bool(re.search(r"garanti[e]?\s*(?:\d+\s*ans|constructeur|fabricant)", title_lower))
+
+    if has_zero_km:
         score += 1.5
-    if re.search(r"neuf[^t]|flambant\s*neuf", title_lower):
+    if has_neuf:
+        score += 1.0
+    if has_demo:
+        score += 1.0
+    if has_dealer_signal:
+        score += 0.5
+    if has_guarantee:
+        score += 0.5
+    # Promo avec montant dans le titre → signal fort concessionnaire
+    if re.search(r"\bpromo\b.*[-−]\s*\d+|\bpromo\b.*\d+\s*[€e]", title_lower):
+        score += 1.5
+    elif re.search(r"\bpromo\b", title_lower):
+        score += 1.0
+    # Specs techniques dans le titre (typique concessionnaire)
+    if re.search(r"\d+\s*cm[3³]|\d+\s*cc\b", title_lower):
+        score += 0.5
+    # Mention permis A/A2 (typique concessionnaire)
+    if re.search(r"permis\s*a\d?\b|bridable\s*a2|^a2\s*-", title_lower):
+        score += 0.5
+    # Nom de couleur catalogue dans le titre (typique fiche produit concessionnaire)
+    if color_names and any(c.lower() in title_lower for c in color_names):
+        score += 0.5
+
+    # Combo : "neuf/neuve/0 km/demo" + prix catalogue → forte presomption
+    price_in_range = False
+    if price and catalog_prices:
+        min_catalog = min(catalog_prices)
+        max_catalog = max(catalog_prices)
+        price_in_range = min_catalog * 0.95 <= price <= max_catalog * 1.05
+    if price_in_range and (has_neuf or has_zero_km or has_demo):
         score += 1.0
 
-    return score >= 3.0
+    # Prix catalogue exact + annee recente dans le titre → forte presomption de neuf
+    if price and catalog_prices:
+        from datetime import date
+        current_year = date.today().year
+        recent_years = [str(current_year), str(current_year + 1)]
+        if any(y in title_lower for y in recent_years):
+            if any(abs(price - cp) / cp <= 0.02 for cp in catalog_prices):
+                score += 1.5
+
+    result = score >= 3.0
+    if return_score:
+        return result, score
+    return result
+
+
+def fetch_ad_basics(ad_id: int, *, client: Optional[lbc.Client] = None) -> dict | None:
+    """
+    Recupere les donnees de base d'une annonce LBC (mileage, seller_type, body).
+
+    Utilise pour la pre-detection d'annonces neuves sur les cas douteux.
+    Retourne None en cas d'erreur (annonce supprimee, timeout, etc.).
+    """
+    try:
+        if client is None:
+            client = get_lbc_client()
+        ad = client.get_ad(ad_id)
+        mileage_str = _get_attr(ad, "mileage") or "0"
+        mileage_km = _safe_int(mileage_str.replace(" ", "").replace("km", ""))
+        return {
+            "mileage_km": mileage_km,
+            "seller_type": _get_attr(ad, "owner_type"),
+            "body": getattr(ad, "body", None) or "",
+            "subject": getattr(ad, "subject", None) or "",
+        }
+    except Exception:
+        return None
 
 
 def fetch_ad(url: str, bike_model_id: int, session, *,

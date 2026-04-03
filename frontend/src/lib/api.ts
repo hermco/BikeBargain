@@ -3,7 +3,7 @@ import { config } from '../config'
 
 const BASE = `${config.apiBaseUrl}/api`
 
-interface CheckDetailItem {
+export interface CheckDetailItem {
   id: number
   listing_status: ListingStatus
   previous_status?: ListingStatus | null
@@ -11,7 +11,7 @@ interface CheckDetailItem {
   reason?: string
 }
 
-interface CheckResult {
+export interface CheckResult {
   checked: number
   changes: number
   back_online: number
@@ -47,15 +47,21 @@ export function fetchAdModelSlug(id: number): Promise<{ ad_id: number; slug: str
 
 // ─── Ads ─────────────────────────────────────────────────────────────────────
 
-export function fetchAds(slug: string, params?: {
+export interface FetchAdsParams {
   variant?: string
+  search?: string
+  sort?: string
   min_price?: number
   max_price?: number
   limit?: number
   offset?: number
-}): Promise<AdsResponse> {
+}
+
+export function fetchAds(slug: string, params?: FetchAdsParams): Promise<AdsResponse> {
   const sp = new URLSearchParams()
   if (params?.variant) sp.set('variant', params.variant)
+  if (params?.search) sp.set('search', params.search)
+  if (params?.sort) sp.set('sort', params.sort)
   if (params?.min_price != null) sp.set('min_price', String(params.min_price))
   if (params?.max_price != null) sp.set('max_price', String(params.max_price))
   if (params?.limit != null) sp.set('limit', String(params.limit))

@@ -665,6 +665,14 @@ def get_search_configs(session: Session, bike_model_id: int) -> list[BikeSearchC
     ).all()
 
 
+def get_title_filters(session: Session, bike_model_id: int) -> list:
+    """Retourne les filtres de titre pour un modele."""
+    from .models import BikeTitleFilter
+    return session.exec(
+        select(BikeTitleFilter).where(BikeTitleFilter.bike_model_id == bike_model_id)
+    ).all()
+
+
 def create_search_config(session: Session, bike_model_id: int, data: dict) -> BikeSearchConfig:
     """Cree une config de recherche."""
     cfg = BikeSearchConfig(bike_model_id=bike_model_id, **data)

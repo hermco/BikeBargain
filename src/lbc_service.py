@@ -38,6 +38,10 @@ class FetchAdRequest(BaseModel):
     price_overrides: dict | None = None
 
 
+class FetchAdBasicsRequest(BaseModel):
+    ad_ids: list[int]
+
+
 class CheckAdRequest(BaseModel):
     ad_id: int
 
@@ -83,6 +87,19 @@ def fetch_ad_endpoint(req: FetchAdRequest):
         return ad_data
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erreur extraction : {e}")
+
+
+@app.post("/fetch-ad-basics")
+def fetch_ad_basics_endpoint(req: FetchAdBasicsRequest):
+    """Recupere les donnees de base de plusieurs annonces (mileage, seller_type, body)."""
+    from .extractor import fetch_ad_basics, get_lbc_client
+
+    client = get_lbc_client()
+    results = []
+    for ad_id in req.ad_ids:
+        data = fetch_ad_basics(ad_id, client=client)
+        results.append({"ad_id": ad_id, **(data or {"error": True})})
+    return results
 
 
 @app.post("/check-ad")

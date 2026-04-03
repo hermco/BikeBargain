@@ -16,24 +16,24 @@ interface AdStatusControlProps {
 const STATUS_CONFIG = {
   online: {
     icon: Circle,
-    color: 'text-emerald-400',
+    color: 'text-ui-emerald',
     bg: 'bg-emerald-500/10',
     border: 'border-emerald-500/20',
-    dot: 'bg-emerald-400',
+    dot: 'bg-emerald-400 dark:bg-emerald-400',
   },
   paused: {
     icon: Pause,
-    color: 'text-amber-400',
+    color: 'text-amber-700 dark:text-amber-400',
     bg: 'bg-amber-500/10',
     border: 'border-amber-500/20',
-    dot: 'bg-amber-400',
+    dot: 'bg-amber-500 dark:bg-amber-400',
   },
   sold: {
     icon: Ban,
     color: 'text-ui-red',
     bg: 'bg-red-500/10',
     border: 'border-red-500/20',
-    dot: 'bg-red-400',
+    dot: 'bg-red-500 dark:bg-red-400',
   },
 } as const
 
@@ -84,7 +84,7 @@ export function AdStatusControl({
           className={cn(
             'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors duration-200 rounded-l-[7px]',
             'disabled:opacity-40 disabled:pointer-events-none',
-            isPending ? 'text-amber-400' : config.color,
+            isPending ? 'text-amber-700 dark:text-amber-400' : config.color,
           )}
         >
           {isCheckPending ? (
@@ -113,7 +113,7 @@ export function AdStatusControl({
           className={cn(
             'inline-flex items-center gap-1 px-2 py-1.5 transition-colors duration-200 rounded-r-[7px]',
             'disabled:opacity-40 disabled:pointer-events-none',
-            isPending ? 'text-amber-400' : 'text-text-muted hover:text-text-secondary',
+            isPending ? 'text-amber-700 dark:text-amber-400' : 'text-text-muted hover:text-text-secondary',
           )}
           aria-label="Change status"
         >
@@ -132,7 +132,7 @@ export function AdStatusControl({
             transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
             className="absolute right-0 top-full mt-1.5 z-50 min-w-[220px]"
           >
-            <div className="rounded-lg border border-tint/[0.1] bg-surface/95 backdrop-blur-xl shadow-xl shadow-black/30 overflow-hidden">
+            <div className="rounded-lg border border-tint/[0.1] bg-surface/95 backdrop-blur-xl shadow-xl shadow-black/10 dark:shadow-black/30 overflow-hidden">
               {/* Current status */}
               <div className="px-3 py-2 border-b border-tint/[0.06]">
                 <div className="text-[10px] uppercase tracking-wider text-text-dim font-medium">{t('adDetail.currentStatus')}</div>

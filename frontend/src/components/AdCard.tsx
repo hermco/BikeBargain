@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom'
 interface AdCardProps {
   ad: Ad
   index: number
+  rank?: number
 }
 
 function getDealLevel(ad: Ad, t: (key: string) => string): { label: string; className: string; icon: 'sparkle' | 'warning' } | null {
@@ -21,7 +22,7 @@ function getDealLevel(ad: Ad, t: (key: string) => string): { label: string; clas
   return null
 }
 
-export function AdCard({ ad, index }: AdCardProps) {
+export function AdCard({ ad, index, rank }: AdCardProps) {
   const { t } = useTranslation()
   const { formatPrice, formatKm, formatDate } = useFormatters()
   const { modelUrl } = useCurrentModel()
@@ -40,12 +41,19 @@ export function AdCard({ ad, index }: AdCardProps) {
     >
       <Link
         to={modelUrl(`/ads/${ad.id}`)}
-        className="group block rounded-2xl border border-tint/[0.06] bg-surface/80 backdrop-blur-sm hover:border-amber-500/25 hover:shadow-[0_8px_40px_rgba(212,168,83,0.1),0_0_0_1px_rgba(212,168,83,0.1)] transition-all duration-500 ease-out relative hover:-translate-y-1.5"
+        className="group block rounded-2xl border border-tint/[0.06] bg-surface/80 backdrop-blur-sm hover:border-amber-500/25 hover:shadow-[0_8px_40px_var(--glow-accent-soft),0_0_0_1px_var(--glow-accent-soft)] transition-all duration-500 ease-out relative hover:-translate-y-1.5"
       >
         {/* Image */}
         <div className="relative h-48 bg-bg overflow-hidden rounded-t-2xl">
           {/* Top inner shadow for depth */}
           <div className="absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-black/30 to-transparent z-10 pointer-events-none" />
+
+          {/* Ranking position */}
+          {rank != null && (
+            <div className="absolute top-2.5 left-2.5 z-20 flex items-center justify-center w-7 h-7 rounded-lg bg-black/60 backdrop-blur-sm ring-1 ring-white/10">
+              <span className="text-[11px] font-bold text-white/90 tabular-nums">#{rank}</span>
+            </div>
+          )}
 
           {heroImage ? (
             <img
