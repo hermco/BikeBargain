@@ -25,7 +25,7 @@ export function AdDetailPage() {
   const { t } = useTranslation()
   const { formatPrice, formatKm } = useFormatters()
   const { slug, modelUrl } = useCurrentModel()
-  const { colorNames, wheelTypes, wheelTypesForColor } = useVariantOptions()
+  const { colorNames, wheelTypesForColor } = useVariantOptions()
   const { data: ad, isLoading, error } = useAd(slug, adId)
   const deleteMut = useDeleteAd(slug)
   const updateMut = useUpdateAd(slug)
@@ -314,7 +314,7 @@ export function AdDetailPage() {
                             setShowMoreMenu(false)
                             const shareUrl = window.location.href
                             const shareData = {
-                              title: ad.subject,
+                              title: ad.subject ?? undefined,
                               text: `${ad.subject} — ${formatPrice(ad.price)}${ad.year ? ` — ${ad.year}` : ''}${ad.mileage_km ? ` — ${formatKm(ad.mileage_km)}` : ''}`,
                               url: shareUrl,
                             }

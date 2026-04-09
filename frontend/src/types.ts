@@ -215,6 +215,7 @@ export interface PotentialDuplicate {
   variant: string | null
   color: string | null
   sold: boolean
+  listing_status?: string
   mileage_km: number | null
   score: number
   reasons: string[]
@@ -261,6 +262,7 @@ export interface CrawlRepostMatch {
   price: number | null
   city: string | null
   sold?: boolean
+  listing_status?: string
   price_delta?: number
 }
 

@@ -417,6 +417,7 @@ export interface CrawlSessionAd {
   exists_in_db: boolean
   action: string
   is_new_listing?: boolean
+  is_irrelevant?: boolean
 }
 
 export interface CrawlSession {
