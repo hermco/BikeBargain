@@ -49,29 +49,29 @@ function KpiCard({
   return (
     <Card
       ref={ref}
-      className="p-6 relative overflow-hidden group"
-      style={{ borderLeft: `4px solid ${colors.border}` }}
+      className="p-6 relative overflow-hidden group hover:shadow-2xl transition-shadow duration-500"
+      style={{ borderLeft: `3px solid ${colors.border}` }}
     >
       {/* Soft glow in the background — animated */}
       <motion.div
-        className="absolute top-0 right-0 w-28 h-28 rounded-full blur-[50px] pointer-events-none"
+        className="absolute -top-4 -right-4 w-32 h-32 rounded-full blur-[60px] pointer-events-none"
         style={{ background: colors.bg }}
-        animate={isInView ? { scale: [0.8, 1.1, 1], opacity: [0, 1, 0.8] } : {}}
-        transition={{ duration: 1.2, ease: 'easeOut' }}
+        animate={isInView ? { scale: [0.7, 1.15, 1], opacity: [0, 0.9, 0.7] } : {}}
+        transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
       />
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] text-text-muted uppercase tracking-widest font-semibold mb-2 truncate">
+          <p className="text-[10px] text-text-muted uppercase tracking-[0.15em] font-semibold mb-2.5 truncate">
             {label}
           </p>
-          <p className="text-3xl font-bold text-text-primary font-fraunces leading-none">
+          <p className="text-3xl font-bold text-text-primary font-fraunces leading-none tracking-tight">
             {value}
           </p>
         </div>
         <motion.div
-          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors duration-300"
+          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-300"
           style={{ background: colors.icon }}
-          whileHover={{ scale: 1.1, rotate: -5 }}
+          whileHover={{ scale: 1.12, rotate: -5 }}
           transition={{ type: 'spring', stiffness: 400, damping: 15 }}
         >
           <Icon className="h-5 w-5" style={{ color: colors.hex }} />
@@ -83,18 +83,18 @@ function KpiCard({
 
 function ChartTitle({ label, dotColor }: { label: string; dotColor: string }) {
   return (
-    <div className="flex items-center gap-2 mb-5">
+    <div className="flex items-center gap-2.5 mb-5">
       <span className="relative inline-flex items-center justify-center flex-shrink-0">
         <span
-          className="w-2 h-2 rounded-full"
+          className="w-1.5 h-1.5 rounded-full"
           style={{ background: dotColor }}
         />
         <span
-          className="absolute w-2 h-2 rounded-full animate-ping opacity-30"
+          className="absolute w-1.5 h-1.5 rounded-full animate-ping opacity-25"
           style={{ background: dotColor }}
         />
       </span>
-      <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold">
+      <h2 className="text-[10px] text-text-muted uppercase tracking-[0.15em] font-semibold">
         {label}
       </h2>
     </div>
@@ -187,7 +187,7 @@ export function StatsPage() {
       {/* Page header */}
       <div>
         <h1 className="text-2xl font-semibold tracking-tight font-fraunces">{t('stats.title')}</h1>
-        <p className="text-sm text-text-muted mt-1">{t('stats.subtitle')}</p>
+        <p className="text-sm text-text-muted mt-1.5 leading-relaxed">{t('stats.subtitle')}</p>
       </div>
 
       {/* KPIs */}
@@ -206,10 +206,10 @@ export function StatsPage() {
 
       {/* Section divider */}
       <motion.div
-        className="border-t border-tint/[0.05]"
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: 1 }}
-        transition={{ duration: 0.6, ease: EASE_OUT_EXPO }}
+        className="divider-fade"
+        initial={{ scaleX: 0, opacity: 0 }}
+        animate={{ scaleX: 1, opacity: 1 }}
+        transition={{ duration: 0.7, ease: EASE_OUT_EXPO }}
       />
 
       {/* Charts 2x2 grid */}
@@ -317,10 +317,10 @@ export function StatsPage() {
 
       {/* Section divider */}
       <motion.div
-        className="border-t border-tint/[0.05]"
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: 1 }}
-        transition={{ duration: 0.6, ease: EASE_OUT_EXPO }}
+        className="divider-fade"
+        initial={{ scaleX: 0, opacity: 0 }}
+        animate={{ scaleX: 1, opacity: 1 }}
+        transition={{ duration: 0.7, ease: EASE_OUT_EXPO }}
       />
 
       {/* Top accessories */}

@@ -228,7 +228,7 @@
     "hideOffline": "Hide offline",
     "checkQuick": "Check status",
     "checkQuickDesc": "Check if online listings have been sold or paused",
-    "checkFull": "Recheck all",
+    "checkFull": "Check statuses",
     "checkFullDesc": "Also rechecks sold & paused — detects listings back online",
     "backOnline_one": "{{count}} listing back online",
     "backOnline_other": "{{count}} listings back online",

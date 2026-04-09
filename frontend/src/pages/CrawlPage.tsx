@@ -162,6 +162,11 @@ export function CrawlPage() {
     pendingAdPickRef.current = null
     const index = adStates.findIndex((s) => s.summary.id === adId)
     if (index >= 0) {
+      const state = adStates[index]
+      // Don't auto-pick ads that are hidden by current filters
+      if (hideIrrelevantRef.current && state.summary.is_irrelevant && state.action === 'pending') return
+      if (hideNewListingsRef.current && state.summary.is_new_listing && state.action === 'pending') return
+      if (hideInDbRef.current && state.summary.exists_in_db && state.action === 'pending') return
       // Defer to next tick so state from restore is fully committed
       setTimeout(() => handleManualPick(index), 0)
     }

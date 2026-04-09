@@ -425,6 +425,14 @@ def detect_new_listing_light(subject, price, seller_type, catalog_prices: list[i
         True si l'annonce est probablement neuve, ou (bool, float) si return_score=True.
     """
     score = 0.0
+    title_lower = (subject or "").lower()
+
+    # Kilometrage mentionne dans le titre → pas neuf si > 100 km
+    km_match = re.search(r"(\d[\d\s.]*)\s*km\b", title_lower)
+    if km_match:
+        km_str = km_match.group(1).replace(" ", "").replace(".", "")
+        if km_str.isdigit() and int(km_str) > 100:
+            return (False, 0.0) if return_score else False
 
     # Vendeur pro
     if seller_type and str(seller_type).lower() == "pro":
@@ -448,7 +456,6 @@ def detect_new_listing_light(subject, price, seller_type, catalog_prices: list[i
             price_exact_match = True
 
     # Patterns titre generiques
-    title_lower = (subject or "").lower()
     has_neuf = bool(re.search(r"\bneu(?:f(?:[^t]|$)|ve)\b|flambant\s*neuf", title_lower))
     has_zero_km = bool(re.search(r"\b0\s*km\b|\bzero\s*km\b", title_lower))
     has_demo = bool(re.search(r"\bd[ée]mo(?:nstration)?\b|v[ée]hicule\s*de\s*d[ée]mo", title_lower))

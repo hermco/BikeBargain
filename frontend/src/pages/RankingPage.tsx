@@ -2,12 +2,11 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, AlertTriangle, ExternalLink, Search, X, Car, Pause, CircleOff, RotateCcw, Crown, Medal, DollarSign, ArrowRight, RefreshCw } from 'lucide-react'
-import { useRankings, useCheckAdsOnline, useCheckAdsOnlineFull, useCheckPrices } from '../hooks/queries'
+import { ChevronDown, AlertTriangle, ExternalLink, Search, X, Car, Pause, CircleOff, RotateCcw, Crown, Medal, DollarSign, ArrowRight, RefreshCw, ScanSearch } from 'lucide-react'
+import { useRankings, useCheckAdsOnlineFull, useCheckPrices } from '../hooks/queries'
 import { useCurrentModel } from '../hooks/useCurrentModel'
 import { useToast } from '../components/Toast'
 import { Button } from '../components/ui/Button'
-import { CheckOnlineButton } from '../components/ui/CheckOnlineButton'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { TableSkeleton } from '../components/LoadingSkeleton'
@@ -283,7 +282,6 @@ export function RankingPage() {
   const { formatPrice, formatKm } = useFormatters()
   const { slug, modelUrl } = useCurrentModel()
   const { data: rankings, isLoading } = useRankings(slug)
-  const checkOnlineMut = useCheckAdsOnline(slug)
   const checkFullMut = useCheckAdsOnlineFull(slug)
   const checkPricesMut = useCheckPrices(slug)
   const { toast } = useToast()
@@ -496,46 +494,36 @@ export function RankingPage() {
               {checkPricesMut.isPending ? t('ranking.checkingPrices') : t('ranking.checkPrices')}
             </span>
           </Button>
-          <CheckOnlineButton
-          quickLabel={t('ranking.checkQuick')}
-          fullLabel={t('ranking.checkFull')}
-          checkingLabel={t('common.checking')}
-          quickDescription={t('ranking.checkQuickDesc')}
-          fullDescription={t('ranking.checkFullDesc')}
-          isQuickPending={checkOnlineMut.isPending}
-          isFullPending={checkFullMut.isPending}
-          onQuickCheck={() => {
-            checkOnlineMut.mutate(undefined, {
-              onSuccess: (data) => {
-                const changes = new Map<number, ListingStatus>()
-                data.details.filter((d) => d.changed).forEach((d) => changes.set(d.id, d.listing_status))
-                setStatusChanges(changes)
-                toast(
-                  data.changes > 0
-                    ? t('ranking.statusChanges', { count: data.changes })
-                    : t('ads.checkedNone', { count: data.checked }),
-                  data.changes > 0 ? 'success' : 'info',
-                )
-              },
-              onError: (err) => toast((err as Error).message, 'error'),
-            })
-          }}
-          onFullCheck={() => {
-            checkFullMut.mutate(undefined, {
-              onSuccess: (data) => {
-                const changes = new Map<number, ListingStatus>()
-                data.details.filter((d) => d.changed).forEach((d) => changes.set(d.id, d.listing_status))
-                setStatusChanges(changes)
-                const parts: string[] = []
-                if (data.changes > 0) parts.push(t('ranking.statusChanges', { count: data.changes }))
-                if (data.back_online > 0) parts.push(t('ranking.backOnline', { count: data.back_online }))
-                if (parts.length === 0) parts.push(t('ads.checkedNone', { count: data.checked }))
-                toast(parts.join(' · '), data.changes > 0 ? 'success' : 'info')
-              },
-              onError: (err) => toast((err as Error).message, 'error'),
-            })
-          }}
-        />
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={checkFullMut.isPending}
+            onClick={() => {
+              checkFullMut.mutate(undefined, {
+                onSuccess: (data) => {
+                  const changes = new Map<number, ListingStatus>()
+                  data.details.filter((d) => d.changed).forEach((d) => changes.set(d.id, d.listing_status))
+                  setStatusChanges(changes)
+                  const parts: string[] = []
+                  if (data.changes > 0) parts.push(t('ranking.statusChanges', { count: data.changes }))
+                  if (data.back_online > 0) parts.push(t('ranking.backOnline', { count: data.back_online }))
+                  if (parts.length === 0) parts.push(t('ads.checkedNone', { count: data.checked }))
+                  toast(parts.join(' · '), data.changes > 0 ? 'success' : 'info')
+                },
+                onError: (err) => toast((err as Error).message, 'error'),
+              })
+            }}
+            className="gap-1.5"
+          >
+            {checkFullMut.isPending ? (
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <ScanSearch className="h-3.5 w-3.5" />
+            )}
+            <span className="hidden sm:inline">
+              {checkFullMut.isPending ? t('common.checking') : t('ranking.checkFull')}
+            </span>
+          </Button>
         </div>
       </div>
 
@@ -958,9 +946,9 @@ export function RankingPage() {
               return (
                 <React.Fragment key={r.id}>
                   <motion.tr
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3, delay: Math.min(rowIdx * 0.03, 0.6), ease: [0.16, 1, 0.3, 1] }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3, delay: Math.min(rowIdx * 0.03, 0.6), ease: 'easeOut' }}
                     className={cn(
                       'border-b border-tint/[0.04] cursor-pointer transition-all duration-300 group/row',
                       isOpen ? 'bg-tint/[0.05]' : 'hover:bg-tint/[0.025]',

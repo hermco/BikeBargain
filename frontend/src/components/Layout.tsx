@@ -8,24 +8,27 @@ export function Layout() {
 
   return (
     <div className="min-h-screen relative">
-      {/* Layered ambient atmosphere — different treatment per theme */}
+      {/* Layered ambient atmosphere — multi-layer depth */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         {isDark ? (
           <>
-            {/* Dark: colored glows for atmosphere */}
-            <div className="absolute -top-32 right-[15%] w-[700px] h-[500px] bg-amber-500/[0.04] rounded-full blur-[140px]" />
-            <div className="absolute bottom-[10%] -left-32 w-[500px] h-[500px] bg-blue-500/[0.025] rounded-full blur-[120px]" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-amber-900/[0.015] rounded-full blur-[160px]" />
+            {/* Dark: rich atmospheric glows */}
+            <div className="absolute -top-32 right-[15%] w-[700px] h-[500px] bg-amber-500/[0.035] rounded-full blur-[150px]" />
+            <div className="absolute bottom-[10%] -left-32 w-[500px] h-[500px] bg-blue-500/[0.02] rounded-full blur-[130px]" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[450px] bg-amber-900/[0.012] rounded-full blur-[180px]" />
+            {/* Subtle warm accent at sidebar region */}
+            <div className="absolute top-0 left-0 w-[300px] h-[600px] bg-amber-500/[0.015] rounded-full blur-[120px]" />
           </>
         ) : (
           <>
-            {/* Light: warm subtle gradient for depth, not colored glows */}
-            <div className="absolute -top-40 right-[10%] w-[800px] h-[600px] rounded-full blur-[160px]" style={{ background: 'radial-gradient(ellipse, rgba(212,168,83,0.06) 0%, transparent 70%)' }} />
-            <div className="absolute bottom-[5%] -left-40 w-[600px] h-[600px] rounded-full blur-[140px]" style={{ background: 'radial-gradient(ellipse, rgba(180,140,60,0.04) 0%, transparent 70%)' }} />
+            {/* Light: warm gradient pools for depth */}
+            <div className="absolute -top-40 right-[10%] w-[800px] h-[600px] rounded-full blur-[180px]" style={{ background: 'radial-gradient(ellipse, rgba(212,168,83,0.05) 0%, transparent 70%)' }} />
+            <div className="absolute bottom-[5%] -left-40 w-[600px] h-[600px] rounded-full blur-[160px]" style={{ background: 'radial-gradient(ellipse, rgba(180,140,60,0.035) 0%, transparent 70%)' }} />
+            <div className="absolute top-[30%] left-[20%] w-[400px] h-[400px] rounded-full blur-[140px]" style={{ background: 'radial-gradient(ellipse, rgba(180,160,100,0.025) 0%, transparent 70%)' }} />
           </>
         )}
-        {/* Top edge accent — shared, adapts via opacity */}
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/[0.08] to-transparent" />
+        {/* Top edge accent line */}
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/[0.1] to-transparent" />
       </div>
       {/* Centered shell */}
       <div className="max-w-[1600px] mx-auto flex relative">

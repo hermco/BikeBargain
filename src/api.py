@@ -58,21 +58,22 @@ settings = get_settings()
 import re as _re
 
 
-def _check_ad_relevance(subject: str | None, title_filters: list) -> bool:
-    """Verifie si le titre d'une annonce est pertinent selon les filtres.
+def _check_ad_relevance(subject: str | None, title_filters: list, body: str | None = None) -> bool:
+    """Verifie si le titre (et optionnellement le body) d'une annonce est pertinent selon les filtres.
 
     Retourne True si l'annonce est pertinente, False si irrelevante.
     """
     if not title_filters:
         return True
     text = subject or ""
+    full_text = f"{text} {body}" if body else text
     includes = [f for f in title_filters if f.filter_type == "include"]
     excludes = [f for f in title_filters if f.filter_type == "exclude"]
-    # Si des patterns include existent, au moins un doit matcher
-    if includes and not any(_re.search(f.regex_pattern, text) for f in includes):
+    # Si des patterns include existent, au moins un doit matcher (titre ou body)
+    if includes and not any(_re.search(f.regex_pattern, full_text) for f in includes):
         return False
-    # Si un pattern exclude matche, l'annonce est irrelevante
-    if any(_re.search(f.regex_pattern, text) for f in excludes):
+    # Si un pattern exclude matche (titre ou body), l'annonce est irrelevante
+    if any(_re.search(f.regex_pattern, full_text) for f in excludes):
         return False
     return True
 
@@ -1876,7 +1877,8 @@ def crawl_search_scoped(slug: str, session: Session = Depends(get_session)):
     # Phase 1 : detection legere sur toutes les annonces
     DOUBT_MIN, DOUBT_MAX = 1.0, 2.5
     MAX_PREFETCH = 15
-    doubtful_ads = []
+    doubtful_new = []
+    doubtful_irrelevant = []
 
     for i, ad in enumerate(results["ads"]):
         is_new, score = detect_new_listing_light(
@@ -1889,15 +1891,32 @@ def crawl_search_scoped(slug: str, session: Session = Depends(get_session)):
         )
         ad["is_new_listing"] = is_new
         ad["_new_listing_score"] = score
-        # Ne pre-extraire que les annonces pertinentes (pas hors-sujet)
-        if not is_new and not ad.get("exists_in_db") and not ad.get("is_irrelevant") and DOUBT_MIN <= score <= DOUBT_MAX:
-            doubtful_ads.append(ad)
+        if ad.get("exists_in_db"):
+            continue
+        # Annonces hors-sujet par le titre : a verifier avec le body
+        if ad.get("is_irrelevant"):
+            doubtful_irrelevant.append(ad)
+        # Annonces avec score douteux pour la detection neuve
+        elif not is_new and DOUBT_MIN <= score <= DOUBT_MAX:
+            doubtful_new.append(ad)
 
-    # Phase 2 : pre-extraction des cas douteux (tries par score desc) pour affiner la detection
-    if doubtful_ads and catalog_prices:
-        doubtful_ads.sort(key=lambda a: -a["_new_listing_score"])
-        to_check = doubtful_ads[:MAX_PREFETCH]
-        ad_ids = [a["id"] for a in to_check]
+    # Phase 2 : pre-extraction des cas douteux (neuf + hors-sujet) en un seul batch
+    ads_to_fetch = []
+    doubtful_new.sort(key=lambda a: -a["_new_listing_score"])
+    ads_to_fetch.extend(doubtful_new[:MAX_PREFETCH])
+    ads_to_fetch.extend(doubtful_irrelevant[:MAX_PREFETCH])
+    # Deduplication par id (au cas ou)
+    seen_ids = set()
+    unique_to_fetch = []
+    for a in ads_to_fetch:
+        if a["id"] not in seen_ids:
+            seen_ids.add(a["id"])
+            unique_to_fetch.append(a)
+    ads_to_fetch = unique_to_fetch
+
+    basics_by_id = {}
+    if ads_to_fetch:
+        ad_ids = [a["id"] for a in ads_to_fetch]
         basics_list = []
         try:
             if settings.lbc_service_url:
@@ -1912,9 +1931,11 @@ def crawl_search_scoped(slug: str, session: Session = Depends(get_session)):
                 ]
         except Exception:
             basics_list = []
-
         basics_by_id = {b["ad_id"]: b for b in basics_list if not b.get("error")}
-        for ad in to_check:
+
+    # Phase 2a : affiner la detection neuve avec le body
+    if basics_by_id and catalog_prices:
+        for ad in doubtful_new[:MAX_PREFETCH]:
             basics = basics_by_id.get(ad["id"])
             if not basics:
                 continue
@@ -1930,6 +1951,15 @@ def crawl_search_scoped(slug: str, session: Session = Depends(get_session)):
             )
             if is_new_full:
                 ad["is_new_listing"] = True
+
+    # Phase 2b : re-verifier la pertinence des annonces hors-sujet avec le body
+    if basics_by_id:
+        for ad in doubtful_irrelevant:
+            basics = basics_by_id.get(ad["id"])
+            if not basics:
+                continue
+            if _check_ad_relevance(ad.get("subject"), title_filters, body=basics.get("body")):
+                ad["is_irrelevant"] = False
 
     # Phase 3 : enregistrement en base
     for i, ad in enumerate(results["ads"]):

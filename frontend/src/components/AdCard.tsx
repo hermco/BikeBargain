@@ -34,23 +34,23 @@ export function AdCard({ ad, index, rank }: AdCardProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16, scale: 0.98 }}
+      initial={{ opacity: 0, y: 20, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ delay: index * 0.04, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className={isSold ? 'opacity-60' : isPaused ? 'opacity-75' : ''}
+      transition={{ delay: index * 0.05, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      className={isSold ? 'opacity-55' : isPaused ? 'opacity-70' : ''}
     >
       <Link
         to={modelUrl(`/ads/${ad.id}`)}
-        className="group block rounded-2xl border border-tint/[0.06] bg-surface/80 backdrop-blur-sm hover:border-amber-500/25 hover:shadow-[0_8px_40px_var(--glow-accent-soft),0_0_0_1px_var(--glow-accent-soft)] transition-all duration-500 ease-out relative hover:-translate-y-1.5"
+        className="group block rounded-2xl border border-tint/[0.06] bg-surface/80 backdrop-blur-sm hover:border-amber-500/20 hover:shadow-[0_12px_48px_var(--glow-accent-soft),0_0_0_1px_var(--glow-accent-soft)] transition-all duration-600 ease-[cubic-bezier(0.16,1,0.3,1)] relative hover:-translate-y-2"
       >
         {/* Image */}
         <div className="relative h-48 bg-bg overflow-hidden rounded-t-2xl">
-          {/* Top inner shadow for depth */}
-          <div className="absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-black/30 to-transparent z-10 pointer-events-none" />
+          {/* Top vignette for cinematic depth */}
+          <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/25 to-transparent z-10 pointer-events-none" />
 
           {/* Ranking position */}
           {rank != null && (
-            <div className="absolute top-2.5 left-2.5 z-20 flex items-center justify-center w-7 h-7 rounded-lg bg-black/60 backdrop-blur-sm ring-1 ring-white/10">
+            <div className="absolute top-2.5 left-2.5 z-20 flex items-center justify-center w-7 h-7 rounded-lg bg-black/50 backdrop-blur-md ring-1 ring-white/[0.08]">
               <span className="text-[11px] font-bold text-white/90 tabular-nums">#{rank}</span>
             </div>
           )}
@@ -59,7 +59,7 @@ export function AdCard({ ad, index, rank }: AdCardProps) {
             <img
               src={heroImage}
               alt={ad.subject ?? ''}
-              className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-700 ease-out"
+              className="w-full h-full object-cover group-hover:scale-[1.06] transition-transform duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform"
               loading="lazy"
             />
           ) : (
@@ -68,31 +68,33 @@ export function AdCard({ ad, index, rank }: AdCardProps) {
             </div>
           )}
 
-          {/* Gradient: only bottom third, more subtle */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+          {/* Cinematic gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 via-50% to-transparent" />
+          {/* Subtle side vignette */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_50%,rgba(0,0,0,0.15)_100%)]" />
 
           {/* Sold ribbon */}
           {isSold && (
             <div className="absolute top-0 right-0 z-20 overflow-hidden w-24 h-24 pointer-events-none">
-              <div className="absolute top-4 right-[-28px] w-28 bg-red-500 text-white text-[10px] font-bold tracking-widest text-center py-1 rotate-45 shadow-lg uppercase">
+              <div className="absolute top-4 right-[-28px] w-28 bg-red-500/90 backdrop-blur-sm text-white text-[10px] font-bold tracking-widest text-center py-1 rotate-45 shadow-lg uppercase">
                 {t('common.sold')}
               </div>
             </div>
           )}
           {isPaused && (
             <div className="absolute top-0 right-0 z-20 overflow-hidden w-24 h-24 pointer-events-none">
-              <div className="absolute top-4 right-[-28px] w-28 bg-amber-500 text-white text-[10px] font-bold tracking-widest text-center py-1 rotate-45 shadow-lg uppercase">
+              <div className="absolute top-4 right-[-28px] w-28 bg-amber-500/90 backdrop-blur-sm text-white text-[10px] font-bold tracking-widest text-center py-1 rotate-45 shadow-lg uppercase">
                 {t('common.paused')}
               </div>
             </div>
           )}
 
           <div className="absolute bottom-0 left-0 right-0 px-4 py-3 flex items-end justify-between z-10">
-            <span className="text-xl font-semibold text-white drop-shadow-lg font-fraunces">
+            <span className="text-xl font-semibold text-white font-fraunces" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>
               {formatPrice(ad.price)}
             </span>
             {deal && !isSold && (
-              <Badge className={`${deal.className} flex items-center gap-1`}>
+              <Badge className={`${deal.className} flex items-center gap-1 backdrop-blur-sm shadow-sm`}>
                 {deal.icon === 'sparkle' ? (
                   <Sparkles className="h-3 w-3 shrink-0" />
                 ) : (
@@ -106,7 +108,7 @@ export function AdCard({ ad, index, rank }: AdCardProps) {
 
         {/* Content */}
         <div className="p-4 flex flex-col gap-3">
-          <h3 className="text-[15px] font-medium text-text-primary line-clamp-1 group-hover:text-accent-text transition-colors leading-snug">
+          <h3 className="text-[15px] font-medium text-text-primary line-clamp-1 group-hover:text-accent-text transition-colors duration-300 leading-snug">
             {ad.subject ?? t('common.noTitle')}
           </h3>
 
@@ -129,7 +131,7 @@ export function AdCard({ ad, index, rank }: AdCardProps) {
 
           <div className="flex items-center justify-between text-xs text-text-muted">
             <span className="flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5 shrink-0" />
+              <MapPin className="h-3.5 w-3.5 shrink-0 text-text-dim" />
               {ad.city ?? '?'}
             </span>
             {ad.first_publication_date && (
@@ -154,23 +156,23 @@ export function AdCard({ ad, index, rank }: AdCardProps) {
                 ? 'text-accent-text'
                 : 'text-ui-red'
             return (
-              <div className="flex items-center gap-2" style={{ minHeight: '20px' }}>
-                <CircleGauge className="h-4 w-4 shrink-0 text-text-muted" style={{ overflow: 'visible' }} />
+              <div className="flex items-center gap-2 mt-0.5" style={{ minHeight: '20px' }}>
+                <CircleGauge className="h-3.5 w-3.5 shrink-0 text-text-dim" style={{ overflow: 'visible' }} />
                 <div className="flex-1 flex flex-col gap-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-text-muted">{t('adCard.mileage')}</span>
+                    <span className="text-[10px] text-text-dim uppercase tracking-wider">{t('adCard.mileage')}</span>
                     <span className={`text-[11px] tabular-nums font-medium ${textColor}`}>
                       {formatKm(ad.mileage_km)}
-                      <span className="text-text-dim font-normal"> / 50 000 km</span>
+                      <span className="text-text-dim font-normal"> / 50k</span>
                     </span>
                   </div>
-                  <div style={{ height: '3px', background: 'rgb(from var(--color-tint) r g b / 0.06)', borderRadius: '9999px', overflow: 'hidden' }}>
+                  <div className="relative" style={{ height: '3px', background: 'rgb(from var(--color-tint) r g b / 0.05)', borderRadius: '9999px', overflow: 'hidden' }}>
                     <motion.div
                       className={`bg-gradient-to-r ${kmColor}`}
                       style={{ height: '100%', borderRadius: '9999px' }}
                       initial={{ width: 0 }}
                       animate={{ width: `${ratio * 100}%` }}
-                      transition={{ duration: 0.8, delay: index * 0.04 + 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                      transition={{ duration: 1, delay: index * 0.05 + 0.3, ease: [0.16, 1, 0.3, 1] }}
                     />
                   </div>
                 </div>

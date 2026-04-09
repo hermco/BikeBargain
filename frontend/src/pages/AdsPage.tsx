@@ -117,9 +117,9 @@ export function AdsPage() {
     >
       <motion.div
         className="flex items-center justify-between mb-8"
-        initial={{ opacity: 0, y: -8 }}
+        initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
       >
         <div>
           <h1 className="text-2xl font-semibold tracking-tight font-fraunces">{t('ads.title')}</h1>
@@ -189,33 +189,40 @@ export function AdsPage() {
       {/* KPI summary strip */}
       {kpiStats && (
         <motion.div
-          className="flex flex-wrap gap-4 mb-6 px-4 py-3 rounded-xl bg-tint/[0.02] border border-tint/[0.04]"
+          className="flex flex-wrap gap-5 mb-7 px-5 py-3.5 rounded-xl bg-tint/[0.02] border border-tint/[0.04]"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ delay: 0.15, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         >
           <div className="flex items-center gap-2 text-xs">
-            <TrendingUp className="h-3.5 w-3.5 text-accent-text/70" />
+            <TrendingUp className="h-3.5 w-3.5 text-accent-text/60" />
             <span className="text-text-muted">{t('stats.avgPrice')}</span>
             <span className="text-text-primary font-semibold tabular-nums">{formatPrice(kpiStats.avg)}</span>
           </div>
+          <div className="h-4 w-px bg-tint/[0.08] hidden sm:block" />
           <div className="flex items-center gap-2 text-xs">
             <ArrowUpDown className="h-3.5 w-3.5 text-text-dim" />
             <span className="text-text-muted">{t('stats.priceRange')}</span>
             <span className="text-text-secondary tabular-nums">{formatPrice(kpiStats.min)} — {formatPrice(kpiStats.max)}</span>
           </div>
           {kpiStats.soldCount > 0 && (
-            <div className="flex items-center gap-2 text-xs">
-              <Tag className="h-3.5 w-3.5 text-ui-red/60" />
-              <span className="text-text-muted">{t('ads.sold')}</span>
-              <span className="text-ui-red/80 tabular-nums">{kpiStats.soldCount}</span>
-            </div>
+            <>
+              <div className="h-4 w-px bg-tint/[0.08] hidden sm:block" />
+              <div className="flex items-center gap-2 text-xs">
+                <Tag className="h-3.5 w-3.5 text-ui-red/50" />
+                <span className="text-text-muted">{t('ads.sold')}</span>
+                <span className="text-ui-red/80 tabular-nums font-medium">{kpiStats.soldCount}</span>
+              </div>
+            </>
           )}
           {kpiStats.pausedCount > 0 && (
-            <div className="flex items-center gap-1.5">
-              <span className="text-text-muted">{t('ads.paused')}</span>
-              <span className="text-amber-700/80 dark:text-amber-400/80 tabular-nums">{kpiStats.pausedCount}</span>
-            </div>
+            <>
+              <div className="h-4 w-px bg-tint/[0.08] hidden sm:block" />
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-text-muted">{t('ads.paused')}</span>
+                <span className="text-amber-700/80 dark:text-amber-400/80 tabular-nums font-medium">{kpiStats.pausedCount}</span>
+              </div>
+            </>
           )}
         </motion.div>
       )}
@@ -230,7 +237,7 @@ export function AdsPage() {
       />
 
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <CardSkeleton key={i} index={i} />
           ))}
@@ -243,7 +250,7 @@ export function AdsPage() {
         />
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {allAds.map((ad, i) => (
               <AdCard key={ad.id} ad={ad} index={i} rank={rankMap.get(ad.id)} />
             ))}

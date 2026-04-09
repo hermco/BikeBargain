@@ -46,13 +46,13 @@ export function FilterBar({ variant, onVariantChange, search, onSearchChange, so
       transition={{ duration: 0.35, ease: EASE_OUT_EXPO }}
     >
       <div className="relative flex-1 group">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-dim transition-colors duration-200 group-focus-within:text-accent-text/70" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-dim transition-colors duration-300 group-focus-within:text-accent-text/70" />
         <input
           type="text"
           placeholder={t('filter.searchPlaceholder')}
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full rounded-xl bg-tint/[0.04] border border-tint/[0.06] pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/30 transition-all"
+          className="w-full rounded-xl bg-tint/[0.03] border border-tint/[0.06] pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-dim focus:outline-none focus:bg-tint/[0.05] focus:border-amber-500/25 transition-all duration-300"
         />
       </div>
       <Select
