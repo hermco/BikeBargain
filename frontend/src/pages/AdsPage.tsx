@@ -2,8 +2,8 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { X, TrendingUp, Tag, ArrowUpDown, Loader2 } from 'lucide-react'
-import { useInfiniteAds, useRankings, useCheckAdsOnline, useCheckAdsOnlineFull } from '../hooks/queries'
+import { X, TrendingUp, Tag, ArrowUpDown, Loader2, Upload, RefreshCw } from 'lucide-react'
+import { useInfiniteAds, useRankings, useCheckAdsOnline, useCheckAdsOnlineFull, useSyncProd } from '../hooks/queries'
 import { AdCard } from '../components/AdCard'
 import { AdForm } from '../components/AdForm'
 import { FilterBar, type SortOption } from '../components/FilterBar'
@@ -13,6 +13,8 @@ import { CheckOnlineButton } from '../components/ui/CheckOnlineButton'
 import { useToast } from '../components/Toast'
 import { useCurrentModel } from '../hooks/useCurrentModel'
 import { useFormatters } from '../hooks/useFormatters'
+import { Button } from '../components/ui/Button'
+import { config } from '../config'
 
 export function AdsPage() {
   const { t } = useTranslation()
@@ -47,6 +49,7 @@ export function AdsPage() {
   const { data: rankings } = useRankings(slug)
   const checkOnlineMut = useCheckAdsOnline(slug)
   const checkFullMut = useCheckAdsOnlineFull(slug)
+  const syncProdMut = useSyncProd()
   const { toast } = useToast()
   const { formatPrice } = useFormatters()
 
@@ -182,6 +185,29 @@ export function AdsPage() {
               })
             }}
           />
+          {config.isDev && (
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={syncProdMut.isPending}
+              onClick={() => {
+                syncProdMut.mutate(undefined, {
+                  onSuccess: () => toast(t('ads.syncProdSuccess'), 'success'),
+                  onError: (err) => toast((err as Error).message, 'error'),
+                })
+              }}
+              className="gap-1.5"
+            >
+              {syncProdMut.isPending ? (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Upload className="h-3.5 w-3.5" />
+              )}
+              <span className="hidden sm:inline">
+                {syncProdMut.isPending ? t('ads.syncingProd') : t('ads.syncProd')}
+              </span>
+            </Button>
+          )}
           <AdForm autoOpen={autoOpenAdd} onAutoOpened={() => setAutoOpenAdd(false)} />
         </div>
       </motion.div>

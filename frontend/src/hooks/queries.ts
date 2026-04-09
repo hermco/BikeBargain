@@ -590,3 +590,11 @@ export function useRemoveCrawlSessionAd(slug: string) {
     },
   })
 }
+
+// ─── Dev tools ──────────────────────────────────────────────────────────────
+
+export function useSyncProd() {
+  return useMutation({
+    mutationFn: () => api.syncProd(),
+  })
+}

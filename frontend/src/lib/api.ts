@@ -459,3 +459,9 @@ export function redetectAccessories(slug: string, body: string): Promise<{ acces
 export function removeCrawlSessionAd(slug: string, sessionId: number, adId: number): Promise<{ removed: number }> {
   return fetchJSON(`/bike-models/${slug}/crawl/sessions/${sessionId}/ads/${adId}`, { method: 'DELETE' })
 }
+
+// ─── Dev tools ──────────────────────────────────────────────────────────────
+
+export function syncProd(): Promise<{ status: string; message: string }> {
+  return fetchJSON('/sync-prod', { method: 'POST' })
+}

@@ -121,6 +121,65 @@ def health():
     return {"status": "ok"}
 
 
+@app.post("/api/sync-prod")
+def sync_prod():
+    """Synchronise les donnees locales vers la base de production (dev only)."""
+    if settings.is_production:
+        raise HTTPException(status_code=403, detail="Not available in production")
+    import subprocess, json
+    # Recuperer la DATABASE_PUBLIC_URL de Railway
+    try:
+        result = subprocess.run(
+            ["railway", "variables", "--json", "-s", "Postgres"],
+            capture_output=True, text=True, timeout=15,
+        )
+        prod_url = json.loads(result.stdout).get("DATABASE_PUBLIC_URL")
+        if not prod_url:
+            raise HTTPException(status_code=500, detail="Cannot fetch Railway DATABASE_PUBLIC_URL")
+    except FileNotFoundError:
+        raise HTTPException(status_code=500, detail="Railway CLI not installed")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Railway CLI error: {e}")
+
+    local_url = settings.database_url
+    container = "himalayan-postgres"
+    try:
+        # Dump local data
+        subprocess.run(
+            ["docker", "exec", container, "pg_dump", local_url,
+             "--data-only", "--exclude-table=alembic_version",
+             "--disable-triggers", "--no-owner", "--no-privileges",
+             "-f", "/tmp/data.sql"],
+            check=True, capture_output=True, text=True, timeout=30,
+        )
+        # Truncate prod tables
+        truncate_sql = (
+            "DO $$ DECLARE r RECORD; BEGIN "
+            "FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename != 'alembic_version') LOOP "
+            "EXECUTE 'TRUNCATE TABLE ' || quote_ident(r.tablename) || ' CASCADE'; "
+            "END LOOP; END $$;"
+        )
+        subprocess.run(
+            ["docker", "exec", container, "psql", prod_url, "-c", truncate_sql],
+            check=True, capture_output=True, text=True, timeout=30,
+        )
+        # Restore to prod
+        subprocess.run(
+            ["docker", "exec", container, "psql", prod_url, "-f", "/tmp/data.sql"],
+            check=True, capture_output=True, text=True, timeout=60,
+        )
+        # Cleanup
+        subprocess.run(
+            ["docker", "exec", container, "rm", "/tmp/data.sql"],
+            capture_output=True, text=True,
+        )
+    except subprocess.CalledProcessError as e:
+        raise HTTPException(status_code=500, detail=f"Sync failed: {e.stderr}")
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=500, detail="Sync timed out")
+    return {"status": "ok", "message": "Production data synced"}
+
+
 @app.on_event("startup")
 def on_startup():
     # En production (Railway), les migrations sont lancees par le startCommand

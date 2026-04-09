@@ -1,4 +1,4 @@
-.PHONY: dev install build proxy db db-stop db-reset tunnel tunnel-stop
+.PHONY: dev install build proxy db db-stop db-reset tunnel tunnel-stop sync-prod
 
 include .env
 export
@@ -39,6 +39,20 @@ dev:  ## Lance le backend + frontend en parallele (ports auto-detectes)
 proxy:  ## Lance le proxy et ouvre le dashboard
 	@open http://localhost:$(PROXY_PORT)/_proxy/ &
 	.venv/bin/python devproxy.py --port $(PROXY_PORT)
+
+PROD_DB_URL := $(shell railway variables --json -s Postgres 2>/dev/null | python3 -c "import json,sys;print(json.load(sys.stdin).get('DATABASE_PUBLIC_URL',''))" 2>/dev/null)
+DB_CONTAINER := himalayan-postgres
+
+sync-prod:  ## Synchronise les donnees locales vers la base de production (Railway)
+	@if [ -z "$(PROD_DB_URL)" ]; then echo "Error: cannot fetch Railway DATABASE_PUBLIC_URL. Run 'railway login' first."; exit 1; fi
+	@echo "Dumping local data..."
+	@docker exec $(DB_CONTAINER) pg_dump "$(DATABASE_URL)" --data-only --exclude-table=alembic_version --disable-triggers --no-owner --no-privileges -f /tmp/data.sql
+	@echo "Truncating production tables..."
+	@docker exec $(DB_CONTAINER) psql "$(PROD_DB_URL)" -c "DO \$$\$$ DECLARE r RECORD; BEGIN FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename != 'alembic_version') LOOP EXECUTE 'TRUNCATE TABLE ' || quote_ident(r.tablename) || ' CASCADE'; END LOOP; END \$$\$$;"
+	@echo "Restoring data to production..."
+	@docker exec $(DB_CONTAINER) psql "$(PROD_DB_URL)" -f /tmp/data.sql
+	@docker exec $(DB_CONTAINER) rm /tmp/data.sql
+	@echo "Done — production data synced."
 
 install:  ## Installe toutes les dependances
 	.venv/bin/pip install -r requirements.txt
