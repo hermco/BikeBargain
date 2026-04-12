@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate, Navigate } from 'react-router-dom'
-import { ArrowLeft, ExternalLink, Trash2, MapPin, Calendar, ChevronLeft, ChevronRight, ChevronDown, Camera, Pencil, X, Check, Plus, RefreshCw, Ban, TrendingDown, TrendingUp, History, Share2, Pause, MoreHorizontal } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Trash2, MapPin, Calendar, ChevronLeft, ChevronRight, ChevronDown, Camera, Pencil, X, Check, Plus, RefreshCw, Ban, TrendingDown, TrendingUp, History, Share2, Pause, MoreHorizontal, Target, Copy } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { useAd, useDeleteAd, useUpdateAd, useCatalogGroups, useRefreshAdAccessories, useUpdateAdStatus, useCheckAdOnline, usePriceHistory, useStatusHistory, useRankings } from '../hooks/queries'
@@ -12,7 +12,7 @@ import { CategoryBadge } from '../components/AccessoryBadge'
 import { TableSkeleton } from '../components/LoadingSkeleton'
 import { EmptyState } from '../components/EmptyState'
 import { useToast } from '../components/Toast'
-import { variantColor } from '../lib/utils'
+import { cn, variantColor } from '../lib/utils'
 import { useFormatters } from '../hooks/useFormatters'
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import * as Accordion from '@radix-ui/react-accordion'
@@ -40,6 +40,7 @@ export function AdDetailPage() {
     const idx = rankings.findIndex(r => r.id === adId)
     return idx >= 0 ? { position: idx + 1, total: rankings.length } : null
   }, [rankings, adId])
+  const adRanking = useMemo(() => rankings?.find(r => r.id === adId) ?? null, [rankings, adId])
   const navigate = useNavigate()
   const { toast } = useToast()
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
@@ -48,6 +49,7 @@ export function AdDetailPage() {
   const [editWheelType, setEditWheelType] = useState<string | null>(null)
   const [editAccessories, setEditAccessories] = useState<Accessory[] | null>(null)
   const [showAddAccessory, setShowAddAccessory] = useState(false)
+  const [offerTargetDecote, setOfferTargetDecote] = useState<number | null>(null)
   const [accessorySearch, setAccessorySearch] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
@@ -541,6 +543,163 @@ export function AdDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Offer simulator */}
+      {!editing && (() => {
+        if (!adRanking || adRanking.new_price <= 0) return null
+
+        const currentDecote = adRanking.decote_pct
+        const minTarget = Math.max(0, Math.ceil(currentDecote))
+        const maxTarget = Math.max(50, minTarget + 10)
+        const activeTarget = offerTargetDecote !== null
+          ? Math.max(minTarget, Math.min(maxTarget, offerTargetDecote))
+          : Math.min(minTarget + 5, maxTarget)
+        const offset = adRanking.price - adRanking.effective_price
+        const targetEffective = adRanking.new_price * (1 - activeTarget / 100)
+        const offerPrice = Math.max(0, Math.round(targetEffective + offset))
+        const savings = adRanking.price - offerPrice
+        const savingsPct = adRanking.price > 0 ? (savings / adRanking.price * 100) : 0
+
+        const presets = [20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40].filter(p => p <= maxTarget)
+
+        const hypotheticalRank = rankings
+          ? rankings.filter(r => r.id !== adId && r.decote_pct > activeTarget).length + 1
+          : null
+        const totalRanked = rankings?.length ?? 0
+
+        return (
+          <Card className="p-6 space-y-5">
+            <h2 className="text-[11px] text-text-muted uppercase tracking-widest font-semibold flex items-center gap-2">
+              <Target className="h-3.5 w-3.5" />
+              {t('adDetail.offerSimulator')}
+            </h2>
+
+            {/* Current state — compact inline */}
+            <div className="flex items-center gap-3 sm:gap-4 text-sm flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <span className="text-text-dim text-xs">{t('adDetail.offerListedPrice')}</span>
+                <span className="font-semibold text-text-primary tabular-nums font-fraunces">{formatPrice(adRanking.price)}</span>
+              </div>
+              <div className="h-4 w-px bg-tint/[0.08] hidden sm:block" />
+              <div className="flex items-center gap-1.5">
+                <span className="text-text-dim text-xs">{t('adDetail.offerEffectivePrice')}</span>
+                <span className="font-semibold text-text-primary tabular-nums font-fraunces">{formatPrice(adRanking.effective_price)}</span>
+              </div>
+              <div className="h-4 w-px bg-tint/[0.08] hidden sm:block" />
+              <div className="flex items-center gap-1.5">
+                <span className="text-text-dim text-xs">{t('adDetail.offerCurrentDecote')}</span>
+                <span className={cn('font-semibold tabular-nums',
+                  currentDecote > 20 ? 'text-ui-emerald' :
+                  currentDecote > 10 ? 'text-accent-text' :
+                  'text-ui-red'
+                )}>-{currentDecote.toFixed(1)}%</span>
+              </div>
+            </div>
+
+            {/* Offset breakdown */}
+            <div className="flex items-center gap-2 text-[11px] text-text-dim flex-wrap">
+              <span>{t('adDetail.offerAdjustments')}</span>
+              {adRanking.acc_used_total > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-ui-emerald">
+                  {t('adDetail.offerAccessories')} -{adRanking.acc_used_total}€
+                </span>
+              )}
+              {(adRanking.wear_total + adRanking.mechanical_wear) > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-red-500/10 px-1.5 py-0.5 text-ui-red">
+                  {t('adDetail.offerWear')} +{Math.round(adRanking.wear_total + adRanking.mechanical_wear)}€
+                </span>
+              )}
+              {adRanking.warranty?.value > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-ui-emerald">
+                  {t('adDetail.offerWarranty')} -{Math.round(adRanking.warranty.value)}€
+                </span>
+              )}
+            </div>
+
+            {/* Preset buttons */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-text-secondary">{t('adDetail.offerTargetDecote')}</span>
+                <span className="text-sm font-semibold text-ui-blue tabular-nums">-{activeTarget}%</span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {presets.map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setOfferTargetDecote(p)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg text-xs font-semibold tabular-nums transition-all',
+                      p === activeTarget
+                        ? 'bg-blue-500/20 text-ui-blue ring-1 ring-blue-500/40'
+                        : 'bg-tint/[0.04] text-text-muted hover:bg-tint/[0.08] hover:text-text-secondary'
+                    )}
+                  >
+                    -{p}%
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Slider */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  min={minTarget}
+                  max={maxTarget}
+                  step={1}
+                  value={activeTarget}
+                  onChange={(e) => setOfferTargetDecote(Number(e.target.value))}
+                  className="flex-1 h-2 rounded-lg appearance-none cursor-pointer bg-tint/[0.12] accent-blue-500"
+                />
+                <span className="text-sm font-semibold text-ui-blue tabular-nums min-w-[3.5rem] text-right">-{activeTarget}%</span>
+              </div>
+              <div className="flex justify-between text-[10px] text-text-dim tabular-nums pr-[4.5rem]">
+                <span>{t('adDetail.offerCurrent')} (-{minTarget}%)</span>
+                <span>-{maxTarget}%</span>
+              </div>
+            </div>
+
+            {/* Result */}
+            <div className="rounded-xl bg-blue-500/10 border border-blue-500/15 p-5">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <div className="text-[10px] text-text-dim uppercase tracking-wider mb-1">{t('adDetail.offerPriceToPropose')}</div>
+                  <div className="text-2xl font-bold font-fraunces text-ui-blue tabular-nums">{formatPrice(offerPrice)}</div>
+                </div>
+                {savings > 0 && (
+                  <div className="text-center">
+                    <div className="text-[10px] text-text-dim uppercase tracking-wider mb-1">{t('adDetail.offerSavings')}</div>
+                    <div className="text-lg font-semibold text-ui-emerald tabular-nums">-{formatPrice(savings)}</div>
+                    <div className="text-xs text-text-muted tabular-nums">-{savingsPct.toFixed(1)}% {t('adDetail.offerBelowListed')}</div>
+                  </div>
+                )}
+                {hypotheticalRank !== null && totalRanked > 1 && (
+                  <div className="text-center">
+                    <div className="text-[10px] text-text-dim uppercase tracking-wider mb-1">{t('adDetail.offerEstimatedRank')}</div>
+                    <div className="text-lg font-semibold text-accent-text tabular-nums">
+                      #{hypotheticalRank}<span className="text-text-dim font-normal">/{totalRanked}</span>
+                    </div>
+                  </div>
+                )}
+                <button
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(String(offerPrice))
+                      toast(t('adDetail.offerCopied'), 'success')
+                    } catch { /* silent */ }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 border border-blue-500/20 text-xs text-ui-blue hover:bg-blue-500/10 transition-all"
+                  title={t('adDetail.offerCopy')}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{t('adDetail.offerCopy')}</span>
+                </button>
+              </div>
+            </div>
+          </Card>
+        )
+      })()}
 
       {/* Info grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
